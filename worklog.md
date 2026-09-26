@@ -19,3 +19,27 @@ Stage Summary:
 - Stack declared by plan: Next.js App Router + TS strict, PostgreSQL/Neon + Drizzle ORM (migration-file driven), Vercel + Vercel Blob, GitHub CI, Arabic-only RTL, Egypt/EGP, COD only, single admin (username+password), WhatsApp handoff (+201019003677 default), variant-level pricing/stock/SKU/images
 - No implementation performed. No GitHub/Neon/Vercel resources created or modified. Planning repository untouched (clone only). Phase 00 NOT started.
 - Awaiting explicit owner instruction to start.
+---
+Task ID: 2
+Agent: Z.ai Code (main)
+Task: Execute PHASE-00 — Greenfield Bootstrap + Execution Controls (Amira Store)
+
+Work Log:
+- Re-read docs/phases/PHASE-00.md; confirmed DoD, outputs, integration checks
+- Verified tooling: Node v24.21.0, Bun 1.3.14, Git 2.47.3; gh/vercel/neonctl NOT installed, no token auth → B-001/B-002/B-003 blockers recorded (not faked)
+- Confirmed greenfield: no legacy Amira Store code; sandbox Next.js 16 + TS + Tailwind 4 scaffold used as base (documented adaptation, ISSUE-004)
+- Imported all 36 planning files into app repo (root controls + docs/{phases,ops,qa})
+- Created .env.example (names only); added !.env.example gitignore exception
+- Replaced scaffold page with Arabic RTL baseline placeholder; removed scaffold branding/metadata
+- Added typecheck script; created .github/workflows/ci.yml (install/typecheck/lint/build)
+- Validation: bun install clean; lint exit 0; typecheck exit 0 after excluding sandbox examples/skills from TS program (ISSUE-005); dev server 200 on /, lang=ar dir=rtl, no log errors
+- Pre-commit review found scaffold-era tracked .env + db/custom.db → untracked via git rm --cached, added db/*.db ignore (ISSUE-006); staged-diff secret scan clean
+- Baseline commit c82c9d9 on main; push BLOCKED (no GitHub auth)
+- Updated EXECUTION_STATUS.md (PHASE_00 local PASS / provisioning BLOCKED), ISSUE_LOG (001-006), BASELINE.md
+- TRACEABILITY: no product requirement rows implemented in Phase 00 → all rows intentionally remain PENDING (per AGENTS.md: update only for implemented requirements)
+
+Stage Summary:
+- Phase: PHASE_00 | Status: BLOCKED (phase gate) — local scope PASS; external provisioning pending owner authorization (GitHub B-001, Vercel B-002, Neon B-003)
+- CURRENT_PHASE remains PHASE_00; PROJECT_STATUS=BLOCKED (documented, explained)
+- Commit: c82c9d9 "chore(phase-00): greenfield baseline — execution controls, env contract, CI scaffold"
+- Exact authorization steps for owner recorded in docs/ops/BASELINE.md §8
