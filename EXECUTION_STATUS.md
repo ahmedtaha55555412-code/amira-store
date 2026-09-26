@@ -20,6 +20,14 @@ CURRENT_BRANCH=main
 - `CURRENT_PHASE` remains `PHASE_00` per DoD: it may only advance to `PHASE_01` after ALL Phase-00 checks pass, including the three provisioning gates above.
 - Baseline report: `docs/ops/BASELINE.md`.
 
+### PHASE_00 addendum (2026-09-26) — GitHub authentication VERIFIED
+- B-001 authentication half CLEARED: owner-paced single-shot GitHub OAuth device flow completed (exactly one device code, exactly one token-status check, zero background polling).
+- `gh` CLI registered and verified: `gh auth status` → Logged in to github.com account `ahmedtaha55555412-code` (active), token scopes `repo, workflow, read:org` (read:org included to satisfy gh token validation). Token never displayed or logged; temp credential files shredded after registration.
+- Account access verified: authenticated user = `ahmedtaha55555412-code`; profile `https://github.com/ahmedtaha55555412-code` reachable; read-only check on `ahmedtaha55555412-code/amira-store-plan` succeeded (plan repo NOT modified).
+- STILL PENDING for B-001 full closure: creation of the new `amira-store` application repository + push (explicitly deferred by owner).
+- B-002 Vercel and B-003 Neon: NOT STARTED (explicitly deferred by owner).
+- Therefore `PROJECT_STATUS` remains `BLOCKED`; `CURRENT_PHASE` remains `PHASE_00`. No phase-00 gate may flip until B-001 full closure + B-002 + B-003 provisioning pass.
+
 ## Rule
 Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not fully green, the next phase is forbidden.
 

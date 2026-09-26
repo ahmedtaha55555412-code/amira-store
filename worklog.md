@@ -59,3 +59,23 @@ Work Log:
 Stage Summary:
 - Waiting on owner browser authorization (code expires in ~15 minutes)
 - Constraints in force: no amira-store repo creation, no amira-store-plan modification, no Vercel/Neon auth, PHASE_00 remains BLOCKED until GitHub auth is verified; access token must never be displayed or logged
+---
+Task ID: 3-completion
+Agent: Z.ai Code (main)
+Task: Complete single-shot GitHub device-flow authorization after owner sent "done"
+
+Work Log:
+- Owner authorized device code in browser; sent "done"
+- Performed EXACTLY ONE token-status check (foreground POST to GitHub OAuth token endpoint) → success: bearer token granted, scopes `read:org, repo, workflow` (exactly the set gh requires; fixes earlier gh validation rejection)
+- Registered credential into gh via `gh auth login --with-token` (token passed through stdin pipe only)
+- Shredded/removed ALL temp credential files (gh-token.txt, gh-token.json, gh-device-flow.json); token value never printed, piped to stdout, or logged anywhere
+- `gh auth status` → ✓ Logged in to github.com account `ahmedtaha55555412-code` (active), scopes 'read:org', 'repo', 'workflow'
+- Verified authenticated login = `ahmedtaha55555412-code` via `gh api user`
+- Verified access to https://github.com/ahmedtaha55555412-code via `gh api users/ahmedtaha55555412-code` (login + type + html_url match)
+- Verified read access to owner's plan repo via `gh repo view ahmedtaha55555412-code/amira-store-plan` (read-only; plan repo NOT modified)
+- Updated EXECUTION_STATUS.md: PHASE_00 addendum — B-001 authentication half CLEARED; PROJECT_STATUS stays BLOCKED (repo creation, Vercel B-002, Neon B-003 still pending owner go-ahead)
+
+Stage Summary:
+- GitHub authentication VERIFIED for ahmedtaha55555412-code (B-001 auth portion resolved)
+- Honored all constraints: no amira-store repo created, amira-store-plan untouched, Vercel/Neon NOT started, no polling, token never displayed/logged
+- PHASE_00 remains BLOCKED until: amira-store repo creation + push (B-001 closure), Vercel provisioning (B-002), Neon provisioning (B-003) — all awaiting explicit owner instruction
