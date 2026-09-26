@@ -43,3 +43,19 @@ Stage Summary:
 - CURRENT_PHASE remains PHASE_00; PROJECT_STATUS=BLOCKED (documented, explained)
 - Commit: c82c9d9 "chore(phase-00): greenfield baseline — execution controls, env contract, CI scaffold"
 - Exact authorization steps for owner recorded in docs/ops/BASELINE.md §8
+---
+Task ID: 3
+Agent: Z.ai Code (main)
+Task: Single-shot GitHub device-flow authorization (owner-paced; no background polling)
+
+Work Log:
+- Per owner instruction: abandoned gh CLI device flow / background polling; switched to one-shot owner-paced protocol
+- Confirmed no GH_TOKEN / GITHUB_TOKEN env leakage into shell environment
+- Single foreground POST to https://github.com/login/device/code (client_id = GitHub CLI official OAuth app 178c6fc778ccc68e1d6a; scopes: repo, workflow, read:org — read:org included to fix the earlier gh token-validation rejection)
+- HTTP 200; device_code persisted internally at /home/z/.cache/amira-store/gh-device-flow.json (chmod 600); device_code value NOT displayed or logged
+- user_code + verification_uri shown to owner in chat; owner authorizes in browser at own pace
+- NO polling process started; NO further codes will be generated while owner authorizes; exactly ONE token-status check will run after owner sends "done"
+
+Stage Summary:
+- Waiting on owner browser authorization (code expires in ~15 minutes)
+- Constraints in force: no amira-store repo creation, no amira-store-plan modification, no Vercel/Neon auth, PHASE_00 remains BLOCKED until GitHub auth is verified; access token must never be displayed or logged
