@@ -57,7 +57,7 @@ CURRENT_BRANCH=main
 - Status: COMPLETE (all DoD items pass; see verification below)
 - Commit: `feat(phase-01): foundation + design system + brand assets` (hash via `git log main`)
 - Date/time: 2026-09-27 (Africa/Cairo)
-- Tests: lint ✅ (exit 0) · typecheck ✅ (`tsc --noEmit` clean) · dev-server runtime clean (no errors/warnings in dev.log across full QA session) · CI build verified on push (see run in `git log`/Actions)
+- Tests: lint ✅ (exit 0) · typecheck ✅ (`tsc --noEmit` clean) · dev-server runtime clean (no errors/warnings in dev.log across full QA session) · CI build verified on push — run 36300359549 GREEN (verify job 52s: install→prisma generate→typecheck→lint→build) on commit bfd8ee5
 - Manual verification (agent-browser, route `/` only):
   - Renders correctly at 375 / 768 / 1440 px; **zero horizontal overflow** at all three widths (scrollWidth == clientWidth)
   - `lang=ar` `dir=rtl` confirmed; Arabic ligatures/wrapping sound (Cairo shaping, text-balance headings)
