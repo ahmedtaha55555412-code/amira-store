@@ -261,3 +261,58 @@ Fail any check ⇒ revert the binding change; production state is the invariant.
   migration applied by `drizzle-kit migrate`.
 - No secret value is ever printed, logged, or committed; only hashes and host/endpoint
   identifiers are quotable.
+
+### 9.5 Binding-capability verdict — first-party research round (2026-09-27, owner directive)
+
+Owner created the isolated **`development`** branch in the Neon console (child of `main`, project
+`tiny-mud-82763154` / resource `neon-cobalt-globe`; branches now: `main` = default/production,
+`development` = new child, `preview/phase-00/bootstrap-preview` = existing Vercel preview branch)
+and directed a docs/UI/API-only determination of whether the Vercel `development` environment can
+safely receive the connection credentials of that existing branch. **Research-only round: zero
+mutations** (no Vercel/Neon changes, no reconnect/reinstall, no env overwrites, no connections).
+
+Findings (first-party sources only):
+
+1. **Vercel side has no per-environment branch control.** The resource settings expose only
+   Allowed Environments (All / Production-only) and an Update Configuration with no branch
+   selector (owner UI inspection, this round). The 18 `DATABASE_*` variables are
+   integration-managed store secrets (ciphertext — proven PHASE_00) and are not hand-editable;
+   manual overwrite is also forbidden by owner policy. Independent user reports hit the same
+   lock (Vercel Community, "Map environments to Neon branches", Oct 2025).
+2. **Neon side — exactly one documented per-environment Development binding exists** for our
+   integration type (Neon-Managed / Connectable Account;
+   neon.com/docs/guides/neon-managed-vercel-integration): the **installation-time** option
+   "**Create a branch for your development environment**" creates a persistent
+   integration-managed branch named **`vercel-dev`** (clone of the default branch) **and sets
+   the Vercel development environment variables for it**. Two hard nuances:
+   - it binds its OWN `vercel-dev` branch — **no documented mechanism binds an arbitrary
+     existing branch** (such as our `development`) to the Vercel `development` environment;
+   - it is documented as an installation option only; the post-install "Managing the
+     integration" surface (Settings = variable selection + role; Branches = preview cleanup;
+     Disconnect) documents **no later toggle**. Enabling it on the existing installation would
+     require a disconnect/reinstall — explicitly forbidden by the owner this round.
+   (The sibling Vercel-Managed/"Native" integration is a different product — billing in Vercel /
+   Lakebase — and documents no Development-branch binding at all.)
+3. **Verdict: NO supported binding exists today, under the owner's stated constraints, between
+   the Vercel `development` environment and the existing Neon `development` branch.** Per the
+   owner's conditional, the integration is LEFT UNTOUCHED and ISSUE-2026-09-27-019 stays OPEN.
+
+Operative development architecture (unchanged — §9.3 Step 2(a) compensating control):
+
+- Local development uses the git-ignored `.env.local` whose `DATABASE_URL` is the
+  `development` branch's **pooled** connection string (owner copies it from Neon Console →
+  Connect, branch `development`). All local schema/seed work lands on the isolated branch.
+- The Vercel `development` environment stays **production-equivalent and WRITE-PROHIBITED**;
+  `vercel env pull` output must never be used as the `DATABASE_URL` for local schema/seed work.
+- Deploys reach production only through committed migrations at build time; preview stays
+  integration-isolated (unchanged).
+
+Recorded future option (owner decision ONLY — not executed; blocked this round by the
+no-reinstall directive): enable the documented `vercel-dev` mechanism. If ever pursued:
+(i) first read-check Neon Console → Integrations → Vercel → Manage → Settings for a
+development-branch toggle (if present, enabling it touches Development only per the docs);
+(ii) otherwise a reconnect/reinstall with the SAME Neon project `tiny-mud-82763154`, database
+`neondb`, and role, with the option enabled — and the §9.3 Step 3 hash-only verification
+(production fingerprint MUST stay `a77fc2afd8ac2bd7…`) is the mandatory gate;
+(iii) `development` and `vercel-dev` would then be redundant — keep/delete is the owner's call
+(the branch is not production).
