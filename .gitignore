@@ -57,3 +57,5 @@ server.log
 db/*.db
 # sandbox runtime artifacts (never commit)
 .zscripts/dev.pid
+# local credential vault for CLI auth persistence (never commit, never push)
+.auth/
