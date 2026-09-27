@@ -59,3 +59,5 @@ db/*.db
 .zscripts/dev.pid
 # local credential vault for CLI auth persistence (never commit, never push)
 .auth/
+# vercel project link metadata (local only)
+.vercel/
