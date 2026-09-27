@@ -136,3 +136,22 @@ Work Log:
 
 Stage Summary:
 - B-001 CLEARED; B-002 auth verified, project created+linked; remaining: owner adds GitHub Login Connection → retry git connect; owner installs Neon integration (browser) → verify connectivity/envs/branching → env var config → validation → docs → completion commit → gate flip
+---
+Task ID: 4-d
+Agent: Z.ai Code (main)
+Task: PHASE-00 — post-integration verification round 1; gaps identified
+
+Work Log:
+- Owner completed browser steps (GitHub Login Connection + Neon Marketplace install with existing account/org)
+- vercel git connect RETRY → NEW error: "Failed to connect ... Make sure ... you have access to the repository if it's private" → Vercel GitHub App lacks access to amira-store repo (Login Connection alone insufficient)
+- REST API verification (token from vault, never displayed): project amira-store exists (framework unset, node 24.x), link = {} (NO git link), envs = EMPTY (Neon integration NOT bound to project), team has exactly 1 project (no duplicates)
+- GitHub verification: repo PRIVATE/main ✓; plan repo HEAD unchanged 2f4e4b3 ✓ (untouched); remote synced to local e046684 (pushed worklog commits)
+- Added AUTH_SESSION_SECRET for production/preview/development (3 DISTINCT 48-byte urlsafe secrets, generated in vault temp files → piped to `vercel env add` → shredded; values never displayed/committed; stored as hidden Secrets in Vercel)
+- Added APP_URL development = http://localhost:3000 (non-secret, Config type)
+- Marketplace installation enumeration not possible with current token scope (403/404 on all installation endpoints) — cannot self-verify Neon binding; requires project env vars to appear (binding fix is a user browser step)
+
+Stage Summary:
+- VERIFIED: Vercel auth/team/project, GitHub repo state, plan repo untouched, no duplicate resources, secrets in place (names only)
+- TWO REMAINING GAPS (both require owner browser action):
+  1) Vercel GitHub App must be granted access to ahmedtaha55555412-code/amira-store (github.com/apps/vercel → Configure → Repository access)
+  2) Neon integration must be attached to project amira-store with a NEW Neon project + all 3 environments + preview branching (currently envs empty = not bound)
