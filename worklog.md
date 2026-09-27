@@ -120,3 +120,19 @@ Stage Summary:
 - B-002 in progress: awaiting owner authorization of fresh Vercel device code (one-shot exchange protocol; on success write vault auth.json + verify whoami/team)
 - B-003 path DECIDED by owner: official Vercel-Neon Marketplace integration ("Link Existing Neon Account"), org org-frosty-darkness-82889078; no Neon CLI OAuth attempts
 - Next: owner authorizes Vercel code → verify whoami/team → create/link project → git connect → STOP at exact Neon-integration browser step
+---
+Task ID: 4-c
+Agent: Z.ai Code (main)
+Task: PHASE-00 provisioning — Vercel verified + project linked; git connect blocked on owner Login Connection
+
+Work Log:
+- Owner authorized fresh Vercel device code (SNSH-XDJV); ONE token exchange succeeded on first attempt (Bearer, refresh_token present, scope openid offline_access, expires_in 28800s); token never displayed/logged
+- auth.json written to vault (.auth/vercel/auth.json) in exact @vercel/cli-config schema {token, expiresAt(unix s), refreshToken}; device-flow state shredded
+- vercel whoami → ahmedtaha55555412-7683 (matches https://vercel.com/ahmedtaha55555412-7683); teams ls → team ahmedtaha55555412-7683 (hobby) — B-002 authentication VERIFIED
+- Created project: vercel projects add amira-store → Success (team ahmedtaha55555412-7683)
+- Linked cwd: .vercel/project.json {projectId prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA, orgId team_5ThEi7AtAs9s7KUjKD9sR9zy, projectName amira-store}; `.vercel/` git-ignored (committed b3f4f0b before linking)
+- vercel git connect FAILED (400): "You need to add a Login Connection to your GitHub account first" — account-level browser step required from owner (Vercel account created via device flow has no GitHub login connection)
+- Neon path confirmed by owner: Vercel Marketplace Neon integration, Link Existing Neon Account, org org-frosty-darkness-82889078, no unrelated project modifications
+
+Stage Summary:
+- B-001 CLEARED; B-002 auth verified, project created+linked; remaining: owner adds GitHub Login Connection → retry git connect; owner installs Neon integration (browser) → verify connectivity/envs/branching → env var config → validation → docs → completion commit → gate flip
