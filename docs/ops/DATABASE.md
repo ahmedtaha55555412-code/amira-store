@@ -316,3 +316,43 @@ development-branch toggle (if present, enabling it touches Development only per 
 (production fingerprint MUST stay `a77fc2afd8ac2bd7…`) is the mandatory gate;
 (iii) `development` and `vercel-dev` would then be redundant — keep/delete is the owner's call
 (the branch is not production).
+
+## 10. Development-branch bring-up for PHASE_03 (2026-09-27) — compensating control LIVE
+
+The owner authorized the `development` branch's POOLED connection string for the sandbox and
+delegated creation of the git-ignored `.env.local`. The verification chain mandated by §9.3
+Step 3 / ISSUE-2026-09-27-020 ran BEFORE any use, with values never displayed:
+
+1. `.env.local` is git-ignored (`git check-ignore` ✓; `git status` clean; chmod 600).
+2. URL is a `*.neon.tech` POOLED host; endpoint id `ep-dark-boat-b1fejsk4` (branch `development`).
+3. **sha256(DATABASE_URL) = `e5d2abaf3816965f…` ≠ the recorded production fingerprint
+   `a77fc2afd8ac2bd7…`** — not the Production URL (hash-only protocol; no production endpoint
+   id was ever recorded, so fingerprint inequality is the operative discriminator, combined
+   with the owner's attestation that the string came from the `development` Connect panel).
+4. Read-only probe: `neondb` @ PostgreSQL 18.6 (fra1), **0 public tables**, only the platform
+   `neon_auth` schema — a fresh copy-on-write child of `main`, exactly matching §8's final
+   production snapshot.
+
+Executed bring-up (every command explicitly aimed via sourced `.env.local` — bun does not
+auto-load `.env*` in this sandbox):
+
+- `drizzle-kit migrate` with `DRIZZLE_DATABASE_URL` = the **direct** endpoint of the SAME
+  endpoint id (standard Neon derivation: host minus the `-pooler` infix) per §5 policy →
+  23/23 tables + 9/9 enums; `__drizzle_migrations` hash == sha256(`drizzle/0000_init_schema.sql`)
+  (`a2a86f8b…`). No `db push` anywhere.
+- `db:bootstrap` (production-safe, absent-only) → settings singleton + 5 categories.
+- `db:seed` (development-only by code) → deterministic demo catalog.
+- `db:verify` → **28/28 invariant probes PASS** on the real Neon development branch.
+- `db:bootstrap:admin` (new PHASE-03 CLI, §3) → single QA admin `amira_admin`; second run
+  REFUSES (first-admin-only guard).
+- `verify:auth` (new PHASE-03 suite) → **29/29**.
+
+Standing state after this round:
+
+- Local development DB = Neon `development` branch via `.env.local` (pooled for the app
+  runtime; direct for migrations). The Vercel `development` environment remains
+  production-equivalent and WRITE-PROHIBITED (§9.4) — that binding gap stays tracked as
+  ISSUE-2026-09-27-019.
+- Production (`main` branch) was never connected to during this round; its fingerprint
+  record (`a77fc2afd8ac2bd7…`) remains the invariant to re-check after any future binding
+  change (§9.3 Step 3).

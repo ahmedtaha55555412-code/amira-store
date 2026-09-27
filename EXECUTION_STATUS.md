@@ -9,11 +9,11 @@ Allowed project states:
 - `COMPLETE`
 
 ## Current state
-PROJECT_STATUS=BLOCKED
-CURRENT_PHASE=PHASE_03
-LAST_COMPLETED_PHASE=PHASE_02
+PROJECT_STATUS=READY_FOR_NEXT_PHASE
+CURRENT_PHASE=PHASE_04
+LAST_COMPLETED_PHASE=PHASE_03
 CURRENT_BRANCH=main
-PHASE_03_STATUS=BLOCKED — owner go-ahead received 2026-09-27, but the mandatory database prerequisite is unavailable: the isolated Neon `development`-branch DATABASE_URL is absent from the sandbox (ISSUE-2026-09-27-020). PHASE-03 NOT started; zero code written; Vercel Development DATABASE_URL (points at Production) never opened. Owner action required: create git-ignored `.env.local` with the `development` branch's POOLED connection string (docs/ops/DATABASE.md §9.3 Step 1.6; details in ISSUE_LOG ISSUE-2026-09-27-020).
+PHASE_04_STATUS=LOCKED — opens only on the owner's explicit go-ahead (MASTER_PLAN §29: next phase starts only on the next agent run/command). PHASE-03 is COMPLETE (record below); local main == origin/main; CI green on the PHASE-03 commit.
 
 ### PHASE_00 record (2026-09-26)
 - Local baseline scope: PASS — workspace inspected; tooling verified (Node v24.21.0, Bun 1.3.14, Git 2.47.3); planning pack preserved in-repo (AGENTS.md, MASTER_PLAN.md, EXECUTION_STATUS.md, docs/); `.env.example` contract committed; `.gitignore` secret-safe (`.env*` ignored, `!.env.example` tracked); baseline CI scaffolding (.github/workflows/ci.yml); baseline Arabic placeholder page boots; `bun install` clean; lint + typecheck pass; no secrets committed.
@@ -116,6 +116,38 @@ PHASE_03_STATUS=BLOCKED — owner go-ahead received 2026-09-27, but the mandator
 - Gate: `PHASE_03_STATUS=BLOCKED` (NOT started), `PROJECT_STATUS=BLOCKED`, `CURRENT_PHASE=PHASE_03` unchanged, `LAST_COMPLETED_PHASE=PHASE_02` unchanged. Blocker fully documented as **ISSUE-2026-09-27-020** (BLOCKER) with the exact owner action (docs/ops/ISSUE_LOG.md). No workaround invented, per directive.
 - When the owner lands the URL: the implementation round will begin with the complete `MASTER_PLAN.md` read (the one remaining prerequisite), then implement PHASE-03 exactly (username+password, single admin, no register/forgot/email, hashed session tokens, HttpOnly/Secure/SameSite cookie, expiry+logout, login throttling, authorization helper on every admin mutation, non-web bootstrap command, change-password flow, activity logging without secrets, session-leak prevention) and verify against the `development` branch ONLY.
 
+### PHASE_03 unblock + execution round (2026-09-27) — owner full-development-database authorization
+- Owner explicitly authorized use of the Neon `development`-branch POOLED connection string (project `tiny-mud-82763154`), delegated creation of the git-ignored `.env.local` to the agent, and ordered PHASE-03 resumed from ISSUE-2026-09-27-020's BLOCKED gate. Standing prohibitions honored: Vercel `development` DATABASE_URL (Production) never opened; Neon `main`/Production never connected to; the credential never printed/logged/committed outside the authorized `.env.local` destination.
+- Private verification chain before ANY use (values never displayed): `.env.local` git-ignored (`git check-ignore` ✓, `git status` clean, chmod 600); URL is a `*.neon.tech` POOLED host (endpoint id `ep-dark-boat-b1fejsk4`); **sha256(DATABASE_URL) = e5d2abaf3816965f… ≠ recorded production fingerprint a77fc2afd8ac2bd7…**; read-only SQL probe → `neondb` @ PostgreSQL 18.6, 0 public tables, only platform `neon_auth` schema — consistent with a fresh copy-on-write child of `main` (ISSUE-2026-09-27-020 → RESOLVED, see ISSUE_LOG).
+- Development branch brought up EXACTLY per repo policy: committed migration `0000_init_schema.sql` applied via `drizzle-kit migrate` (DRIZZLE_DATABASE_URL aimed explicitly at the DIRECT endpoint of the SAME endpoint id — derived by stripping the `-pooler` suffix per DATABASE.md §5) → 23/23 tables + 9/9 enums, `__drizzle_migrations` hash == sha256(committed file) (a2a86f8b…); production-safe `db:bootstrap` (settings + 5 categories, absent-only); dev `db:seed` (deterministic demo catalog); `db:verify` → **28/28 invariant probes PASS** on the real Neon development branch.
+- Environment note: bun does not auto-load `.env*` in this sandbox — every script/DB command sources `.env.local` explicitly, which also satisfies the ISSUE-020 mandate that each command deliberately aims at the authorized URL.
+
+## PHASE_03 completion record
+- Status: COMPLETE — all 11 tasks implemented; all 8 verification items pass (service-level suite + browser QA); DoD "admin boundary independently secure and fully tested" satisfied
+- Commit: `feat(phase-03): admin authentication + security foundation` (hash via `git log main`)
+- Date/time: 2026-09-27 (Africa/Cairo)
+- Implementation delivered:
+  - Password hashing: bcrypt (bcryptjs, cost 12) — `src/lib/auth/password.ts` (hash/verify + strength + username policies + timing-equalizer constant for unknown usernames)
+  - Login endpoint `POST /api/admin/auth/login` (zod-validated; generic Arabic errors; no account enumeration; inactive admin rejected; HttpOnly/SameSite=Lax/Secure(https) cookie; session token = 256-bit CSPRNG stored ONLY as SHA-256 hash)
+  - Session service `src/lib/auth/session.ts` (create/resolve/destroy/destroyAll/purge; 7-day absolute expiry; throttled `last_seen_at` audit refresh; AUTH_SESSION_SECRET used solely for HMAC IP hashing)
+  - Logout `POST /api/admin/auth/logout` (idempotent; destroys row + clears cookie)
+  - Login throttling `src/lib/auth/throttle.ts` — DB-backed (serverless-safe): 5 failures / 15 min per submitted username OR per HMAC-hashed IP; 429 + Retry-After; success clears transient failure rows (audit success row remains)
+  - Authorization helpers `src/lib/auth/guard.ts` — `requireAdminPage()` (redirect) / `requireAdminMutation()` (401) — used by EVERY admin page and mutation; middleware `src/middleware.ts` is a cookie-presence UX fast-path only, never the authorization decision
+  - Change password `POST /api/admin/auth/change-password` + `/admin/settings/security` — current password re-verified; strength policy; **policy: password change revokes ALL sessions (documented; caller returns to login)**
+  - Activity audit `src/lib/auth/activity.ts` + `admin_activity_logs` (login success/failed with reasons, logout, password change, bootstrap) — metadata sanitizer redacts credential-shaped keys; no passwords/tokens/raw IPs anywhere
+  - First-admin bootstrap CLI `scripts/db-bootstrap-admin.ts` (`bun run db:bootstrap:admin`) — env-var or TTY credentials; REFUSES when any admin exists; NEVER a web route; password never printed/logged
+  - Admin shell: `/admin` dashboard placeholder (honest "قريبًا" modules for PHASE-04+), `/admin/login` (Arabic RTL, design system, noindex), security page; robots noindex on all admin metadata; security headers (X-Content-Type-Options / X-Frame-Options / Referrer-Policy / Permissions-Policy) in `next.config.ts`
+  - Verification suite `scripts/verify-auth.ts` (`bun run verify:auth`) — 29 checks: hashing roundtrip, policies, wrong-password, session lifecycle/unknown/expired/logout, inactive rejection, throttling trigger+cleanup, activity-log secret-hygiene scan, single-admin invariant
+- Tests/verification evidence:
+  - `bun run verify:auth` → **29 passed, 0 failed** (against the development branch)
+  - `bun run db:verify` → **28/28 invariant probes pass** on the development branch (regression)
+  - typecheck ✅ (`tsc --noEmit` clean) · lint ✅ (0 errors) · dev-server runtime clean
+  - Browser QA (agent-browser, Arabic RTL): /admin unauthenticated → redirect ✓; wrong password → generic error ✓; correct login → dashboard ✓; **`document.cookie` = "" while the session cookie exists (HttpOnly proven)** ✓; change-password flow → success → auto-logout → re-login with rotated password ✓; logout → /admin/login ✓; post-logout /admin → redirect ✓; throttling: 5×401 then 429 + Retry-After (curl) and the Arabic throttle message rendered in the UI ✓; recovery after clearing transient failures ✓; no forgot/register URL anywhere ✓; zero horizontal overflow at 375/1440 px; zero console/page errors
+  - `next build`: not executed in-sandbox (dev server owns `.next`); build evidence = CI `next build` on push (same path as PHASE_00/01/02)
+- Known non-blocking notes: ISSUE-2026-09-27-021 (throttle OR-precedence bug found by QA — FIXED during the phase); ISSUE-2026-09-27-019 remains OPEN (Vercel `development` still Production-bound; compensating control now ACTIVE with the verified `.env.local`); the dev-branch QA admin credential was rotated during QA and re-provisioned via the sanctioned dev-reset path (final credentials live only in git-ignored `.env.local`)
+- Linked issues: ISSUE-2026-09-27-020 (RESOLVED), ISSUE-2026-09-27-021 (FIXED), ISSUE-2026-09-27-019 (OPEN — compensating control active)
+- Scope discipline kept: no catalog/CRUD (PHASE-04), no customer flows, no PHASE-01/02 regressions; schema unchanged (23 tables as committed in PHASE-02)
+
 ## Rule
 Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not fully green, the next phase is forbidden.
 
@@ -123,8 +155,8 @@ Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not
 - [x] PHASE_00 — Repository audit + execution controls
 - [x] PHASE_01 — Foundation + design system + brand assets
 - [x] PHASE_02 — Database schema + migrations + seed strategy (live-Neon proof completed 2026-09-27; owner-ACCEPTED; safety/continuity round recorded above)
-- [ ] PHASE_03 — Admin authentication + security foundation
-- [ ] PHASE_04 — Categories + products + variants + media
+- [x] PHASE_03 — Admin authentication + security foundation (completed 2026-09-27; development-branch verified end-to-end)
+- [ ] PHASE_04 — Categories + products + variants + media (LOCKED — opens on owner go-ahead)
 - [ ] PHASE_05 — Storefront navigation + search + filters + product pages
 - [ ] PHASE_06 — Cart + guest wishlist
 - [ ] PHASE_07 — Checkout + order creation + WhatsApp handoff

@@ -13,7 +13,9 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "NODE_ENV=development bun scripts/db-seed.ts",
     "db:bootstrap": "bun scripts/db-bootstrap.ts",
+    "db:bootstrap:admin": "bun scripts/db-bootstrap-admin.ts",
     "db:verify": "bun scripts/verify-migrations.ts",
+    "verify:auth": "bun scripts/verify-auth.ts",
     "db:verify:local": "node scripts/verify-local-database.mjs"
   },
   "dependencies": {
@@ -53,6 +55,7 @@
     "@reactuses/core": "^6.0.5",
     "@tanstack/react-query": "^5.82.0",
     "@tanstack/react-table": "^8.21.3",
+    "bcryptjs": "^3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

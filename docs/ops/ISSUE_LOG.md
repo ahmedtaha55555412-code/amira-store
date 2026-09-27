@@ -247,7 +247,7 @@
 ### ISSUE-2026-09-27-019
 - Phase: PHASE_02 (verification-round discovery) → elevated to pre-PHASE_03 safety gate (owner directive 2026-09-27)
 - Severity: MEDIUM (development writes would hit the production database; controlled by standing guardrails)
-- Status: OPEN — REMEDIATION DOCUMENTED (awaiting owner console/dashboard action; compensating controls in force)
+- Status: OPEN — narrowed scope (2026-09-27): the isolated Neon `development` branch is the ACTIVE local development target via git-ignored `.env.local` (compensating control verified & live); only the Vercel `development`-environment binding gap remains (future `vercel-dev` option recorded in DATABASE.md §9.5)
 - Symptom: On the Vercel↔Neon integration, the project's `development` and `production` environments resolve to the IDENTICAL Neon database (`neondb` on the primary branch) — sha256(DATABASE_URL) hashes are equal. There is no dedicated isolated development branch.
 - Reproduction: `vercel env pull --environment=development|production` → both DATABASE_URL values hash to a77fc2afd8ac2bd7…; public tables of neondb = [] (only the platform `neon_auth` schema exists).
 - Root cause: Neon Vercel-native integration default — one primary-branch database serves production + development; isolated copy-on-write branches are created only per Preview Deployment.
@@ -288,4 +288,24 @@
   - **Option A (primary, per §9.3 Step 1.6):** in Neon Console → project `tiny-mud-82763154` → **Branches** → open the **`development`** branch (NOT main) → **Connect** → enable **Pooled connection** → copy the string into a NEW file `/home/z/my-project/.env.local` (workspace file access) containing exactly one line: `DATABASE_URL=<development-branch pooled string>`. CRITICAL: the string MUST come from the `development` branch's own Connect panel — the project-level/default Connect button delivers the `main` (Production) branch credentials, which must never enter the sandbox. Never through chat/email/IM; the file is git-ignored (`.gitignore` line 34 `.env*`; `git check-ignore .env.local` passes).
   - **Option B (only if the owner has no direct sandbox file access):** owner issues a Neon API key (owner-issued, per DATABASE.md §9.2 precedent) into the git-ignored `.auth/` vault via their own secure file channel; upon explicit owner authorization the agent performs a READ-ONLY Neon API call (project `tiny-mud-82763154`, branch `development` → pooled connection URI) and writes `.env.local` itself; the value is never printed/logged/chatted. NOT executed without explicit owner authorization.
 - Verification command/check (after the owner action, before any PHASE-03 use): `test -f /home/z/my-project/.env.local && git -C /home/z/my-project check-ignore .env.local`; agent then verifies WITHOUT printing values: URL is a `*.neon.tech` POOLED host; `sha256(DATABASE_URL) ≠ a77fc2afd8ac2bd7…` (the recorded production fingerprint); host/endpoint id differs from the production endpoint; then a `SELECT 1` probe and `drizzle-kit migrate` (DRIZZLE_DATABASE_URL aimed explicitly) target that URL ONLY.
-- Final status: OPEN — BLOCKER. PHASE-03 remains BLOCKED until the URL is present and passes the checks above; no workaround will be invented (owner directive).
+- Final status: RESOLVED (2026-09-27, same session).
+
+**Closing addendum (2026-09-27, PHASE-03 unblock round):**
+- The owner supplied the `development`-branch POOLED connection string through an authorized channel and explicitly delegated `.env.local` creation to the agent ("Do not stop merely because the credential needs to be placed in `.env.local`"). The file was created git-ignored (chmod 600) and the full verification checklist above PASSED with values never displayed: git-ignored ✓; pooled `*.neon.tech` host (endpoint id `ep-dark-boat-b1fejsk4`) ✓; **sha256 = e5d2abaf3816965f… ≠ production fingerprint a77fc2afd8ac2bd7…** ✓; read-only probe → `neondb`, PostgreSQL 18.6, 0 public tables, only platform `neon_auth` schema ✓ (owner attestation + fingerprint inequality = identity evidence; no production endpoint id was ever recorded, so hash inequality is the operative discriminator).
+- All PHASE-03 database work then ran against exactly this URL, explicitly sourced per command: `drizzle-kit migrate` (direct endpoint of the SAME endpoint id) → 23/23 tables + 9/9 enums + migration hash == committed file; `db:bootstrap`; `db:seed`; `db:verify` 28/28; `db:bootstrap:admin`; `verify:auth` 29/29. Vercel `development` DATABASE_URL was never opened; Neon `main`/Production was never connected to.
+
+### ISSUE-2026-09-27-021
+- Phase: PHASE_03 (browser/QA round, 2026-09-27)
+- Severity: HIGH (security control misbehaved — throttling triggered on non-failure traffic patterns and counted non-failure rows)
+- Status: FIXED
+- Symptom: repeated-bad-login QA loop returned 429 on attempt 2 while only ONE failure row existed for the submitted username; the throttle counted rows irrespective of their action type.
+- Reproduction: `curl` login attempts sequence after a prior mixed login history; `getLoginThrottleState` returned `throttled=true` with `recentFailures` exceeding the actual `auth.login.failed` row count.
+- Root cause: drizzle's `and()` inlines raw `sql` fragments verbatim WITHOUT parenthesizing them — the `or` between the username and ipHash identity conditions bound looser than the AND-ed `action`/`createdAt` filters, so the count matched "any activity row with this IP hash" (including successes) regardless of action or window.
+- Minimal fix: fully parenthesize the OR pair in `getLoginThrottleState` (`((u = $username) or (i = $ipHash))`) with an explanatory comment; `clearLoginFailures` (single raw condition) was already safe.
+- Verification: QA failure rows cleared → clean loop 5×401 → 429 + Retry-After on attempt 6; browser shows the Arabic throttle message; recovery after transient-row cleanup; `bun run verify:auth` 29/29 (its throttle probe uses the username-only path and passes alongside the fixed SQL).
+- Related files: `src/lib/auth/throttle.ts`
+- Notes: caught by the phase's own QA loop exactly as the verification plan intended; recorded for transparency per ERROR_PROTOCOL.
+
+**ISSUE-2026-09-27-019 — Addendum (2026-09-27, PHASE-03 unblock round — compensating control ACTIVE):**
+- The owner-provided `development`-branch POOLED string is now operationally live in git-ignored `.env.local` (verification chain in ISSUE-2026-09-27-020's closing addendum). All local PHASE-03 database work ran against the isolated branch; the Vercel `development` environment remains production-bound and WRITE-PROHIBITED.
+- Scope of this issue therefore narrows further: "Vercel `development` environment still maps to the production branch; the isolated Neon `development` branch is the active local development target via `.env.local`; future `vercel-dev` binding option remains recorded in DATABASE.md §9.5." Status stays OPEN (binding gap only).

@@ -11,6 +11,23 @@ const nextConfig: NextConfig = {
   // (WhatsApp FAB / QA playground trigger / RTL header) on phone and desktop
   // viewports, so it is disabled during development. Production is unaffected.
   devIndicators: false,
+  // Security headers (PHASE-03 security foundation, MASTER_PLAN §24).
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
