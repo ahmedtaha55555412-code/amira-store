@@ -9,9 +9,9 @@ Allowed project states:
 - `COMPLETE`
 
 ## Current state
-PROJECT_STATUS=READY_FOR_NEXT_PHASE
-CURRENT_PHASE=PHASE_03
-LAST_COMPLETED_PHASE=PHASE_02
+PROJECT_STATUS=IN_PROGRESS
+CURRENT_PHASE=PHASE_02
+LAST_COMPLETED_PHASE=PHASE_01
 CURRENT_BRANCH=main
 
 ### PHASE_00 record (2026-09-26)
@@ -70,9 +70,15 @@ CURRENT_BRANCH=main
 - Linked issues: ISSUE-2026-09-27-013 (fixed), ISSUE-2026-09-27-014 (fixed), ISSUE-2026-09-27-010 (open, owner, unaffected)
 - Scope discipline kept: no products DB logic, no cart/checkout/admin auth/payment, no new routes, PHASE-00 infra untouched
 
+### PHASE_02 gate REOPEN (2026-09-27) — owner compliance directive
+- Owner review found the authoritative PHASE-02 task 12 ("apply the migration to a disposable/dev Neon database with `drizzle-kit migrate`") NOT YET PROVEN on real Neon — only the local disposable-PostgreSQL rehearsal passed. The earlier flip to PHASE_03 was premature and is hereby reverted.
+- Rollback: `CURRENT_PHASE=PHASE_02`, `PROJECT_STATUS=IN_PROGRESS`, `LAST_COMPLETED_PHASE=PHASE_01`. PHASE-03 stays LOCKED until every PHASE-02 gate is genuinely satisfied.
+- Verification-round constraints: no second Neon project; no modification/deletion of `neon-cobalt-globe`; a safe disposable/dev Neon branch/database only; the exact committed migration via `drizzle-kit migrate`; no `db push`; no destructive operations against Production; no secret values ever printed.
+- If real-Neon verification cannot complete because authentication is unavailable, PHASE-02 must NOT be marked complete and the exact blocker must be recorded (ISSUE-2026-09-27-018).
+
 ## PHASE_02 completion record
-- Status: COMPLETE (all 4 DoD items pass; see below)
-- Commit: `feat(phase-02): PostgreSQL/Neon schema + Drizzle migrations + seed strategy` (hash via `git log main`; pushed after ISSUE-018 credential restore)
+- Status: REOPENED (2026-09-27, owner directive) — schema/seed/migration scope PASS locally; live-Neon application (task 12) pending proof; see gate-reopen note above
+- Commit: `feat(phase-02): PostgreSQL/Neon schema + Drizzle migrations + seed strategy` — b4fca6e (local only; push still pending ISSUE-018 credential restore)
 - Date/time: 2026-09-27 (Africa/Cairo)
 - Tests/verification:
   - `bun run db:verify:local` → **exit 0**: disposable PostgreSQL 18 rehearsal — migrations apply cleanly to TWO fresh DBs; production-safe bootstrap + dev seed both idempotent on re-run (7 products / 18 variants / 24 variant-attribute assignments / 13 images stable); seed REFUSES `NODE_ENV=production`; **28/28 invariant+scenario probes pass** (size-only / color-only / size+color non-Cartesian / no-attribute default variant; per-variant price/stock/image independence; multi-image products; unique SKU+slugs; no negative stock; one-value-per-attribute-per-variant; composite-FK pair consistency; order money identities; one verified review per order item; one cancellation-return per order; ledger identities; session-token uniqueness; settings singleton; New-Arrivals index)
@@ -92,7 +98,7 @@ Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not
 ## Phase board
 - [x] PHASE_00 — Repository audit + execution controls
 - [x] PHASE_01 — Foundation + design system + brand assets
-- [x] PHASE_02 — Database schema + migrations + seed strategy
+- [ ] PHASE_02 — Database schema + migrations + seed strategy (gate REOPENED — live-Neon proof pending)
 - [ ] PHASE_03 — Admin authentication + security foundation
 - [ ] PHASE_04 — Categories + products + variants + media
 - [ ] PHASE_05 — Storefront navigation + search + filters + product pages
