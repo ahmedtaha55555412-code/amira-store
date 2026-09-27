@@ -4,12 +4,14 @@
 |---|---|---:|---|---|
 | Arabic-only RTL storefront | MASTER_PLAN §2 | 01,05+ | Visual/manual | PENDING |
 | Egypt + EGP | MASTER_PLAN §2 | 01,02 | Unit/manual | PARTIAL — schema defaults EGP/ar/Africa-Cairo in store_settings (PHASE_02); UI per-page checks 05+ |
-| 5 main categories | MASTER_PLAN §2,3 | 02,04 | Integration | PARTIAL — schema + bootstrap/seed init the 5 departments (PHASE_02); admin CRUD PHASE_04 |
-| Simple parent/child categories | §6 | 02,04 | CRUD test | PARTIAL — self-FK tree with RESTRICT + hierarchy index (PHASE_02); admin CRUD PHASE_04 |
-| Generic variants | §6 | 02,04 | Unit/integration | PARTIAL — generic attributes/values + explicit variants, DB-verified (PHASE_02); editor PHASE_04 |
-| Size not forced to color | §6 | 02,04 | Matrix tests | PARTIAL — matrix-free model proven by probes (size-only/color-only/size+color subset) (PHASE_02); editor PHASE_04 |
-| Variant-level original/current price | §7 | 02,04,07 | Order pricing test | PARTIAL — per-variant numeric(12,2) + positivity CHECKs (PHASE_02); pricing flow PHASE_07 |
-| Variant-level stock | §13 | 02,04,07,08 | Concurrency/inventory tests | PARTIAL — per-variant stock + no-negative-stock CHECK + ledger identities (PHASE_02); flows PHASE_07/08 |
+| 5 main categories | MASTER_PLAN §2,3 | 02,04 | Integration | DONE — schema + bootstrap/seed init the 5 departments (PHASE_02); admin tree CRUD verified (verify:catalog [1] + browser QA; PHASE_04) |
+| Simple parent/child categories | §6 | 02,04 | CRUD test | DONE — self-FK tree with RESTRICT + hierarchy index (PHASE_02); recursive tree admin with cycle prevention + guarded deletes (verify:catalog [1]; PHASE_04) |
+| Generic variants | §6 | 02,04 | Unit/integration | DONE — generic attributes/values + explicit variants; admin editor with inline attribute/value management (verify:catalog [2][4]; PHASE_04) |
+| Size not forced to color | §6 | 02,04 | Matrix tests | DONE — matrix-free model DB-verified (PHASE_02) + editor supports no-option/size-only/color-only/size+color explicitly without auto-generation (verify:catalog [4][5]; PHASE_04) |
+| Variant-level original/current price | §7 | 02,04,07 | Order pricing test | PARTIAL — per-variant numeric(12,2) + positivity CHECKs (PHASE_02); server-side pricing validation in editor save (verify:catalog [7]; PHASE_04); order flow PHASE_07 |
+| Variant-level stock | §13 | 02,04,07,08 | Concurrency/inventory tests | PARTIAL — per-variant stock + no-negative-stock CHECK + ledger identities (PHASE_02); editor stock changes write auditable manual_adjustment/opening movements (verify:catalog [8]; PHASE_04); checkout flows PHASE_07/08 |
+| Product media (gallery + variant images) | §6,20 | 04,10 | Integration + browser QA | DONE — media service abstraction (Vercel Blob provider isolated; magic-byte/type/size/dimension validation), media registry with guarded deletes, gallery/variant image attach + reorder + replace with no orphans; upload live-verification pending BLOB token (ISSUE-2026-09-27-023; PHASE_04) |
+| Optional clothing size guide | §6 | 04,10 | Integration | DONE — per-product guide upsert with rows (size label + measurements map), editor UI, storefront display PHASE_10 (verify:catalog [11]; PHASE_04) |
 | Multi-product cart | §8 | 06,07 | Integration | PENDING |
 | Guest wishlist | §8 | 06 | Browser/manual | PENDING |
 | Guest checkout | §9 | 07 | E2E | PENDING |

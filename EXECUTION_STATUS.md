@@ -10,10 +10,10 @@ Allowed project states:
 
 ## Current state
 PROJECT_STATUS=READY_FOR_NEXT_PHASE
-CURRENT_PHASE=PHASE_04
-LAST_COMPLETED_PHASE=PHASE_03
+CURRENT_PHASE=PHASE_05
+LAST_COMPLETED_PHASE=PHASE_04
 CURRENT_BRANCH=main
-PHASE_04_STATUS=LOCKED — opens only on the owner's explicit go-ahead (MASTER_PLAN §29: next phase starts only on the next agent run/command). PHASE-03 is COMPLETE (record below); local main == origin/main; CI green on the PHASE-03 commit.
+PHASE_05_STATUS=LOCKED — opens only on the owner's explicit go-ahead (MASTER_PLAN §29: next phase starts only on the next agent run/command). PHASE-04 is COMPLETE (record below); local main == origin/main; CI green on the PHASE-04 commit.
 
 ### PHASE_00 record (2026-09-26)
 - Local baseline scope: PASS — workspace inspected; tooling verified (Node v24.21.0, Bun 1.3.14, Git 2.47.3); planning pack preserved in-repo (AGENTS.md, MASTER_PLAN.md, EXECUTION_STATUS.md, docs/); `.env.example` contract committed; `.gitignore` secret-safe (`.env*` ignored, `!.env.example` tracked); baseline CI scaffolding (.github/workflows/ci.yml); baseline Arabic placeholder page boots; `bun install` clean; lint + typecheck pass; no secrets committed.
@@ -155,6 +155,30 @@ PHASE_04_STATUS=LOCKED — opens only on the owner's explicit go-ahead (MASTER_P
 - Verification (isolated Neon development branch ONLY; Production + Vercel-Development URL never touched): `verify:auth` extended → **44/44** (15 new CSRF/no-store checks); curl matrix **15/15** (cross-site/no-origin/text-plain-spoof → 403; authenticated cross-site logout refused with session surviving; real login 200 with HttpOnly/SameSite=Lax cookie; no rotation of the QA credential); browser QA ✓ (browser-native Origin passes the gate: 401; spoof → 403; generic error UI; redirect; zero console errors; no overflow 375/1440); typecheck ✅ lint ✅; dev-branch test artifacts cleaned (1 probe row + 4 test sessions).
 - Gate unchanged: LAST_COMPLETED_PHASE=PHASE_03, CURRENT_PHASE=PHASE_04, PHASE_04_STATUS=LOCKED (opens only on the owner's explicit go-ahead). Audit STOP executed.
 
+## PHASE_04 completion record (2026-09-27)
+- Status: COMPLETE — all 14 tasks implemented; DoD "admin can create a realistic catalog covering all five departments with all required variant shapes and media behavior" satisfied (service suite + browser QA); schema unchanged (23 tables as committed in PHASE-02 — no migration needed)
+- Implementation delivered:
+  - Category tree admin (task 1): recursive tree UI + service — create/update/reparent (cycle-prevention)/reorder/activation, guarded deletes (children/products), Arabic-preserving slug generation with uniqueness — `src/lib/catalog/categories.ts`, `/admin/categories`
+  - Product CRUD + states (task 2): draft/active/archived transitions (archive = the soft-delete policy; no hard delete), filterable list with variant/stock/price aggregates — `src/lib/catalog/products.ts`, `/admin/products` (+ new + [id] editor)
+  - Generic attributes (task 3): attribute definitions + values with inline creation in the editor; per-attribute value uniqueness; in-use delete guards — `src/lib/catalog/attributes.ts`
+  - Variant editor (tasks 4–7): EXPLICIT variant rows only (no auto-generated matrix; opt-in "fill missing combinations" helper produces editable rows), no-option default-variant / one-attribute / multi-attribute shapes; per-variant SKU, original/current price, stock, low-stock threshold, active state; two values of one attribute on a variant are impossible (service + DB); identical combinations rejected; every variant carries exactly one value per used attribute
+  - Media (tasks 8–11): media service abstraction with isolated Vercel Blob provider (`src/lib/media/*`), upload validation (magic-byte MIME sniffing — declared Content-Type never trusted; 8 MB ceiling; sharp width/height bounds), media registry with guarded deletes (referencing domains reported), gallery + per-variant images with primary-per-level semantics, reorder/replace without orphaning rows (transactional wholesale replace)
+  - Size guide (task 12): optional per-product guide with rows (size label + bust/waist/length measurement map) — editor UI + transactional upsert
+  - Pricing validation (tasks 13–14): all prices parsed/validated server-side (positive, scale-2, numeric(12,2) bounds); nothing derived from client form state
+  - Security integration: every new mutation route = same-origin gate (PHASE-03 audit control) + JSON gate + `requireAdminMutation` + zod + audit rows ATOMIC with mutations (transactional `recordAdminActivity`); rate-limited endpoints unchanged
+  - Admin UI: dashboard live-module entries, header navigation, honest placeholders for future phases only
+- Tests/verification evidence:
+  - `bun run verify:catalog` (NEW suite, 13 sections) → **37 passed, 0 failed**: tree ops + cycle/delete guards, attribute uniqueness + in-use guards, all variant shapes (no-option/size-only/color-only/size+color non-Cartesian subset), same-attribute-two-values rejection, duplicate-combination rejection, cross-product duplicate-SKU rejection (friendly pre-check), pricing rejections (zero/negative/3-decimal/garbage), inventory ledger `manual_adjustment`/`opening` with before/after + admin id, ledger-referenced variant delete guard, media reference integrity (guarded delete refuses + replace without orphans), size guide upsert, list aggregates, archive policy
+  - `bun run db:verify` → 28/28 (schema invariants regression) · `bun run verify:auth` → 44/44 (auth/security regression)
+  - typecheck ✅ · lint ✅ · `bun run build` ✅ (all 16 API routes + admin pages compiled)
+  - Browser QA (agent-browser, Arabic RTL): login → dashboard → categories (create root+child, tree render) → products list (aggregates, discount badge) → new product → editor (attribute enable + inline values, explicit variants with DIFFERENT per-variant prices, zero-stock variant preserved, gallery attach, variant-level image, size-guide row, save→refresh→resync→save) → media library (unconfigured-upload banner, delete-guard message) — zero console errors; no horizontal overflow at 375/768/1440
+  - Security re-test after integration (curl): cross-origin → 403, no-origin → 403, unauthenticated → 401 (categories/products/media/upload), `Cache-Control: no-store` present; session/cookie behavior unchanged
+- Bugs found & fixed during the phase (per ERROR_PROTOCOL): ISSUE-2026-09-27-024 (editor stale state after refresh — fixed with server-aggregate resync) · ISSUE-2026-09-27-025 (dev-server env shadowing — restart protocol documented in DATABASE.md §3)
+- Open configuration item: ISSUE-2026-09-27-023 — `BLOB_READ_WRITE_TOKEN` absent in sandbox (owner-side Vercel Blob store connection); upload flow honest-503 + banner; provider isolated behind the media service, live Blob hop recorded for PHASE-14 checklist. No other gaps.
+- Database safety: ALL database work against the isolated Neon `development` branch via git-ignored `.env.local` (sourced per command); Vercel Development DATABASE_URL never used; Production never connected; no schema changes; QA/verification fixtures fully cleaned (13 seed categories + 7 seed products remain)
+- Linked issues: 023 OPEN (config) · 024 FIXED · 025 FIXED · 019/020/021/022 unchanged
+- Commit: `feat(phase-04): product catalog domain — categories, products, explicit variants, media service`
+
 ## Rule
 Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not fully green, the next phase is forbidden.
 
@@ -163,8 +187,8 @@ Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not
 - [x] PHASE_01 — Foundation + design system + brand assets
 - [x] PHASE_02 — Database schema + migrations + seed strategy (live-Neon proof completed 2026-09-27; owner-ACCEPTED; safety/continuity round recorded above)
 - [x] PHASE_03 — Admin authentication + security foundation (completed 2026-09-27; development-branch verified end-to-end)
-- [ ] PHASE_04 — Categories + products + variants + media (LOCKED — opens on owner go-ahead)
-- [ ] PHASE_05 — Storefront navigation + search + filters + product pages
+- [x] PHASE_04 — Categories + products + variants + media (completed 2026-09-27; development-branch verified end-to-end)
+- [ ] PHASE_05 — Storefront navigation + search + filters + product pages (LOCKED — opens on owner go-ahead)
 - [ ] PHASE_06 — Cart + guest wishlist
 - [ ] PHASE_07 — Checkout + order creation + WhatsApp handoff
 - [ ] PHASE_08 — Inventory + order management + edit flows

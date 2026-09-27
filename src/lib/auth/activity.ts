@@ -46,8 +46,19 @@ export function sanitizeMetadata(
   return walk(metadata, 0) as Record<string, unknown>;
 }
 
-export async function recordAdminActivity(input: AdminActivityInput): Promise<void> {
-  await db.insert(adminActivityLogs).values({
+export type AuditExecutor = Pick<typeof db, 'insert'>;
+
+/**
+ * Record one audit row. Pass a transaction as `executor` to make the audit
+ * row ATOMIC with the mutation it describes (recommended for catalog
+ * mutations — PHASE-04); omit it for standalone writes.
+ */
+export async function recordAdminActivity(
+  input: AdminActivityInput,
+  executor?: AuditExecutor,
+): Promise<void> {
+  const client = executor ?? db;
+  await client.insert(adminActivityLogs).values({
     adminUserId: input.adminUserId ?? null,
     action: input.action,
     entityType: input.entityType,

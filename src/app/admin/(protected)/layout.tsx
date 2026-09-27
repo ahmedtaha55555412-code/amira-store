@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { KeyRound } from 'lucide-react';
+import { Boxes, KeyRound, Images, Package } from 'lucide-react';
 
 import { BrandLogo } from '@/components/brand/brand-logo';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,9 @@ import { requireAdminPage } from '@/lib/auth/guard';
 import { LogoutButton } from './logout-button';
 
 /**
- * Authenticated admin shell (PHASE-03).
+ * Authenticated admin shell (PHASE-03 + PHASE-04 navigation).
  * `requireAdminPage()` re-validates the session against the database on every
  * request — middleware cookie-presence is never the authorization decision.
- * PHASE-03 ships the shell + dashboard placeholder; functional modules land
- * in PHASE-04+ (honest "قريبًا" placeholders only).
  */
 
 export const metadata: Metadata = {
@@ -52,6 +50,39 @@ export default async function ProtectedAdminLayout({
             >
               {admin.username}
             </span>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-full"
+            >
+              <Link href="/admin/products">
+                <Package className="h-4 w-4" aria-hidden="true" />
+                المنتجات
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-full"
+            >
+              <Link href="/admin/categories">
+                <Boxes className="h-4 w-4" aria-hidden="true" />
+                الأصناف
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="hidden gap-1.5 rounded-full sm:inline-flex"
+            >
+              <Link href="/admin/media">
+                <Images className="h-4 w-4" aria-hidden="true" />
+                الوسائط
+              </Link>
+            </Button>
             <Button
               asChild
               variant="outline"

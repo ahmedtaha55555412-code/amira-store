@@ -1,25 +1,28 @@
-import { ArrowLeftCircle, Boxes, ClipboardList, Package, Settings, Star } from 'lucide-react';
+import { ArrowLeftCircle, ClipboardList, Boxes, Star, Settings, KeyRound, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
-import { KeyRound, ShieldCheck } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireAdminPage } from '@/lib/auth/guard';
 
 /**
- * Admin dashboard placeholder (PHASE-03 scope boundary).
- * Proves the authenticated boundary and exposes the security entry point;
- * every functional module is an honest "قريبًا" placeholder until its own
- * phase (PHASE-04+) — never presented as working functionality.
+ * Admin dashboard (PHASE-03 boundary + PHASE-04 catalog entries).
+ * Catalog management is now live; remaining modules stay honest "قريبًا"
+ * placeholders until their own phases (never presented as working).
  */
 
 export const dynamic = 'force-dynamic';
 
 const upcomingModules = [
-  { title: 'المنتجات والأصناف', icon: Package, phase: 'المرحلة ٤' },
   { title: 'الطلبات', icon: ClipboardList, phase: 'المرحلة ٧–٨' },
   { title: 'المخزون', icon: Boxes, phase: 'المرحلة ٨' },
   { title: 'التقييمات وواتساب', icon: Star, phase: 'المرحلة ٩' },
   { title: 'إعدادات المتجر', icon: Settings, phase: 'المرحلة ١٢' },
+] as const;
+
+const liveModules = [
+  { title: 'المنتجات والمتغيرات', href: '/admin/products', icon: Boxes, phase: 'متاح الآن' },
+  { title: 'الأصناف', href: '/admin/categories', icon: Boxes, phase: 'متاح الآن' },
+  { title: 'مكتبة الوسائط', href: '/admin/media', icon: Boxes, phase: 'متاح الآن' },
 ] as const;
 
 export default async function AdminDashboardPage() {
@@ -94,9 +97,32 @@ export default async function AdminDashboardPage() {
         </Card>
       </div>
 
+      <section aria-labelledby="live-modules-heading" className="space-y-3">
+        <h2 id="live-modules-heading" className="text-lg font-bold text-foreground">
+          إدارة الكتالوج
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {liveModules.map((module) => (
+            <Link
+              key={module.title}
+              href={module.href}
+              className="flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-muted/50"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <module.icon className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">{module.title}</p>
+                <p className="text-xs text-success">{module.phase}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section aria-labelledby="upcoming-modules-heading" className="space-y-3">
         <h2 id="upcoming-modules-heading" className="text-lg font-bold text-foreground">
-          إدارات المتجر
+          إدارات قادمة
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {upcomingModules.map((module) => (

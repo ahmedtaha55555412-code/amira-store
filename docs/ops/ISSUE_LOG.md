@@ -326,3 +326,36 @@
   - typecheck ✅ lint ✅; test artifacts cleaned from the dev branch (1 probe failure row + 4 test sessions removed)
 - Related files: `src/lib/auth/origin.ts` (new), `src/app/api/admin/auth/{login,logout,change-password}/route.ts`, `src/middleware.ts`, `scripts/verify-auth.ts`
 - Notes: found only by the owner's post-completion audit; recorded per ERROR_PROTOCOL. Non-browser clients have no sanctioned use of the admin dashboard (single-admin model, MASTER_PLAN §16) — requests without Origin/Referer are rejected by design.
+
+### ISSUE-2026-09-27-023
+- Phase: PHASE_04 (2026-09-27)
+- Severity: MEDIUM (deployment-time configuration gap; does not block any PHASE-04 task's logic)
+- Status: OPEN — configuration pending (owner action at deployment; tracked for PHASE-14)
+- Symptom: `BLOB_READ_WRITE_TOKEN` is absent from the sandbox environment, so the Vercel Blob provider cannot be exercised live here; the admin media UI shows an honest "uploads not configured" banner and the upload endpoint answers 503 with the exact remediation.
+- Root cause: connecting a Vercel Blob store to the project (which provisions the token in Vercel environments) is an owner-side dashboard action; nothing in the sandbox can mint it.
+- Impact: 13/14 PHASE-04 tasks fully implemented AND verified, including the entire media service abstraction (validation: magic-byte mime sniffing / 8 MB ceiling / sharp dimensions; registry; reference guards; attach/reorder/replace). Only the live "bytes → Blob" hop awaits the token; the provider is isolated behind `src/lib/media/service.ts` per MASTER_PLAN §20, so enabling it requires zero code changes.
+- Minimal fix (owner action at deployment): Vercel dashboard → project `amira-store` → Storage → create/connect a Blob store → the token appears automatically in Vercel environments. For local use, copy it into git-ignored `.env.local`.
+- Verification performed: upload endpoint 503 + honest banner in the unconfigured state; full validation + registry + reference-guard behavior verified with fixture assets against the development branch (verify-catalog [10]).
+- Related files: `src/lib/media/*`, `.env.example`
+- Notes: NOT a workaround — the media service abstraction with the honest unconfigured state is exactly the MASTER_PLAN §20 contract; live-verification of the Blob hop is recorded as a PHASE-14 deployment-checklist item.
+
+### ISSUE-2026-09-27-024
+- Phase: PHASE_04 (browser QA round, 2026-09-27)
+- Severity: MEDIUM (editor state bug caught before push)
+- Status: FIXED
+- Symptom: after a successful product save + `router.refresh()`, the SECOND save failed 422 with "رمز SKU مستخدم بالفعل" although the admin had not duplicated anything.
+- Root cause: the editor's `useState` initializers run only on mount; after refresh the server re-render passed a NEW aggregate (with persisted variant ids), but the editor state still held the pre-save rows (`id: null`), so the next save re-submitted existing variants as new ones and the service's foreign-SKU pre-check correctly refused.
+- Minimal fix: `useEffect` resync in `ProductEditor` keyed on the aggregate prop identity (server refreshes produce a new props object; client re-renders reuse the same object), resetting product/variants/images/sizeGuide/attributeIds to persisted truth.
+- Verification: full editor golden path re-run in the browser — first save creates variants, second save (gallery + variant image + size guide) succeeds; DB rows verified (2 variants, gallery image, variant-level image, size-guide row).
+- Related files: `src/app/admin/(protected)/products/[id]/product-editor.tsx`
+- Notes: the service rejection was CORRECT behavior — the bug was purely client state lifecycle.
+
+### ISSUE-2026-09-27-025
+- Phase: PHASE_04 (browser QA round, 2026-09-27)
+- Severity: HIGH (environment; login 500 in the sandbox dev server after restart) — FIXED
+- Symptom: after restarting the dev server, every admin login returned 500; the underlying pg-pool error was `AggregateError [ECONNREFUSED ::1:5432, 127.0.0.1:5432]` — the app was dialing LOCAL Postgres instead of the Neon development branch.
+- Root cause: the sandbox shell exports a scaffold-era local `DATABASE_URL`; Next.js gives PROCESS env precedence over `.env.local`, so a dev server started from a shell carrying the scaffold variable shadowed the authorized development-branch URL in `.env.local`. (Prior rounds' server instance predated the shadow, masking it.)
+- Minimal fix: start the dev server with `.env.local` sourced explicitly (`set -a; . ./.env.local; set +a; bun run dev`), which pins the process env to the development branch. Recorded as the standing restart protocol.
+- Verification: login restored (401 generic rejection on bad credentials, 200 + cookie on the real credential); every subsequent DB-touching QA step passed against the development branch.
+- Related files: none (environment protocol; documented in DATABASE.md §10 and the worklog)
+- Notes: database safety was NEVER violated — the scaffold URL points at a non-Neon local database; no Production or Vercel-Development credential was involved at any point.

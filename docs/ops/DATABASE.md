@@ -35,12 +35,19 @@ bun run db:studio          # drizzle-kit studio   — data browser
 bun run db:bootstrap       # production-safe init: settings + 5 categories IF ABSENT (any env)
 bun run db:seed            # DEV seed: deterministic demo catalog (NODE_ENV=development only)
 bun run db:verify          # probes: migrations current + all business invariants (non-prod only)
+bun run verify:auth        # PHASE-03 auth/security suite (44 checks; non-prod only)
+bun run verify:catalog     # PHASE-04 catalog/media service suite (37 checks; non-prod only)
 bun run db:verify:local    # full disposable-PG rehearsal: fresh DB → migrate → bootstrap →
                            # seed (×2, idempotency) → guard check → 28 invariant probes
 ```
 
 `drizzle.config.ts` reads `DRIZZLE_DATABASE_URL ?? DATABASE_URL`, so migrations can be
 aimed at any disposable database without touching `.env`.
+
+> **Dev-server restart protocol (ISSUE-2026-09-27-025):** always start the app with the
+> git-ignored `.env.local` sourced (`set -a; . ./.env.local; set +a; bun run dev`) —
+> the sandbox shell may carry a scaffold-era local `DATABASE_URL` that, via Next's
+> process-env precedence, would otherwise shadow the development-branch URL.
 
 ## 4. Rules (never break these)
 
