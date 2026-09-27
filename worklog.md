@@ -155,3 +155,17 @@ Stage Summary:
 - TWO REMAINING GAPS (both require owner browser action):
   1) Vercel GitHub App must be granted access to ahmedtaha55555412-code/amira-store (github.com/apps/vercel → Configure → Repository access)
   2) Neon integration must be attached to project amira-store with a NEW Neon project + all 3 environments + preview branching (currently envs empty = not bound)
+---
+Task ID: 4-e
+Agent: Z.ai Code (main)
+Task: PHASE-00 — env var provisioning complete; remaining gaps isolated to two owner browser steps
+
+Work Log:
+- First CLI `vercel env add` for preview/development silently degraded into interactive prompts (git-branch scoping) and aborted — root cause: CLI 60.x prompts on non-production targets; piped stdin consumed as prompt answers
+- Minimal fix: created the two secrets via Vercel REST API POST /v9/projects/{id}/env (upsert, type=sensitive, target=[env], values read from vault temp files, never displayed); temp files shredded
+- FINAL env state (names + targets only): AUTH_SESSION_SECRET × {production, preview, development} (3 DISTINCT 48-byte secrets, all type=sensitive), APP_URL × {development} (encrypted/config)
+- Remote synced to e046684 then 4e00580 (worklog commits pushed; GitHub = source of truth maintained)
+
+Stage Summary:
+- Environment contract on Vercel: complete for everything agent-provisionable; DATABASE_URL/BLOB_READ_WRITE_TOKEN pending (Neon integration binding + Phase-04 Blob respectively, per .env.example)
+- REMAINING (owner browser): (1) Vercel GitHub App access to amira-store repo; (2) Neon integration attachment to amira-store project (create new Neon project, 3 environments, preview branching)
