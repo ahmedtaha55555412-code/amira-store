@@ -28,6 +28,15 @@ CURRENT_BRANCH=main
 - B-002 Vercel and B-003 Neon: NOT STARTED (explicitly deferred by owner).
 - Therefore `PROJECT_STATUS` remains `BLOCKED`; `CURRENT_PHASE` remains `PHASE_00`. No phase-00 gate may flip until B-001 full closure + B-002 + B-003 provisioning pass.
 
+### PHASE_00 addendum (2026-09-27) — Neon integration binding VERIFIED (B-003 resource layer cleared)
+- Owner completed the Neon Marketplace install (existing Neon account/org per Task 4-b decision). Agent performed a read-only API verification round (no resources created/deleted/renamed; no tables created; no migrations; no secret values exposed).
+- **Binding CONFIRMED**: resource `neon-cobalt-globe` (`store_Xot2tvwkL5JACcF7`, Neon-Managed Postgres, plan `free_v3`, status `available`, billing `active`) → Neon project `tiny-mud-82763154` (`externalResourceId`, `externalResourceStatus: ready`, region `fra1`/Frankfurt, Neon Auth enabled) → Vercel project `amira-store` (`prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA`): `totalConnectedProjects: 1`, `envVarPrefix: DATABASE`, environments `[development, preview, production]`.
+- **Environment variables**: 18 `DATABASE_*` vars on the project — exact 1:1 with the store's 18 secrets (cross-check incl. `NEON_PROJECT_ID` length 17 = `tiny-mud-82763154`); every var targets all three environments; all values populated (length metadata > 0); values NOT decryptable with the user token (integration-store-secrets) — correct posture. Pre-existing `AUTH_SESSION_SECRET` ×3 targets (sensitive) and `APP_URL` ×development unchanged.
+- **DATABASE_URL**: bound to `amira-store` via `contentHint` chain (`storeId store_Xot2tvwkL5JACcF7` ← product `iap_SYm1SIDap0OBqOvV` ← installation `icfg_XaLDAPAdjX8ajtYn8mL9vC0a`, slug `neon`). Live SQL proof NOT performable from sandbox (no psql; secrets not exposed to consumer token; `/connection` endpoint 404) — structural evidence conclusive.
+- **Branching strategy** (PHASE-00 item 7): satisfied by the integration model — documented adaptation replacing manual `neonctl` branch creation: production → primary branch; every Vercel Preview Deployment → isolated copy-on-write branch, auto-created/auto-deleted per official Neon Vercel-native integration docs; development environment connected. Preview/production redeploy action recorded on the store (`deployments.required: true`).
+- **FINDING**: orphan duplicate resource `amira-store` (`store_dqlFkjRT5Qe6XRyB`, Neon project `nameless-bar-74352862`, 0 connected projects) exists on the team — recorded as ISSUE-2026-09-27-010; NO action taken (owner constraint); owner decides keep/delete.
+- **Still pending for PHASE_00 gate**: Vercel↔GitHub link (`link: null` — Vercel GitHub App repo access for `ahmedtaha55555412-code/amira-store` still required, then `vercel git connect` retry), owner decision on ISSUE-2026-09-27-010, and PHASE-00 validation/deployment steps. `PROJECT_STATUS` remains `BLOCKED`; `CURRENT_PHASE` remains `PHASE_00`.
+
 ## Rule
 Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not fully green, the next phase is forbidden.
 

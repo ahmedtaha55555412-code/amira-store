@@ -169,3 +169,29 @@ Work Log:
 Stage Summary:
 - Environment contract on Vercel: complete for everything agent-provisionable; DATABASE_URL/BLOB_READ_WRITE_TOKEN pending (Neon integration binding + Phase-04 Blob respectively, per .env.example)
 - REMAINING (owner browser): (1) Vercel GitHub App access to amira-store repo; (2) Neon integration attachment to amira-store project (create new Neon project, 3 environments, preview branching)
+---
+Task ID: 4-f
+Agent: Z.ai Code (main)
+Task: PHASE-00 — verify Neon resource `neon-cobalt-globe` binding to Vercel project `amira-store` (read-only verification round; owner-imposed constraints: no create/delete/rename, no tables, no migrations, no schema changes, no secret exposure)
+
+Work Log:
+- Read worklog Tasks 1–4-e for context; confirmed vault intact and Vercel device-flow token VALID (delta ~26,000 s); identity re-verified via /v2/user → ahmedtaha55555412-7683
+- Project record re-confirmed: prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA "amira-store" (node 24.x, iad1); git link still null (pre-existing gap, unchanged)
+- Enumerated project env vars (names/targets/types only): full Neon-Managed Postgres set present — 18 `DATABASE_*` vars, ALL targeting [development, preview, production]; pre-existing AUTH_SESSION_SECRET ×3 (sensitive) + APP_URL ×development untouched
+- Attempted decrypt=true on env list → returned ciphertext envelopes (integration-store-secret values are NOT decryptable with a user token) → temp file shredded; nothing exposed
+- Probed marketplace/installation endpoints (v1/v2 installations, configurations, project products) → old integrations API responded: /v1/integrations/configurations?view=account revealed exactly ONE Neon installation: icfg_XaLDAPAdjX8ajtYn8mL9vC0a, slug neon, installationType marketplace, plan free_v3, scopes read-write:marketplace
+- Traced binding chain via env `contentHint`: DATABASE_URL → {storeId store_Xot2tvwkL5JACcF7, integrationProductId iap_SYm1SIDap0OBqOvV, integrationConfigurationId icfg_XaLDAPAdjX8ajtYn8mL9vC0a}
+- Fetched store record store_Xot2tvwkL5JACcF7 (`.secrets` values never printed): name `neon-cobalt-globe`, type integration, status available, billingState active, metadata {region fra1, auth true}, externalResourceId `tiny-mud-82763154` (Neon project), externalResourceStatus ready, totalConnectedProjects 1, projectsMetadata → exactly prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA "amira-store", envVarPrefix DATABASE, environments [development, preview, production], deployments.actions (Neon, production+preview, required true)
+- 1:1 mapping proven: 18 store secrets ↔ 18 project DATABASE_* vars (DATABASE_URL→DATABASE_URL; PGHOST→DATABASE_PGHOST; POSTGRES_*→DATABASE_POSTGRES_*; NEON_*/VITE_*→DATABASE_-prefixed); all lengths > 0; NEON_PROJECT_ID length 17 == len("tiny-mud-82763154") (independent cross-confirmation)
+- Preview branching grounded in official Neon Vercel-native integration docs (linked from product record): isolated copy-on-write branch per Preview Deployment, auto-deleted with deployments — product-inherent, no toggle
+- DISCOVERED orphan: second store store_dqlFkjRT5Qe6XRyB name `amira-store` (Neon project `nameless-bar-74352862`, fra1, ready, created 2026-09-27T04:37:21Z ≈ 9 min after the bound one) with totalConnectedProjects 0 / projectsMetadata [] → recorded as ISSUE-2026-09-27-010; NO delete/rename performed (owner constraint)
+- Live SQL connectivity proof NOT performable: psql absent, /connection endpoint 404, secret values not exposed to consumer token — structural evidence stands; noted honestly
+- Shredded all temp files (/tmp/envs*.json, store*.json, cfg*.json, probe.out, mapping tempfiles)
+- Docs updated: ISSUE_LOG.md (+ISSUE-2026-09-27-010 OPEN), EXECUTION_STATUS.md (PHASE_00 addendum 2026-09-27 — B-003 resource layer cleared), worklog.md (this entry)
+
+Stage Summary:
+- VERDICT: `neon-cobalt-globe` (Neon project tiny-mud-82763154, region fra1, Free plan) IS correctly bound to Vercel project `amira-store` — kept, nothing modified
+- Verified: Neon resource/project ID, installation (icfg_XaLDAPAdjX8ajtYn8mL9vC0a, slug neon), project linkage (1 project, prefix DATABASE), 18 env vars × 3 environments (names/targets only), DATABASE_URL bound + populated, preview branching = product-inherent per official docs
+- Not API-verifiable with current token: Neon vendor org ID (org org-frosty-darkness-82889078 recorded at install; owner-visible in Neon console); live DB round-trip (sandbox lacks psql; secrets not decryptable)
+- FLAGGED (no action): orphan resource `amira-store` (store_dqlFkjRT5Qe6XRyB / nameless-bar-74352862, 0 connections) — owner decides keep/delete (ISSUE-2026-09-27-010)
+- Remaining for PHASE_00 gate: Vercel↔GitHub repo link (GitHub App repo access + vercel git connect retry), owner decision on orphan, PHASE-00 validation/deployment steps; PROJECT_STATUS stays BLOCKED; CURRENT_PHASE stays PHASE_00
