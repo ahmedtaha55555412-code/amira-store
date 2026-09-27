@@ -79,3 +79,23 @@ Stage Summary:
 - GitHub authentication VERIFIED for ahmedtaha55555412-code (B-001 auth portion resolved)
 - Honored all constraints: no amira-store repo created, amira-store-plan untouched, Vercel/Neon NOT started, no polling, token never displayed/logged
 - PHASE_00 remains BLOCKED until: amira-store repo creation + push (B-001 closure), Vercel provisioning (B-002), Neon provisioning (B-003) — all awaiting explicit owner instruction
+---
+Task ID: 4
+Agent: Z.ai Code (main)
+Task: PHASE-00 remaining provisioning — repo creation + Vercel/Neon auth (owner-paced)
+
+Work Log:
+- Re-read PHASE-00.md, DEPLOYMENT_RUNBOOK.md, BASELINE.md, ISSUE_LOG.md, ACCESS_MATRIX.md, ZAI_GREENFIELD_BOOTSTRAP.md; confirmed gate definitions and provisioning order
+- DISCOVERED sandbox recycle since last session: all $HOME state outside /home/z/my-project wiped (gh credential, gh/vercel/neon binaries); project repo + git history intact → ISSUE-2026-09-26-009
+- Reinstalled CLIs: gh 2.101.0 (static binary), vercel 60.1.3 + neonctl 6.2.3 (npm global)
+- Working-tree hygiene before push: 112 files showed mode-only churn (sandbox marks 755) → repo-local `git config core.fileMode false` (ISSUE-007); tracked runtime artifact `.zscripts/dev.pid` untracked + ignored (ISSUE-008); commits ef58d00
+- Created git-ignored credential vault `.auth/` (chmod 700) INSIDE persistent workspace for CLI credential survival across recycles; `.gitignore` entry verified via `git check-ignore`; commit fb0453e
+- Created private GitHub repo attempt BLOCKED: gh credential lost in recycle → re-running GitHub single-shot device flow (one code CB2F-4254 shown to owner; device_code persisted in .auth/gh-device-flow.json, never displayed)
+- Probed Vercel CLI: `vercel login --non-interactive` uses OFFICIAL OAuth device flow → started in background with global config pinned to vault (-Q .auth/vercel); user_code VVLF-BSQC shown to owner; CLI does its own internal polling (official flow, no custom poller)
+- Probed Neon CLI: `neon auth` = OAuth2-PKCE with redirect_uri http://127.0.0.1:<random>/callback → REMOTE owner browser cannot complete the localhost callback; neonctl offers only API-key alternatives (forbidden in chat); no OOB/device mode → Neon CLI auth BLOCKED pending owner decision (Vercel-side Neon Marketplace integration is plan-permitted alternative per ACCESS_MATRIX.md)
+- No unrelated resources touched; no secrets displayed/logged/committed; amira-store-plan untouched
+
+Stage Summary:
+- PHASE_00 remains BLOCKED: waiting on owner browser authorizations (GitHub CB2F-4254, Vercel VVLF-BSQC) and Neon path decision
+- GitHub repo amira-store creation + push executes immediately after GitHub auth verifies
+- Vault ensures future recycles no longer destroy CLI auth (ISSUE-009 mitigation)
