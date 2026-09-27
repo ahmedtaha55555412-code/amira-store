@@ -55,3 +55,5 @@ server.log
 /skills/
 # local dev databases (never commit)
 db/*.db
+# sandbox runtime artifacts (never commit)
+.zscripts/dev.pid

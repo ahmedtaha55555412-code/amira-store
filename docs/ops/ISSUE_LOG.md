@@ -86,3 +86,27 @@
 - Verification: `bun run typecheck` → exit 0; `bun run lint` → exit 0; dev server still boots.
 - Related files: `tsconfig.json`
 - Notes: These folders are sandbox tooling, not application scope; excluding them from the app's TS program does not hide any application error.
+
+### ISSUE-2026-09-26-007
+- Phase: PHASE_00
+- Severity: LOW
+- Status: FIXED
+- Symptom: 112 tracked files appeared permanently modified in `git status` (mode change 100644=>100755) despite zero content change, polluting every diff/stage operation before the GitHub push.
+- Reproduction: `git status --short` after the baseline commit; `git diff --summary` → only `mode change 100644 => 100755` lines; `git diff --numstat` → content churn only in `.zscripts/dev.pid` (see ISSUE-2026-09-26-008).
+- Root cause: The sandbox filesystem marks all workspace files as executable; Git's fileMode tracking compares the stored 644 modes against the filesystem's 755.
+- Minimal fix: `git config core.fileMode false` (repository-local config only). No file content touched; no global setting forced on other environments.
+- Verification: `git status --short` → clean except the genuine `.zscripts/dev.pid` entry; `git diff --numstat` → no content churn.
+- Related files: `.git/config`
+- Notes: Content-neutral; hides no real change — verified via numstat before applying.
+
+### ISSUE-2026-09-26-008
+- Phase: PHASE_00
+- Severity: LOW
+- Status: FIXED
+- Symptom: `.zscripts/dev.pid` (sandbox dev-server runtime PID file) was tracked by Git and churns on every dev-server restart, producing meaningless diffs/commits.
+- Reproduction: `git diff --numstat` shows a 1/1 change in `.zscripts/dev.pid` after each sandbox dev-server restart.
+- Root cause: The scaffold tracked a runtime artifact; PID values are environment-local state, not project source.
+- Minimal fix: `git rm --cached .zscripts/dev.pid` + append `.zscripts/dev.pid` to `.gitignore` (the runnable `.zscripts/*.sh` tooling remains tracked).
+- Verification: `git ls-files .zscripts/dev.pid` → empty; `git status --short` → clean; local file kept on disk so sandbox tooling keeps working.
+- Related files: `.gitignore`, `.zscripts/dev.pid`
+- Notes: Same hygiene class as ISSUE-2026-09-26-006.
