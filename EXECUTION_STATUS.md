@@ -10,10 +10,10 @@ Allowed project states:
 
 ## Current state
 PROJECT_STATUS=READY_FOR_NEXT_PHASE
-CURRENT_PHASE=PHASE_05
-LAST_COMPLETED_PHASE=PHASE_04
+CURRENT_PHASE=PHASE_06
+LAST_COMPLETED_PHASE=PHASE_05
 CURRENT_BRANCH=main
-PHASE_05_STATUS=LOCKED — opens only on the owner's explicit go-ahead (MASTER_PLAN §29: next phase starts only on the next agent run/command). PHASE-04 is COMPLETE (record below); local main == origin/main; CI green on the PHASE-04 commit.
+PHASE_06_STATUS=LOCKED — opens only on the owner's explicit go-ahead (MASTER_PLAN §29: next phase starts only on the next agent run/command). PHASE-05 is COMPLETE (record below); local main == origin/main; CI green on the PHASE-05 commit.
 
 ### PHASE_00 record (2026-09-26)
 - Local baseline scope: PASS — workspace inspected; tooling verified (Node v24.21.0, Bun 1.3.14, Git 2.47.3); planning pack preserved in-repo (AGENTS.md, MASTER_PLAN.md, EXECUTION_STATUS.md, docs/); `.env.example` contract committed; `.gitignore` secret-safe (`.env*` ignored, `!.env.example` tracked); baseline CI scaffolding (.github/workflows/ci.yml); baseline Arabic placeholder page boots; `bun install` clean; lint + typecheck pass; no secrets committed.
@@ -191,6 +191,32 @@ PHASE_05_STATUS=LOCKED — opens only on the owner's explicit go-ahead (MASTER_P
 - PART E — regression: verify:catalog **43/43** (extended with [14]) · db:verify **28/28** · verify:auth **44/44** · typecheck ✅ · lint ✅ · build ✅ (16 API routes + admin pages) · browser QA re-run after fixes (aria-labels in a11y tree, scroll-clear measurement, save round-trip 200) · security spot-checks re-run after restart
 - Gate discipline: all DB work on the isolated Neon `development` branch only (`.env.local` fingerprint re-verified `e5d2abaf…` ≠ production `a77fc2af…`); audit fixtures fully cleaned (5 products, 2 categories, 1 probe category, 1 media fixture removed; seed 13 categories + 7 products intact); no PHASE-05 work performed
 
+## PHASE_05 completion record (2026-09-27)
+- Status: COMPLETE — all 13 tasks implemented; DoD "a customer can discover a product from homepage/category/search, understand its actual variant/price/stock, and prepare to add it to cart" satisfied (service suite + browser E2E + 34 production screenshots); schema unchanged except migration 0001 (pg_trgm + trigram indexes — no table changes)
+- Implementation delivered:
+  - Header/navigation (task 1): StoreHeader rebuilt as an async server component reading the live category tree — 5 departments on desktop, full tree with children in the mobile slide-over, live product counts; cart/wishlist stay honest "coming soon" actions (PHASE-06); the whole storefront wrapped by `src/app/(store)/layout.tsx` (announcement → sticky header → page → sticky footer → FAB) so chrome is uniform on every route
+  - Category navigation + breadcrumbs (task 2): RTL-aware StoreBreadcrumb (الرئيسية ← ancestors ← category ← product) with active-only ancestor chains (inactive branch ⇒ 404), child-category chips
+  - Category listing (task 3): `/category/[slug]` — subtree-scoped listing, Arabic header/description/count, honest empty states (empty category vs no-filter-match), loading.tsx skeleton, Arabic 404 (DB-free so `/_not-found` prerenders without a database)
+  - Product cards (task 4): sale badge (real discount %), out-of-stock overlay + line, wishlist heart with visible state and honest toast (persistence = PHASE-06), no-image fallback, line-clamped long Arabic titles with reserved height
+  - Search UI + service (tasks 5–8): header autocomplete (debounced, products + categories, loading/error/empty states, `/api/storefront/search/suggestions` public route with zod + no-store) and `/search` page; `src/lib/storefront` service — Arabic-aware normalization (single typed source of truth deriving BOTH the TS normalizer and the SQL `translate()` expression), tiers exact > prefix > substring across name/SKU/short+full description/category names/attribute values, pg_trgm fuzzy tier `strict_word_similarity ≥ 0.35` (threshold measured against the noise floor) with graceful degradation if the extension is missing
+  - Dynamic filters + sorting (tasks 9–10): per-category facets (cosmetics → volume/shade; clothing → size/color) with product counts, attribute-group matching (single-variant semantics across groups), on-sale/in-stock/price-overlap filters, 5 sort orders, server-rendered pagination; all filter state lives in the URL (shareable, no functions across the server→client boundary)
+  - Product detail page (task 11): `/product/[slug]` — gallery with variant-aware imagery (variant images promoted on selection; distinct dev demo assets added so the switch is visually verifiable), price block (exact after selection / honest range before), original price + discount %, per-attribute variant selectors with dynamic availability and honestly-disabled inactive variants, dynamic availability line (متوفر / كمية محدودة / نفدت الكمية), quantity bounded by stock, description/details, optional size guide table, approved-reviews section with rating summary (pending reviews never render)
+  - Explicit variant → cart (task 12): selection summary ("اختيارك: المقاس: L · اللون: أسود"), add-to-cart entry point builds the typed `CartEntryDraft` contract (variantId/sku/label/quantity/unit-price = server truth) and surfaces it honestly — cart persistence is PHASE-06
+  - Structured data (task 13): schema.org Product JSON-LD with per-variant AggregateOffers (price/availability truth, inactive variants excluded); per-page metadata (title/description/canonical/OG) from product fields
+  - API-ready: all storefront logic is read-only service functions (`src/lib/storefront/*`) consumable by future public APIs; nothing mutates
+- Tests/verification evidence:
+  - `bun run verify:storefront` (NEW suite, 17 sections) → **101 passed, 0 failed**: TS↔SQL normalization byte-equivalence; every search field (name/SKU/description/category/attribute value); tashkeel + alef/taa unification; fuzzy tier + noise floor; draft/zero-active-variant exclusion; subtree listing; per-category facets; filters; sorting; pagination math; all five variant shapes; inactive-variant flagging (probed + cleaned); reviews moderation gate; size guide; CartEntryDraft + JSON-LD contracts; homepage data (new arrivals/offers/counts); suggestions contract
+  - `bun run db:verify` → 28/28 · `bun run verify:auth` → 44/44 · `bun run verify:catalog` → 43/43 (full regression)
+  - typecheck ✅ · lint ✅ · `bun run build` ✅ (production; all storefront routes dynamic, `/_not-found` static without DB)
+  - Security regression (curl): cross-origin login POST → 403; no-origin product mutation → 403; unauthenticated /admin → 307; admin pages + suggestions `Cache-Control: no-store`; SQL-metacharacter suggestion query → safe empty result (bound params)
+  - Browser E2E (agent-browser, production build): homepage data sections → department page → facets/filters (checkboxes, sale, price band, URL contract) → sort (server + client navigation) → PDP size+color selection with dynamic availability → add-to-cart toast contract (variant label × qty × price) → color→image switching → zero-stock XL state → autocomplete (type→suggest→navigate) → fuzzy search («مرطاب») → empty state → 404 → mobile menu tree — all passing; production console: **0 errors/warnings cumulative across all surfaces**
+  - Deep visual QA: 34 production screenshots (10 surfaces × 375/768/1440 + mobile menu) individually inspected — RTL, spacing, alignment, typography, cards, buttons, forms, states, dialogs, scrolling/clipping/overflow, breakpoint transitions, consistency with the PHASE-01 system and PHASE-03/04 admin surfaces; findings recorded below (028–034); horizontal overflow = 0px at all three widths
+- Bugs found & fixed during the phase (per ERROR_PROTOCOL, all re-verified): ISSUE-2026-09-27-028 (store chrome missing on inner routes → (store) layout) · 029 (desktop search dropped in refactor) · 030 (scroll-padding-top for the sticky header) · 031 (hand-typed RTL literals scrambled the SQL normalization map → programmatic construction + equivalence proof) · 032 (inverted price-band comparison + single-row facet span) · 033 (fuzzy tier used full-string similarity → strict_word_similarity with measured threshold) · 034 ACCEPTED (dev-only Radix aria-controls hydration attribute warnings; production = 0; functionality proven in both modes)
+- Known non-blocking notes: ISSUE-2026-09-27-034 (dev-mode only) · the 4-letter-word transposition limit of the trigram fuzzy tier is documented (033) · WhatsApp FAB overlaps content transiently while scrolling (floating-CTA pattern inherited from PHASE-01)
+- ISSUE-023 (Vercel Blob): untouched by PHASE-05 — no media upload path in scope; remains OPEN for the deployment/live-credential hop (PHASE-14); no workaround invented, no credentials exposed
+- Database safety: migration 0001 applied ONLY to the isolated Neon `development` branch (fingerprint `e5d2abaf…` ≠ production `a77fc2af…`; `__drizzle_migrations` 2/2; pg_trgm present); seed re-run safe with distinct demo assets; Production never connected; verify-suite probe rows fully cleaned (2 probe products removed; seed 13 categories + 7 products intact)
+- Commit: `feat(phase-05): Arabic storefront — navigation, search, filters, product pages`
+
 ## Rule
 Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not fully green, the next phase is forbidden.
 
@@ -200,8 +226,8 @@ Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not
 - [x] PHASE_02 — Database schema + migrations + seed strategy (live-Neon proof completed 2026-09-27; owner-ACCEPTED; safety/continuity round recorded above)
 - [x] PHASE_03 — Admin authentication + security foundation (completed 2026-09-27; development-branch verified end-to-end)
 - [x] PHASE_04 — Categories + products + variants + media (completed 2026-09-27; development-branch verified end-to-end)
-- [ ] PHASE_05 — Storefront navigation + search + filters + product pages (LOCKED — opens on owner go-ahead)
-- [ ] PHASE_06 — Cart + guest wishlist
+- [x] PHASE_05 — Storefront navigation + search + filters + product pages (completed 2026-09-27; development-branch verified end-to-end)
+- [ ] PHASE_06 — Cart + guest wishlist (LOCKED — opens on owner go-ahead)
 - [ ] PHASE_07 — Checkout + order creation + WhatsApp handoff
 - [ ] PHASE_08 — Inventory + order management + edit flows
 - [ ] PHASE_09 — Reviews + WhatsApp testimonials

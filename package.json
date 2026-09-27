@@ -17,6 +17,7 @@
     "db:verify": "bun scripts/verify-migrations.ts",
     "verify:auth": "bun scripts/verify-auth.ts",
     "verify:catalog": "bun scripts/verify-catalog.ts",
+    "verify:storefront": "bun scripts/verify-storefront.ts",
     "db:verify:local": "node scripts/verify-local-database.mjs"
   },
   "dependencies": {

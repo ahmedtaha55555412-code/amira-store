@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  <rect width="800" height="1000" fill="#d9d3e8"/>
+  <rect x="24" y="24" width="752" height="952" rx="40" fill="none" stroke="#6f5aa6" stroke-opacity="0.35" stroke-width="3"/>
+  <circle cx="400" cy="420" r="170" fill="#ffffff" fill-opacity="0.75"/>
+  <path d="M400 320 l34 68 76 11 -55 54 13 76 -68 -36 -68 36 13 -76 -55 -54 76 -11 z" fill="#6f5aa6" opacity="0.8"/>
+  <text x="400" y="690" text-anchor="middle" font-family="Cairo, 'Segoe UI', sans-serif" font-size="58" font-weight="700" fill="#3d3530" direction="rtl">مرطب</text>
+  <text x="400" y="760" text-anchor="middle" font-family="Cairo, 'Segoe UI', sans-serif" font-size="30" fill="#3d3530" opacity="0.55" direction="rtl">صورة تجريبية للعرض التطويري</text>
+</svg>

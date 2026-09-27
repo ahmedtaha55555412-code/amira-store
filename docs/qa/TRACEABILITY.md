@@ -2,7 +2,7 @@
 
 | Requirement | Source of truth | Phase | Verification | Status |
 |---|---|---:|---|---|
-| Arabic-only RTL storefront | MASTER_PLAN §2 | 01,05+ | Visual/manual | PENDING |
+| Arabic-only RTL storefront | MASTER_PLAN §2 | 01,05+ | Visual/manual | DONE for the storefront surfaces built so far — 34 production screenshots inspected at 375/768/1440 (home/category/product/search/404): RTL direction, logical properties, Arabic-only copy, long-title wrapping all verified (PHASE_05) |
 | Egypt + EGP | MASTER_PLAN §2 | 01,02 | Unit/manual | PARTIAL — schema defaults EGP/ar/Africa-Cairo in store_settings (PHASE_02); UI per-page checks 05+ |
 | 5 main categories | MASTER_PLAN §2,3 | 02,04 | Integration | DONE — schema + bootstrap/seed init the 5 departments (PHASE_02); admin tree CRUD verified (verify:catalog [1] + browser QA; PHASE_04) |
 | Simple parent/child categories | §6 | 02,04 | CRUD test | DONE — self-FK tree with RESTRICT + hierarchy index (PHASE_02); recursive tree admin with cycle prevention + guarded deletes (verify:catalog [1]; PHASE_04) |
@@ -27,10 +27,15 @@
 | Admin order editing | §18 | 08,12 | Integration | PENDING |
 | Reviews | §15 | 09 | E2E | PENDING |
 | WhatsApp testimonials | §15 | 09 | Admin/manual | PENDING |
-| New Arrivals from createdAt | §4 | 04,10 | Data-driven test | PARTIAL — created_at DESC index, no featured flags anywhere in schema (PHASE_02); UI PHASE_10 |
-| No featured/selected products | §4,29 | all | Static/code audit | PENDING |
-| No brands | §2 | all | schema/UI audit | PENDING |
-| No coupons | §2 | all | route/schema audit | PENDING |
+| New Arrivals from createdAt | §4 | 04,10 | Data-driven test | DONE for the storefront surface — homepage «وصل حديثًا» renders active products by real created_at desc (no manual selection), verify:storefront [9][16] + browser QA (PHASE_05); admin/content-management surfaces PHASE_10 |
+| Arabic-aware search (exact/prefix/substring/fuzzy across name, SKU, descriptions, category names, attribute values) | §19 | 05 | verify:storefront [1]–[4] + browser QA | DONE — tiered service behind src/lib/storefront (normalization-based ILIKE + pg_trgm strict_word_similarity ≥ 0.35, threshold measured against the noise floor); SQL/TS normalization equivalence proven; known 4-letter transposition limit documented (ISSUE-033) (PHASE_05) |
+| Category-aware dynamic filters + sorting + pagination | §19 | 05 | verify:storefront [6]–[10] + browser QA | DONE — subtree-scoped listings, per-category facets (cosmetics: volume/shade; clothing: size/color), attribute-group/single-variant matching, sale/stock/price-overlap filters, 5 sort orders, server-rendered pagination (PHASE_05) |
+| Product discovery → variant/price/stock understanding → cart preparation (PHASE-05 DoD) | §6,7,19 | 05 | Browser E2E + verify:storefront [11]–[15] | DONE — home/category/search all lead to the PDP; variant selectors with dynamic availability (inactive/zero-stock states), exact price after selection, explicit selection summary, add-to-cart entry builds the CartEntryDraft contract (cart persistence = PHASE_06) (PHASE_05) |
+| Variant image switching on color/variant selection | §6 | 05 | Browser QA | DONE — gallery swaps to variant-level imagery when a variant with images is selected (distinct dev demo assets added for visual proof; verify:storefront [11]) (PHASE_05) |
+| Structured-data-ready product metadata contracts | §21 | 05,11 | verify:storefront [15] | DONE for the contract layer — schema.org Product + per-variant AggregateOffers (price/availability truth) rendered on the PDP; CartEntryDraft + buildProductJsonLd typed contracts; full SEO surface (canonical/OG tuning/sitemap) PHASE_11 (PHASE_05) |
+| No featured/selected products | §4,29 | all | Static/code audit | DONE for built surfaces — storefront sections are data-driven only (newest/discount-derived); no featured/best-seller flags, routes, or UI anywhere (code audit + verify:storefront [16]; PHASE_05) |
+| No brands | §2 | all | schema/UI audit | DONE for built surfaces — schema has no brand entity; storefront UI renders none (PHASE_05 code audit) |
+| No coupons | §2 | all | route/schema audit | DONE for built surfaces — no coupon/promo code, route, or schema slot exists (PHASE_05 code audit) |
 | Replaceable logo | §5,16 | 01,10,12 | Admin/manual | PARTIAL — PHASE_01 original assets + BrandLogo replaceability contract done; Admin management in PHASE_10/12 |
 | Design tokens (ivory/blush/burgundy/gold/charcoal + status) | PHASE-01, DESIGN_SYSTEM | 01 | Code review/manual | DONE |
 | Single Arabic production font (weights only) | PHASE-01, MASTER_PLAN §5 | 01 | Manual render check | DONE |
@@ -39,7 +44,7 @@
 | Responsive foundations phone/tablet/desktop + overflow guard | PHASE-01, MASTER_PLAN §5 | 01 | Browser QA (375/768/1440) | DONE |
 | Reduced-motion behavior | PHASE-01, MASTER_PLAN §5 | 01 | CSS check | DONE (full audit PHASE_11) |
 | Foundational primitives + loading/empty/error states | PHASE-01 | 01 | Manual playground | DONE |
-| Homepage shell (announcement→footer, honest placeholders) | PHASE-01 | 01 | Browser QA | DONE |
+| Homepage shell (announcement→footer, honest placeholders) | PHASE-01 | 01,05 | Browser QA | DONE — shell verified on every storefront route via the (store) layout (ISSUE-028); social-proof sections stay honest placeholders until PHASE-09 |
 | Visible focus + keyboard navigation on primitives | PHASE-01, MASTER_PLAN §22 | 01 | Browser keyboard QA | DONE (AA audit PHASE_11) |
 | GitHub-ready | §28 | 14 | CI | PARTIAL — CI updated for Drizzle (PHASE_02); green run pending credential restore (ISSUE-018) |
 | Neon-ready | §25,27 | 02,14 | migration rehearsal + live-Neon apply | PARTIAL — committed migration validated on real disposable Neon database via `drizzle-kit migrate` (empty start → SCHEMA_MATCH 23/23+9/9, migration-row hash == sha256 of committed file, smoke write+rollback OK, disposable db dropped, prod untouched — docs/ops/DATABASE.md §8) (PHASE_02); PHASE_14 production hardening PENDING |
@@ -49,7 +54,7 @@
 | Cache-Control no-store on auth/session-sensitive responses | §24, OWASP session management | 03 | header checks (curl + verify:auth) | DONE — all login/logout/change-password responses + every /admin page response carry `Cache-Control: no-store` (PHASE_03 security audit 2026-09-27; ISSUE-2026-09-27-022) |
 | Production PostgreSQL schema + Drizzle migrations + seed strategy | PHASE-02, DATA_DICTIONARY | 02 | bun run db:verify:local (exit 0; 28/28) + live-Neon drizzle-kit migrate verification | DONE (live-Neon apply PROVEN 2026-09-27, DATABASE.md §8; development-branch bring-up re-proven 2026-09-27, DATABASE.md §10) |
 | Order/inventory/reviews/settings schema readiness for later phases | PHASE-02, DATA_DICTIONARY | 02 | invariant probes (money identities, snapshots, ledger, singleton) | DONE |
-| WCAG 2.2 AA target | §22 | 11,13 | axe/manual | PENDING |
+| WCAG 2.2 AA target | §22 | 11,13 | axe/manual | PENDING — PHASE-05 partials: aria-labels on interactive cards/inputs, visible focus rings, semantic landmarks/breadcrumbs on all storefront pages (ISSUE-027 pattern continued) |
 | Core Web Vitals target | §23 | 11,13 | Lighthouse/Web Vitals | PENDING |
 | Catalog admin golden flow end-to-end (login→categories→variants→media→activate→edit→persisted aggregate) | §6,7,13,16,17,20 | 03,04 | Browser E2E + DB probes (final gate) | DONE — full flow exercised in the browser against the development branch; aggregate/ledger/reference integrity verified in DB; security gates re-proven (401/403/no-store) on every catalog mutation route (PHASE_04 final gate 2026-09-27) |
 | Inventory ledger relationship (variant stock ↔ auditable movements) | §13 | 02,04,07,08 | DB probes (final gate) | PARTIAL — opening + manual_adjustment movements verified with before/after/delta identity + admin id on the development branch (PHASE_04 final gate); sale/cancel movements PHASE_07/08 |

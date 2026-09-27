@@ -64,3 +64,4 @@ db/*.db
 
 # sandbox tool artifacts (never commit)
 tool-results/
+qa-screenshots/

@@ -240,23 +240,27 @@ const demoMediaSlugs = [
 const mediaIds = new Map<string, string>();
 for (const slug of demoMediaSlugs) {
   const pathname = `demo/${slug}.png`;
+  // PHASE-05: distinct per-product placeholder assets so the storefront's
+  // variant-image switching is visually verifiable in development QA
+  // (previously every demo asset pointed at og-default.png).
+  const url = `/brand/demo/${slug}.svg`;
   const [row] = await db
     .insert(mediaAssets)
     .values({
       provider: 'demo_seed',
       pathname,
-      url: '/brand/og-default.png',
+      url,
       accessMode: 'public',
-      mimeType: 'image/png',
-      sizeBytes: 36_360,
-      width: 1200,
-      height: 630,
+      mimeType: 'image/svg+xml',
+      sizeBytes: 1_100,
+      width: 800,
+      height: 1000,
       altText: DEMO_ALT,
       metadata: { demo: true },
     })
     .onConflictDoUpdate({
       target: mediaAssets.pathname,
-      set: { altText: DEMO_ALT, url: '/brand/og-default.png' },
+      set: { altText: DEMO_ALT, url },
     })
     .returning({ id: mediaAssets.id });
   mediaIds.set(slug, row.id);

@@ -37,6 +37,7 @@ bun run db:seed            # DEV seed: deterministic demo catalog (NODE_ENV=deve
 bun run db:verify          # probes: migrations current + all business invariants (non-prod only)
 bun run verify:auth        # PHASE-03 auth/security suite (44 checks; non-prod only)
 bun run verify:catalog     # PHASE-04 catalog/media service suite (43 checks; non-prod only)
+bun run verify:storefront  # PHASE-05 storefront/search suite (101 checks; non-prod only)
 bun run db:verify:local    # full disposable-PG rehearsal: fresh DB → migrate → bootstrap →
                            # seed (×2, idempotency) → guard check → 28 invariant probes
 ```
@@ -363,3 +364,21 @@ Standing state after this round:
 - Production (`main` branch) was never connected to during this round; its fingerprint
   record (`a77fc2afd8ac2bd7…`) remains the invariant to re-check after any future binding
   change (§9.3 Step 3).
+
+## 11. PHASE_05 migration — 0001_storefront_search (2026-09-27)
+
+The only schema-layer change of PHASE-05 (no table changes): `CREATE EXTENSION IF NOT EXISTS
+pg_trgm;` + six trigram GIN indexes backing the storefront's typo-tolerant (fuzzy) search tier —
+`products.name`, `products.short_description`, `products.description`, `product_variants.sku`,
+`attribute_values.value`, `categories.name`. This fulfills the PHASE_02 baseline note in §6
+("PHASE-05 adds it only if it provides measurable search value on Neon"): the fuzzy tier
+(`strict_word_similarity` ≥ 0.35, threshold set after measuring the noise floor) is only
+practical with trigram support. Applied to the Neon `development` branch via
+`drizzle-kit migrate` with the §5 direct-endpoint derivation (`__drizzle_migrations` = 2/2;
+`pg_trgm` present; all six indexes verified). Exact/prefix/substring tiers do NOT use these
+indexes: they match through the Arabic-aware `translate()` normalization expression
+(`src/lib/storefront/arabic.ts`) — expression indexes are deferred to PHASE_11 performance.
+
+Seed note (same phase): demo media assets now carry DISTINCT per-product placeholder URLs
+(`/brand/demo/<slug>.svg`, dev-only) so the storefront's variant-image switching is visually
+verifiable in development QA; the upsert is re-run safe and demo rows remain clearly marked.

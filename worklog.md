@@ -524,3 +524,28 @@ Stage Summary:
 - FINAL GATE: PASS — Parts A/B/C/D/E all satisfied with exercised evidence; DoD holds; two LOW/MEDIUM defects fixed and re-verified; ISSUE-023 narrowed to a pure deployment credential action
 - Commit: `gate(phase-04): final integration/visual gate — OIDC-era blob auth surfaces, scroll-padding fix, variant input a11y`
 - Gate: LAST_COMPLETED_PHASE=PHASE_04, CURRENT_PHASE=PHASE_05, PHASE_05 LOCKED — no PHASE-05 work performed; STOP executed
+---
+Task ID: 13
+Agent: Z.ai Code (main)
+Task: PHASE-05 — Storefront Navigation + Search + Filters + Product Pages (owner-authorized). Implement per docs/phases/PHASE-05.md, cross-phase integration, deep visual QA, full verification, docs, commit/push/CI.
+
+Work Log:
+- Read MASTER_PLAN, PHASE-05 doc, EXECUTION_STATUS, ISSUE_LOG, DATABASE.md, TRACEABILITY, DESIGN_SYSTEM, existing schema/services/components; continued from commit c0498ec (PHASE-04 gate).
+- Migration 0001_storefront_search (CREATE EXTENSION pg_trgm + 6 trigram GIN indexes) hand-crafted + journal entry; applied via drizzle-kit migrate to the Neon development branch ONLY (direct-endpoint derivation, fingerprint e5d2abaf… ≠ production a77fc2af…; __drizzle_migrations 2/2; db:verify 28/28).
+- Built src/lib/storefront/*: arabic.ts (Arabic normalization with ONE typed source deriving both TS + SQL implementations), catalog.ts (category tree w/ rolled-up counts, category page data, listings w/ facet/sale/stock/price filters + 5 sorts + pagination, facets, PDP aggregate w/ variants/images/size-guide/approved-reviews, tiered search w/ pg_trgm strict_word_similarity ≥ 0.35, suggestions, homepage data), format.ts (EGP display), metadata.ts (CartEntryDraft + buildProductJsonLd contracts), urls.ts (pure URL builders).
+- Public API: /api/storefront/search/suggestions (zod-validated, no-store, honest 400/500).
+- UI components: ProductCard, PriceBlock, WishlistButton (honest state), StoreBreadcrumb (RTL), ProductGrid, HeaderSearch (autocomplete), StoreHeader rewrite (real DB nav, desktop dropdown-free + mobile tree sheet), HeaderSoonAction, CategoryFilters (desktop sidebar + mobile sheet, URL-driven), SortSelect (serializable scope), Pagination, ProductDetailClient (gallery + variant selectors + dynamic availability + quantity + add-to-cart contract), SizeGuideView, ProductReviews (approved-only), CategoryShowcase rewrite (real data), StoreFooter (real department links).
+- Pages: (store) route group layout (announcement/header/footer/FAB on ALL storefront routes), /category/[slug] (+loading), /product/[slug] (+loading), /search (+loading), homepage data-driven sections (وصل حديثًا + العروض), Arabic DB-free not-found.
+- verify:storefront suite (17 sections, 101 checks) created; caught 3 service-level defects pre-ship: RTL-literal scrambling of the SQL normalization map (031), inverted price-band comparison + single-row facet span (032), ineffective full-string fuzzy operator (033) — all fixed and re-proven (101/101).
+- Browser E2E (agent-browser): golden flows exercised for real — homepage→category→facets/filters/sort→PDP variant selection (size+color dynamic availability, explicit summary, add-to-cart toast contract, color→image switch, zero-stock XL)→search autocomplete→fuzzy/empty search→404→mobile menu; caught and fixed: missing store chrome on inner routes (028 → (store) layout), desktop search dropped in refactor (029), scroll-into-view under sticky header (030 → scroll-padding-top). Dev-only Radix aria-controls hydration warnings investigated: 0 in production, functionality proven in both modes → ACCEPTED (034). Seed demo media given distinct per-product SVG placeholders so variant-image switching is visually provable.
+- Deep visual QA: 34 PRODUCTION screenshots (10 surfaces × 375/768/1440) captured in a fresh session (0 console errors/warnings cumulative) and individually inspected; overflow = 0px at all widths; two Arabic copy nits fixed in the loop (والدرجة attachment, مراجعة واحدة).
+- Regression: verify:storefront 101/101 · db:verify 28/28 · verify:auth 44/44 · verify:catalog 43/43 · typecheck ✅ · lint ✅ · production build ✅; security spot-checks (403 cross-origin/no-origin, 307 /admin, no-store, safe suggestion params).
+- Docs: EXECUTION_STATUS (PHASE_05 record, board, gate=PHASE_06 LOCKED), TRACEABILITY (8 rows updated + 5 added), DATABASE.md §11 (migration 0001 + seed note), ISSUE_LOG 028–034, DESIGN_SYSTEM PHASE-05 additions.
+
+Stage Summary:
+- PHASE-05 COMPLETE: DoD satisfied end-to-end (discover → variant/price/stock understanding → cart preparation contract); all 13 tasks implemented; no PHASE-06 functionality leaked (cart persistence + wishlist persistence stay next-phase with honest affordances).
+- Cross-phase integration PROVEN: PHASE-01 design system/RTL/chrome on every route; PHASE-02 schema relationships consumed read-only (subtree, facets, aggregates, moderation gate); PHASE-03 security intact (curl matrix); PHASE-04 catalog data drives every surface (drafts hidden, inactive variants honest, discount semantics server-truth).
+- ISSUE-023 untouched (no media path in scope) — remains OPEN for PHASE-14; no Blob workaround, no credentials exposed.
+- Database safety held: development branch only; migration 0001 committed as the schema mechanism; probe rows cleaned.
+- Known notes: ISSUE-034 (dev-only hydration warnings) + 4-letter transposition fuzzy limit documented; FAB transient overlap = inherited floating-CTA pattern.
+- Next: PHASE-06 (cart + guest wishlist) — LOCKED until owner go-ahead.

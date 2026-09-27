@@ -15,6 +15,75 @@
 
 ---
 
+### ISSUE-2026-09-27-028
+- Phase: PHASE_05 (browser E2E round, 2026-09-27) — FIXED
+- Symptom: after navigating to /category/[slug] or /product/[slug], the page rendered breadcrumbs/content but had NO store header, footer, or WhatsApp FAB — only the homepage carried the storefront chrome.
+- Root cause: the new route pages were written as standalone route files that did not include the announcement bar/header/footer, while those components were imported only by the homepage. A route-level shell was missing from the composition.
+- Impact: broken task-1 requirement (header/navigation on every storefront surface), broken sticky-footer contract, no navigation path back from inner pages except the browser back button.
+- Minimal fix: new route group `src/app/(store)/layout.tsx` rendering AnnouncementBar + StoreHeader + children + StoreFooter + WhatsApp FAB; homepage/category/product/search moved inside the group (URLs unchanged — route groups do not affect paths); duplicated chrome imports removed from the homepage.
+- Verification: header, footer, and FAB render on /, /category/[slug], /product/[slug], /search (DOM-verified via curl + browser a11y tree); sticky footer contract holds on every page; typecheck/lint clean.
+- Related files: `src/app/(store)/layout.tsx`, `src/app/(store)/page.tsx`, `src/app/(store)/category/[slug]/page.tsx`, `src/app/(store)/product/[slug]/page.tsx`, `src/app/(store)/search/page.tsx`
+- Notes: found only because the browser E2E exercised real navigation, not page-open checks.
+
+### ISSUE-2026-09-27-029
+- Phase: PHASE_05 (browser E2E round, 2026-09-27) — FIXED
+- Symptom: at desktop width the header had NO search field; the a11y tree contained a single hidden (0×0) search input and the autocomplete could not be exercised at 1440px.
+- Root cause: during the header refactor that extracted the cart/wishlist "coming soon" buttons into a client component, the desktop `<HeaderSearch>` instance was accidentally dropped from the header actions row; only the mobile search-row instance survived (hidden at ≥1024px).
+- Impact: search UI (task 5) unreachable at desktop/tablet landscape; autocomplete only usable below 1024px.
+- Minimal fix: re-added `<HeaderSearch className="hidden w-48 lg:block xl:w-64" />` to the header actions row.
+- Verification: a11y tree shows `searchbox "ابحث في أميرة استور"` at 1440/768/375 (two instances, one visible per breakpoint); autocomplete fill→suggestions→navigation exercised in the browser.
+- Related files: `src/components/store/store-header.tsx`
+- Notes: regression introduced and caught within the same phase.
+
+### ISSUE-2026-09-27-030
+- Phase: PHASE_05 (browser E2E round, 2026-09-27) — FIXED
+- Symptom: programmatic/keyboard scroll-into-view on product pages landed interactive targets (color chips) VISUALLY BENEATH the sticky storefront header; automated clicks hit the covering breadcrumb bar ("element covered" ×2).
+- Root cause: `html` had `scroll-padding-bottom` (PHASE-04 gate fix D-1) but no `scroll-padding-top`, so scroll-into-view positioned targets under the sticky top bar (h-16 + mobile search row).
+- Impact: ergonomic/a11y only — keyboard and assistive scroll targeting could hide focused controls behind the header; no data or functional impact.
+- Minimal fix: `scroll-padding-top: 5rem` on `html` in `globals.css` (mirrors the existing bottom compensation).
+- Verification: scrollIntoView targets now clear the header; color-chip interactions complete in the browser; typecheck/lint clean.
+- Related files: `src/app/globals.css`
+
+### ISSUE-2026-09-27-031
+- Phase: PHASE_05 (verify-suite round, 2026-09-27) — FIXED
+- Symptom: verify-storefront [1] Arabic-normalization equivalence failed on 3/9 corpus entries — the SQL `translate()` normalization produced "نساوي/امراي/عاولي" where the TypeScript map produces "نسايي/امراي/عايله" (character pairs shifted/swapped).
+- Root cause: the SQL FROM/TO pair was hand-typed as RTL Arabic string literals; their VISUAL character order is not their codepoint order, so the literal silently scrambled the intended mapping (classic bidirectional-text authoring hazard).
+- Impact: search normalization would have been inconsistent between query side (TS) and column side (SQL) — tashkeel/alef/taa variants would fail to match on some characters.
+- Minimal fix: `src/lib/storefront/arabic.ts` now constructs BOTH implementations programmatically from ONE typed source of truth (`ARABIC_CHAR_MAP` pairs via explicit `\uXXXX` escapes + delete-set), with the SQL fragment derived from the same pairs; hand-typed RTL literals forbidden there. The SQL wrapper also mirrors query-side whitespace collapsing (`regexp_replace` + `btrim`) so the two are byte-equivalent on every input.
+- Verification: verify-storefront [1] passes 9/9 corpus entries including multi-space, tashkeel, alef variants, tatweel; [3] Arabic-aware matching passes (taa-marbuta typed as ه matches «منشفة» and identical results with real ة).
+- Related files: `src/lib/storefront/arabic.ts`, `scripts/verify-storefront.ts`
+- Notes: caught by the equivalence test the suite exists for — the exact failure mode the phase doc's "Arabic-aware" requirement demands guarding against.
+
+### ISSUE-2026-09-27-032
+- Phase: PHASE_05 (verify-suite round, 2026-09-27) — FIXED
+- Symptom: price-band filter (priceMin=120, priceMax=200) returned ZERO products although two seeded products overlap that band; facets price range assertion failed.
+- Root cause: two independent defects — (a) the range-overlap comparisons were inverted (`productMin <= priceMin` instead of `productMin <= priceMax`, `productMax >= priceMax` instead of `productMax >= priceMin`); (b) the facets' price span probed only the FIRST product row instead of aggregating across the category scope.
+- Impact: price filtering unusable (always over-restrictive) and the filter panel's price range displayed a single product's span rather than the category's.
+- Minimal fix: corrected overlap semantics (`productMin <= shopperMax AND productMax >= shopperMin`); facets price range is now a true `min/max` aggregate over active variants of active products in scope.
+- Verification: verify-storefront [7][8] pass — band 120–200 returns exactly the overlapping products; band 100000–200000 returns zero; category-wide span asserted.
+- Related files: `src/lib/storefront/catalog.ts`
+
+### ISSUE-2026-09-27-033
+- Phase: PHASE_05 (search-quality round, 2026-09-27) — FIXED
+- Symptom: the fuzzy tier as first implemented (`similarity(query, full_name) >= 0.24`) never fired for realistic typos — `similarity('قيمص', 'قميص رجالي كلاسيك قطن') = 0.04` because full-string trigram similarity collapses for short queries against long names.
+- Root cause: wrong pg_trgm operator for the matching shape: full-string `similarity()` compares WHOLE strings, while shopper queries are 1–3 words inside long product names.
+- Impact: typo-tolerant matching (task 8) silently ineffective — worse than honest absence.
+- Minimal fix: switched to `strict_word_similarity(query, name) >= 0.35` (whole-word alignment), threshold chosen by measurement: noise floor ≤ 0.25 (nonsense queries) vs real typos ≥ 0.37 in 5+ letter words; relevance ordering switched to rank-case first, then word similarity. Known documented limit: a single transposition inside a 4-letter word destroys most trigrams and stays outside the practical tier (verified measurement, recorded openly).
+- Verification: browser + verify-storefront [4]: 'مرطاب' → moisturizer, 'كلسيك' → shirt, 'قمزى' correctly below floor, latin garbage zero; exact/prefix/substring tiers unchanged.
+- Related files: `src/lib/storefront/catalog.ts`, `scripts/verify-storefront.ts`
+
+### ISSUE-2026-09-27-034
+- Phase: PHASE_05 (browser QA round, 2026-09-27) — ACCEPTED (no fix required)
+- Symptom: in DEV mode, React logs hydration attribute mismatches (`aria-controls` Radix useId values differ between server and client render) on category pages, originating from Radix Dialog/Select triggers (header sheet, filter sheet, sort select).
+- Root cause: known Radix + React 19 streamed-SSR interaction — the dev build's strict hydration diffing flags the Radix-generated `aria-controls` id; React 19 does not patch the attribute up.
+- Impact: dev-mode console noise only. Verified NON-ISSUES: production build shows ZERO errors/warnings across every storefront surface and full navigation (fresh session, cumulative count 0); all three affected controls (header sheet, filter sheet, sort select) open, apply, and navigate correctly in both dev and prod.
+- Minimal fix: none (fixing would require suppressing React hydration diagnostics or patching Radix internals — disproportionate to a dev-only attribute warning).
+- Verification: fresh-browser production session: 0 error/warn across /, /category/[slug], /product/[slug], /search, /admin/login; sheet/filters/select interactions re-proven after the warnings were observed.
+- Related files: none
+- Notes: recorded per the transparency rule; revisit if Radix ships an upstream fix worth taking.
+
+---
+
 ### ISSUE-2026-09-26-001
 - Phase: PHASE_00
 - Severity: BLOCKER (phase-scoped: blocks GitHub provisioning steps only)

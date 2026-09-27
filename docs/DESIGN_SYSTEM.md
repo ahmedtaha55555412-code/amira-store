@@ -103,6 +103,8 @@ Admin components are separate but share primitives.
 
 **PHASE_01 status:** `AnnouncementBar`, `StoreHeader` (desktop nav + mobile sheet), `Hero`, `CategoryShowcase`, product-section placeholders, `Benefits`, `BrandStory`, `SocialProofPlaceholder`, `WhatsAppCta`, `WhatsAppFloatingButton`, `SectionHeading`, `Container`, `EmptyState`, `LoadingState`, `ErrorState`, and `BrandLogo` are implemented under `src/components/store/` and `src/components/brand/`; buttons/inputs/cards/badges/dialog/table/toast/skeleton are themed shadcn primitives (`src/components/ui/`).
 
+**PHASE_05 additions:** `StoreHeader` upgraded to real category navigation (async server component) + always-visible mobile search row; `HeaderSearch` (Arabic-aware autocomplete); `ProductCard` (sale/out-of-stock/wishlist states, long-title clamp); `PriceBlock`; `StoreBreadcrumb` (RTL chevrons); `ProductGrid`; `CategoryFilters` (desktop sidebar + mobile sheet, URL-driven); `SortSelect`; `Pagination`; `ProductDetailClient` (gallery with variant-image switching, explicit variant selectors with dynamic availability, quantity, add-to-cart entry contract); `SizeGuideView`; `ProductReviews` (approved-only); homepage product sections now data-driven. All consume the PHASE-01 tokens exclusively; every storefront route is wrapped by `src/app/(store)/layout.tsx` (announcement → sticky header → page → sticky footer → FAB).
+
 ## QA playground
 
 `src/components/store/playground.tsx` renders a clearly-labeled internal overlay ("فحص التصميم", bottom-end of `/`) showcasing tokens, typography, buttons, inputs, cards/badges, tables, loading/empty/error states, toasts and dialogs for manual QA. It is a development/QA aid — gate or remove before launch phases.
