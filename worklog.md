@@ -290,3 +290,26 @@ Work Log:
 - Final: exit 0, 28/28 probes, migrations apply on 2 fresh DBs, bootstrap+seed idempotent (7/18/24/13 stable), seed refuses production
 - typecheck clean, lint 0/0, dev server + agent-browser QA no regression (ar/rtl, 0 overflow, no errors); next build deferred to CI per sandbox constraint (documented)
 - Docs: DATA_DICTIONARY.md +15 implementation notes; new docs/ops/DATABASE.md (guide + rules + decisions + live-Neon procedure); TRACEABILITY +8 rows updated; ISSUE_LOG +015/016/017/018; EXECUTION_STATUS PHASE_02 record + gate flip to PHASE_03
+
+---
+Task ID: 7
+Agent: Z.ai Code (main)
+Task: PHASE-02 compliance round — prove the committed migration on a real disposable/dev Neon database; keep PHASE-03 locked until genuinely done (owner directive)
+
+Work Log:
+- Re-read PHASE-02.md task 12, docs/ops/DATABASE.md §8, ISSUE_LOG, TRACEABILITY, SEED_PLAN; rolled back the premature gate flip in EXECUTION_STATUS.md (CURRENT_PHASE=PHASE_02, PROJECT_STATUS=IN_PROGRESS) per owner directive; sandbox auto-commit 49ce1f0 (UUID message) captured that rollback edit mid-session (content intentional, documented)
+- Reran local PHASE-02 checks fresh: `bun run db:verify:local` exit 0 (28/28 probes); seed refuses NODE_ENV=production AND NODE_ENV=preview with exit 1 — seed safety contract verified (explicit NODE_ENV=development opt-in only; script contains zero customers/orders/admin inserts)
+- Restored Vercel auth with NO secrets in chat: Vercel CLI OAuth device flow; the CLI poller kept being killed by sandbox recycling between turns, so the identical RFC-8628 flow was driven manually (device code displayed to owner; device_code/access/refresh tokens kept only in chmod-600 temp files and shredded after use; no Neon API key needed — Neon reached solely through the existing Vercel↔Neon integration)
+- `vercel env pull` (development + production) into git-ignored temp dir; hash comparison revealed development == production DATABASE_URL (sha256 a77fc2afd8ac2bd7…) → the dev env var is NOT a disposable target → recorded ISSUE-2026-09-27-019 (ACCEPTED)
+- Disposable target chosen per constraints: `CREATE DATABASE phase02_drizzle_verify_tmp` on the SAME Neon project (tiny-mud-82763154 / neon-cobalt-globe untouched; no second project); verified EMPTY (0 user tables; neondb public tables [] — only platform neon_auth schema present)
+- Applied the EXACT committed migration: DRIZZLE_DATABASE_URL → direct (unpooled) endpoint of the temp db, `bun run db:migrate` (drizzle-kit migrate; NO db push anywhere) → "[✓] migrations applied successfully!" exit 0
+- Verified on real Neon (PostgreSQL 18.6, fra1): 23/23 tables + 9/9 enums match drizzle/meta/0000_snapshot.json (no missing/extra); drizzle.__drizzle_migrations row hash a2a86f8b326955fc… == sha256(drizzle/0000_init_schema.sql); 83 indexes / 34 FK / 34 CHECK constraints
+- Smoke through the app's own driver (src/db/client.ts over pooled endpoint): select version() = PostgreSQL 18.6; BEGIN → INSERT store_settings → ROLLBACK leaves 0 rows; enum product_status present — nothing persisted
+- Cleanup: DROP DATABASE → no longer listed (zero residue); neondb unchanged (public tables [] before/after) — production database never modified; no seed/bootstrap run on Neon (SEED_PLAN discipline)
+- Docs: DATABASE.md §8 rewritten as the EXECUTED-and-PASSED record; ISSUE_LOG ISSUE-018 addendum (Vercel/Neon half RESOLVED; GitHub push half still OPEN) + new ISSUE-019; TRACEABILITY Neon-ready + Production-schema rows updated to live-Neon PROVEN; EXECUTION_STATUS → PHASE_02 COMPLETE, pointer advanced to PHASE_03 only after evidence
+- typecheck + lint rerun clean; PHASE-02 completion commit made locally (push pending GitHub credential restore — ISSUE-018 GitHub half)
+
+Stage Summary:
+- PHASE-02 task 12 GENUINELY PROVEN on real Neon: migration applies cleanly from empty, schema matches dictionary/snapshot, migration-ledger hash matches the committed file byte-for-byte, smoke write+rollback OK, zero residue, production untouched
+- PHASE_02 COMPLETE (gate reopened by owner directive, then closed with real evidence); CURRENT_PHASE=PHASE_03, LAST_COMPLETED_PHASE=PHASE_02, PROJECT_STATUS=READY_FOR_NEXT_PHASE; PHASE-03 NOT started per directive
+- Remaining owner-side: gh credential restore → git push origin main (b4fca6e, 49ce1f0, completion commit) → first green CI run on the Drizzle workflow

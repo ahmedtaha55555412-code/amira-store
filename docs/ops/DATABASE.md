@@ -106,26 +106,42 @@ PostgreSQL is exactly what runs on Neon. The driver choice is isolated in `src/d
    verified review per order item, single cancellation-return per order, ledger
    identities, session-token uniqueness, settings singleton).
 
-## 8. Live-Neon application procedure (pending credential restore — ISSUE-2026-09-27-018)
+## 8. Live-Neon application — EXECUTED and PASSED (2026-09-27)
 
-The sandbox recycle wiped the CLI credential vault, so the live-Neon half of the
-verification is documented here as a ready-to-run procedure (no code work remaining):
+The sandbox credential vault had been wiped (ISSUE-2026-09-27-018); Vercel access was restored
+this session via the **Vercel OAuth device flow** (owner approved in browser; the CLI's background
+poller kept being killed by sandbox recycling, so the RFC-8628 flow was driven manually — the
+device code was displayed, and the token/refresh token were never printed and were shredded after
+use). Neon itself was never logged into and needs no Neon API key: the already-configured
+Vercel↔Neon integration supplied the per-environment connection secrets via `vercel env pull`
+(values compared by hash only, never displayed).
 
-1. Restore `gh` + `vercel` auth into `.auth/` (ISSUE-2026-09-26-009 mitigation), then
-   `git push origin main` for the PHASE_02 commit.
-2. Vercel Git integration builds the commit. The Vercel ↔ Neon integration injects
-   `DATABASE_URL` (pooled, per-environment; preview gets an isolated copy-on-write branch).
-3. One-off live checks (local machine or a Vercel-adjacent runner with the env vars):
-   ```bash
-   # direct endpoint for migrations
-   DATABASE_URL="$NEON_DIRECT_URL" bun run db:migrate
-   # pooled endpoint for the app runtime path
-   DATABASE_URL="$NEON_POOLED_URL" bun -e "import('./src/db/client.js').then(async ({db}) => { console.log((await db.execute(require('drizzle-orm').sql\`select version()\`)).rows); })"
-   ```
-   Expected: migration applied on the Neon branch; `select version()` returns PostgreSQL
-   (Neon). `bun run db:bootstrap` then initializes settings + 5 categories on non-dev
-   environments exactly once (idempotent, absent-only).
-4. CI (`verify` job: install → typecheck → lint → build) goes green on push — completing
-   the same green path PHASE_00/01 used (last green: run 36300359549).
+**Topology fact discovered (recorded as ISSUE-2026-09-27-019):** on this Vercel↔Neon integration
+the `development` and `production` environments carry the IDENTICAL `DATABASE_URL` — one database
+(`neondb`) on the primary branch; isolated copy-on-write branches exist only per Preview
+Deployment. Migrating the "development" target would therefore have modified the production
+database — forbidden. The compliant disposable target was a temporary **database** on the same
+Neon project (`phase02_drizzle_verify_tmp`, created with `CREATE DATABASE`); `neondb` itself and
+its platform-managed `neon_auth` schema were never touched.
 
-Nothing in the application or schema needs to change for this step.
+Executed procedure (all against real Neon, PostgreSQL 18.6, region fra1):
+
+1. Pre-flight: `neondb` public tables = `[]` (only the platform `neon_auth` schema present).
+2. `CREATE DATABASE phase02_drizzle_verify_tmp` → verified EMPTY (0 user tables).
+3. `drizzle-kit migrate` with `DRIZZLE_DATABASE_URL` aimed at the temp database over the direct
+   (unpooled) endpoint → `[✓] migrations applied successfully!` (exit 0). No `db push` anywhere.
+4. Verification vs `drizzle/meta/0000_snapshot.json`: **23/23 tables, 9/9 enums — no missing, no
+   extra**; `drizzle.__drizzle_migrations` contains exactly one row whose hash `a2a86f8b326955fc…`
+   equals `sha256(drizzle/0000_init_schema.sql)` — the applied migration IS the exact committed
+   file; 83 indexes / 34 FK / 34 CHECK constraints present on the public schema.
+5. Smoke through the application's own driver path (`src/db/client.ts`, pooled endpoint):
+   `select version()` → PostgreSQL 18.6 (Neon); `BEGIN; INSERT INTO store_settings …; ROLLBACK`
+   → row visible inside the transaction (1), **0 rows after rollback** — write path proven,
+   nothing persisted.
+6. Cleanup: `DROP DATABASE phase02_drizzle_verify_tmp` → no longer listed (zero residue);
+   final `neondb` snapshot unchanged (public tables still `[]`; the same 9 platform `neon_auth`
+   tables before and after) — **the production database was not modified**.
+
+Intentionally NOT done: no seed/bootstrap on any Neon database (dev seed is development-only;
+SEED_PLAN forbids demo data outside development); no schema/data change to `neondb` — the real
+application databases are migrated at deploy time per the deployment runbook.

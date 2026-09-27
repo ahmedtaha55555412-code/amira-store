@@ -222,7 +222,7 @@
 ### ISSUE-2026-09-27-018
 - Phase: PHASE_02 (environment)
 - Severity: MEDIUM (blocks remote verification + push this session; not a code defect)
-- Status: OPEN (owner-side action required)
+- Status: OPEN (GitHub half only — Vercel/Neon half RESOLVED 2026-09-27, see addendum)
 - Symptom: The git-ignored credential vault `.auth/` is missing after the latest sandbox recycle, so `gh`/`vercel` authentication and `git push` (GitHub) are unavailable this session. Recurrence of the ISSUE-2026-09-26-009 environment class.
 - Reproduction: `git push` → credential helper `/home/z/my-project/.auth/bin/gh-cred` not found; no `gh`/`vercel` binaries on PATH.
 - Root cause: sandbox recycles wipe everything outside `/home/z/my-project`; the vault restore step did not run before this session.
@@ -230,3 +230,21 @@
 - Verification: after restore — `gh auth status` succeeds, push succeeds, CI run green on the PHASE_02 commit.
 - Related files: none (environment)
 - Notes: PHASE_02 remote-scope items are therefore satisfied by the committed local rehearsal on real PostgreSQL 18 (identical wire protocol/driver) with the live-Neon application documented as the single remaining remote step; production is untouched either way.
+
+**Addendum (2026-09-27, PHASE-02 compliance round):**
+- Vercel/Neon half RESOLVED: Vercel authentication restored via the OAuth device flow (owner approved in browser; the flow was driven manually because the sandbox kills background pollers between turns; device code displayed, token/refresh token never displayed and shredded after use). No Neon API key was needed — the existing Vercel↔Neon integration supplied per-environment connection secrets via `vercel env pull` (values compared by hash only, never printed).
+- Live-Neon verification EXECUTED and PASSED: exact committed migration applied via `drizzle-kit migrate` to a real EMPTY disposable Neon database (`phase02_drizzle_verify_tmp`, PostgreSQL 18.6/fra1) → SCHEMA_MATCH 23/23 tables + 9/9 enums vs the committed snapshot → `drizzle.__drizzle_migrations` row hash == sha256(drizzle/0000_init_schema.sql) → app-driver smoke (pooled endpoint) write+ROLLBACK clean → disposable db dropped with zero residue → production `neondb` unmodified (public tables [] before/after). Full procedure and evidence: docs/ops/DATABASE.md §8.
+- STILL OPEN (GitHub half): `gh` credential restore + `git push origin main` (commits b4fca6e, 49ce1f0, and the PHASE-02 completion commit) + first green CI run on the Drizzle CI workflow. Owner-side action unchanged.
+
+### ISSUE-2026-09-27-019
+- Phase: PHASE_02 (verification-round discovery)
+- Severity: LOW (operational topology fact; no defect)
+- Status: ACCEPTED (integration default; revisit in PHASE_14 production hardening)
+- Symptom: On the Vercel↔Neon integration, the project's `development` and `production` environments resolve to the IDENTICAL Neon database (`neondb` on the primary branch) — sha256(DATABASE_URL) hashes are equal. There is no dedicated isolated development branch.
+- Reproduction: `vercel env pull --environment=development|production` → both DATABASE_URL values hash to a77fc2afd8ac2bd7…; public tables of neondb = [] (only the platform `neon_auth` schema exists).
+- Root cause: Neon Vercel-native integration default — one primary-branch database serves production + development; isolated copy-on-write branches are created only per Preview Deployment.
+- Impact: a migration run against the "development" env var would hit the production database; agents must never treat the development environment target as disposable. Disposable verification targets must be temporary databases (or owner-created branches) on the same Neon project, exactly as done for PHASE-02 (docs/ops/DATABASE.md §8).
+- Minimal fix: none required now. PHASE_14 may create a dedicated dev branch (owner decision; requires Neon console or API access).
+- Verification: the PHASE-02 live-Neon round used `phase02_drizzle_verify_tmp` (created empty → migrated → verified → dropped, zero residue); production `neondb` unmodified (public tables [] before/after).
+- Related files: docs/ops/DATABASE.md §8
+- Notes: the Neon Free plan supports console-created branches if the owner prefers a true dev branch later.

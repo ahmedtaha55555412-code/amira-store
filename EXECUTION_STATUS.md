@@ -9,9 +9,9 @@ Allowed project states:
 - `COMPLETE`
 
 ## Current state
-PROJECT_STATUS=IN_PROGRESS
-CURRENT_PHASE=PHASE_02
-LAST_COMPLETED_PHASE=PHASE_01
+PROJECT_STATUS=READY_FOR_NEXT_PHASE
+CURRENT_PHASE=PHASE_03
+LAST_COMPLETED_PHASE=PHASE_02
 CURRENT_BRANCH=main
 
 ### PHASE_00 record (2026-09-26)
@@ -75,21 +75,23 @@ CURRENT_BRANCH=main
 - Rollback: `CURRENT_PHASE=PHASE_02`, `PROJECT_STATUS=IN_PROGRESS`, `LAST_COMPLETED_PHASE=PHASE_01`. PHASE-03 stays LOCKED until every PHASE-02 gate is genuinely satisfied.
 - Verification-round constraints: no second Neon project; no modification/deletion of `neon-cobalt-globe`; a safe disposable/dev Neon branch/database only; the exact committed migration via `drizzle-kit migrate`; no `db push`; no destructive operations against Production; no secret values ever printed.
 - If real-Neon verification cannot complete because authentication is unavailable, PHASE-02 must NOT be marked complete and the exact blocker must be recorded (ISSUE-2026-09-27-018).
+- RESOLVED (2026-09-27, same session): Vercel authentication restored via the owner-approved OAuth device flow (no secrets in chat; ISSUE-018 Vercel/Neon half closed). The real-Neon verification PASSED — see the PHASE_02 record below and docs/ops/DATABASE.md §8. The gate was closed again with genuine evidence, and only then was the phase pointer advanced.
 
 ## PHASE_02 completion record
-- Status: REOPENED (2026-09-27, owner directive) — schema/seed/migration scope PASS locally; live-Neon application (task 12) pending proof; see gate-reopen note above
-- Commit: `feat(phase-02): PostgreSQL/Neon schema + Drizzle migrations + seed strategy` — b4fca6e (local only; push still pending ISSUE-018 credential restore)
+- Status: COMPLETE — all 4 DoD items pass; gate was reopened by owner directive (2026-09-27) and closed again the same session after the live-Neon application (task 12) was genuinely proven (see gate-reopen note above and docs/ops/DATABASE.md §8)
+- Commit: `feat(phase-02): PostgreSQL/Neon schema + Drizzle migrations + seed strategy` — b4fca6e (+ completion-commit docs follow-up); push to origin still pending GitHub credential restore (ISSUE-018 GitHub half)
 - Date/time: 2026-09-27 (Africa/Cairo)
 - Tests/verification:
   - `bun run db:verify:local` → **exit 0**: disposable PostgreSQL 18 rehearsal — migrations apply cleanly to TWO fresh DBs; production-safe bootstrap + dev seed both idempotent on re-run (7 products / 18 variants / 24 variant-attribute assignments / 13 images stable); seed REFUSES `NODE_ENV=production`; **28/28 invariant+scenario probes pass** (size-only / color-only / size+color non-Cartesian / no-attribute default variant; per-variant price/stock/image independence; multi-image products; unique SKU+slugs; no negative stock; one-value-per-attribute-per-variant; composite-FK pair consistency; order money identities; one verified review per order item; one cancellation-return per order; ledger identities; session-token uniqueness; settings singleton; New-Arrivals index)
+  - **Live-Neon verification (2026-09-27 compliance round) ✅** — the exact committed migration applied via `drizzle-kit migrate` to a real EMPTY disposable Neon database (`phase02_drizzle_verify_tmp`, PostgreSQL 18.6, fra1): SCHEMA_MATCH 23/23 tables + 9/9 enums vs the committed drizzle snapshot (no missing/extra); `drizzle.__drizzle_migrations` row hash == sha256(drizzle/0000_init_schema.sql) (a2a86f8b326955fc…); 83 indexes / 34 FK / 34 CHECK constraints; app-driver smoke through `src/db/client.ts` (pooled endpoint): version() = PostgreSQL 18.6, BEGIN→INSERT→ROLLBACK leaves 0 rows; disposable db dropped (zero residue); production `neondb` untouched (public tables [] before/after; only platform `neon_auth` schema). Evidence: docs/ops/DATABASE.md §8. Discovery: development==production DATABASE_URL → ISSUE-2026-09-27-019 (ACCEPTED)
   - typecheck ✅ (`tsc --noEmit` clean) · lint ✅ (0 errors, 0 warnings) · dev-server runtime clean (dev.log no errors)
   - Browser QA (agent-browser): `/` renders at desktop+mobile, `ar/rtl`, zero overflow, no console/page errors — PHASE-02 is schema-only, UI untouched, no regression
   - `next build`: NOT executed in-sandbox (sandbox runtime constraint forbids `bun run build` while the dev server owns `.next`); build evidence = CI `next build` on next push (workflow updated to Drizzle) — tracked under ISSUE-018, same green-CI path as PHASE_00/01
 - Schema delivered: 23 tables / 9 enums per `docs/DATA_DICTIONARY.md` + 15 documented implementation decisions (denormalized variant-attribute guard, unique phone_normalized, order idempotency slot, money-identity CHECKs, ledger restore-exactly-once partial unique, verified-review uniqueness, image partial uniques, settings singleton, no featured flags, pg_trgm deferred to PHASE_05)
 - Seed strategy: committed `scripts/db-seed.ts` (dev-only, deterministic, re-run safe), `scripts/db-bootstrap.ts` (production-safe, absent-only init incl. WhatsApp +201019003677 as store data), `scripts/verify-migrations.ts` + `scripts/verify-local-database.mjs` (committed rehearsal)
 - Data layer switch: Prisma + SQLite REMOVED (`prisma/`, `src/lib/db.ts`, deps, CI step, scripts); Drizzle + `pg` is the single data layer (`src/db/client.ts`, driver isolated; Neon pooled for app, direct for migrations)
-- Known non-blocking notes: ISSUE-2026-09-27-018 (credential vault wiped by sandbox recycle → git push + live-Neon apply + CI green run pending owner-side restore; pre-written procedure in `docs/ops/DATABASE.md` §8); ISSUE-2026-09-27-010 (orphan Neon resource — still owner-discretionary)
-- Linked issues: ISSUE-2026-09-27-015 (FIXED), 016 (FIXED), 017 (FIXED), 018 (OPEN, owner)
+- Known non-blocking notes: ISSUE-2026-09-27-018 (GitHub half OPEN: `git push` + first green CI run pending gh credential restore; Vercel/Neon half RESOLVED 2026-09-27); ISSUE-2026-09-27-019 (dev==prod single-Neon-database topology — ACCEPTED, revisit PHASE_14); ISSUE-2026-09-27-010 (orphan Neon resource — still owner-discretionary). Transparency note: sandbox auto-commit `49ce1f0` (UUID message) captured the mid-session gate-reopen rollback of EXECUTION_STATUS.md — content intentional, superseded by this completion commit
+- Linked issues: ISSUE-2026-09-27-015 (FIXED), 016 (FIXED), 017 (FIXED), 018 (OPEN — GitHub half only), 019 (ACCEPTED)
 - Scope discipline kept: no cart/checkout/orders/inventory/reviews/admin-auth workflows implemented; no PHASE-01 design changes; no production data touched
 
 ## Rule
@@ -98,7 +100,7 @@ Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not
 ## Phase board
 - [x] PHASE_00 — Repository audit + execution controls
 - [x] PHASE_01 — Foundation + design system + brand assets
-- [ ] PHASE_02 — Database schema + migrations + seed strategy (gate REOPENED — live-Neon proof pending)
+- [x] PHASE_02 — Database schema + migrations + seed strategy (live-Neon proof completed 2026-09-27)
 - [ ] PHASE_03 — Admin authentication + security foundation
 - [ ] PHASE_04 — Categories + products + variants + media
 - [ ] PHASE_05 — Storefront navigation + search + filters + product pages

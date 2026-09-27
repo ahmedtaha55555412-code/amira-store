@@ -40,10 +40,10 @@
 | Homepage shell (announcement→footer, honest placeholders) | PHASE-01 | 01 | Browser QA | DONE |
 | Visible focus + keyboard navigation on primitives | PHASE-01, MASTER_PLAN §22 | 01 | Browser keyboard QA | DONE (AA audit PHASE_11) |
 | GitHub-ready | §28 | 14 | CI | PARTIAL — CI updated for Drizzle (PHASE_02); green run pending credential restore (ISSUE-018) |
-| Neon-ready | §25,27 | 02,14 | migration rehearsal | PARTIAL — committed migration validated on real PostgreSQL fresh-DB rehearsal, 28/28 probes (PHASE_02); live-Neon apply pending credential restore (ISSUE-018, procedure in docs/ops/DATABASE.md §8) |
+| Neon-ready | §25,27 | 02,14 | migration rehearsal + live-Neon apply | PARTIAL — committed migration validated on real disposable Neon database via `drizzle-kit migrate` (empty start → SCHEMA_MATCH 23/23+9/9, migration-row hash == sha256 of committed file, smoke write+rollback OK, disposable db dropped, prod untouched — docs/ops/DATABASE.md §8) (PHASE_02); PHASE_14 production hardening PENDING |
 | Vercel-ready | §27 | 14 | Preview/production | PENDING |
 | No secrets in repo | §24,27 | 01,13,14 | secret scan/manual | PARTIAL — PHASE_01/02 staged scans clean (DATABASE_URL never committed); final audits 13/14 |
-| Production PostgreSQL schema + Drizzle migrations + seed strategy | PHASE-02, DATA_DICTIONARY | 02 | bun run db:verify:local (exit 0; 28/28) | DONE (live-Neon apply pending ISSUE-018) |
+| Production PostgreSQL schema + Drizzle migrations + seed strategy | PHASE-02, DATA_DICTIONARY | 02 | bun run db:verify:local (exit 0; 28/28) + live-Neon drizzle-kit migrate verification | DONE (live-Neon apply PROVEN 2026-09-27, DATABASE.md §8) |
 | Order/inventory/reviews/settings schema readiness for later phases | PHASE-02, DATA_DICTIONARY | 02 | invariant probes (money identities, snapshots, ledger, singleton) | DONE |
 | WCAG 2.2 AA target | §22 | 11,13 | axe/manual | PENDING |
 | Core Web Vitals target | §23 | 11,13 | Lighthouse/Web Vitals | PENDING |
