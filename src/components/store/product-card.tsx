@@ -16,7 +16,7 @@ type ProductCardProps = {
  * - no image → brand-tinted placeholder (never a broken image);
  * - sale → percentage badge derived from real variant pricing only;
  * - out of stock → honest overlay + text (browsing stays possible);
- * - wishlist state → visible heart (persistence arrives with PHASE-06);
+ * - wishlist heart → real persistent guest state (PHASE-06 store);
  * - long Arabic titles → line-clamped with reserved height so card rows stay
  *   aligned (UX states requirement).
  */
@@ -65,8 +65,14 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           ) : null}
         </div>
 
-        {/* Wishlist affordance — visible state, honest PHASE-05 behavior */}
+        {/* Wishlist affordance — real persistent guest state (PHASE-06) */}
         <WishlistButton
+          product={{
+            id: product.id,
+            slug: product.slug,
+            name: product.name,
+            imageUrl: product.imageUrl,
+          }}
           label={`أضِف «${product.name}» إلى المفضلة`}
           className="absolute end-2 top-2 rounded-full bg-surface/85 shadow-sm backdrop-blur"
         />

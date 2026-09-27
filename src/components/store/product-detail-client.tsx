@@ -16,12 +16,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { openCartDrawer } from "@/components/store/cart/cart-drawer";
+import { WishlistButton } from "@/components/store/wishlist-button";
 import { cn } from "@/lib/utils";
 import { discountPercent, formatPrice } from "@/lib/storefront/format";
-import {
-  buildCartEntryDraft,
-  type CartEntryDraft,
-} from "@/lib/storefront/metadata";
+import { buildCartEntryDraft, type CartEntryDraft } from "@/lib/storefront/metadata";
+import { cartStore } from "@/lib/storefront/cart-store";
 
 export type DetailVariant = {
   id: string;
@@ -58,11 +58,12 @@ const STOCK_LABELS: Record<StockState, { text: string; className: string }> = {
 };
 
 /**
- * Product detail purchase surface (PHASE-05 tasks 11–12):
+ * Product detail purchase surface (PHASE-05 tasks 11–12 + PHASE-06):
  * gallery with variant-aware imagery, explicit variant selectors with dynamic
  * availability (including honestly-disabled inactive variants), quantity, and
- * the add-to-cart ENTRY POINT that builds the exact `CartEntryDraft` contract
- * (selected variant is always explicit; the cart itself arrives PHASE-06).
+ * the add-to-cart entry point that builds the exact `CartEntryDraft` contract
+ * and feeds it into the persistent guest cart; a real wishlist toggle rounds
+ * out the purchase row.
  */
 export function ProductDetailClient({
   product,
@@ -202,8 +203,13 @@ export function ProductDetailClient({
 
   const canAddToCart = selectedVariant !== null && selectedVariant.stockQuantity > 0;
 
+  const currentImage = images[activeImageIndex] ?? images[0] ?? null;
+
   const handleAddToCart = () => {
     if (!selectedVariant) return;
+    // PHASE-06: the PHASE-05 contract flows END-TO-END — the draft built here
+    // is consumed unchanged by the cart domain (identity = variantId), which
+    // persists it durably. Stock-aware merge: the live PDP stock caps the line.
     const draft: CartEntryDraft = buildCartEntryDraft({
       product: { id: product.id, slug: product.slug, name: product.name },
       variant: {
@@ -217,14 +223,24 @@ export function ProductDetailClient({
       },
       quantity,
     });
-    const estimated = (Number(draft.unitPrice) * draft.quantity).toFixed(2);
-    toast({
-      title: "تم تجهيز اختيارك ✓",
-      description: `${draft.variantLabel} × ${draft.quantity} — ${formatPrice(estimated)}. السلة تُتاح في المرحلة التالية من المشروع.`,
+    const result = cartStore.add(draft, {
+      maxStock: selectedVariant.stockQuantity,
+      imageUrl: currentImage?.url ?? null,
     });
+    if (result.clampedToStock) {
+      toast({
+        title: "تم تعديل الكمية حسب المتاح",
+        description: `الكمية المتاحة من هذا الاختيار هي ${result.quantity} — أُضيفت السلة بهذه الكمية.`,
+      });
+    } else {
+      const estimated = (Number(draft.unitPrice) * result.quantity).toFixed(2);
+      toast({
+        title: result.merged ? "تحديث سلتك ✓" : "أُضيف إلى سلتك ✓",
+        description: `${draft.variantLabel} × ${result.quantity} — ${formatPrice(estimated)}.`,
+      });
+    }
+    openCartDrawer();
   };
-
-  const currentImage = images[activeImageIndex] ?? images[0] ?? null;
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] xl:gap-12">
@@ -483,6 +499,17 @@ export function ProductDetailClient({
                 ? "نفدت الكمية"
                 : "أضيفي إلى السلة"}
           </Button>
+
+          <WishlistButton
+            product={{
+              id: product.id,
+              slug: product.slug,
+              name: product.name,
+              imageUrl: images[0]?.url ?? null,
+            }}
+            label={`أضِف «${product.name}» إلى المفضلة`}
+            className="size-12 rounded-full border border-border bg-surface"
+          />
         </div>
 
         {stockState === "out" ? (

@@ -142,7 +142,7 @@ export function CartLine({ entry, validation }: CartLineProps) {
               type="button"
               variant="ghost"
               size="icon"
-              className="size-8 rounded-full"
+              className="size-10 rounded-full"
               aria-label={`زيادة كمية ${entry.productName}`}
               disabled={!orderable || entry.quantity >= maxQuantity}
               onClick={() => cartStore.updateQuantity(entry.variantId, entry.quantity + 1)}
@@ -160,7 +160,7 @@ export function CartLine({ entry, validation }: CartLineProps) {
               type="button"
               variant="ghost"
               size="icon"
-              className="size-8 rounded-full"
+              className="size-10 rounded-full"
               aria-label={`إنقاص كمية ${entry.productName}`}
               // Never below 1: decrement is disabled at the floor — removal is explicit.
               disabled={!orderable || entry.quantity <= 1}

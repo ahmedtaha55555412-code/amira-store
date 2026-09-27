@@ -32,11 +32,15 @@ export function discountPercent(
   return Math.round((1 - current / original) * 100);
 }
 
-/** Arabic product count phrase for cart/wishlist surfaces: 1/2/3–10/11+ forms. */
-export function cartCountPhrase(count: number): string {
-  if (count <= 0) return 'السلة فارغة';
+/** Arabic item-count phrase: 1 / 2 / 3–10 / 11+ forms. */
+export function itemCountPhrase(count: number): string {
   if (count === 1) return 'منتج واحد';
   if (count === 2) return 'منتجان';
   if (count <= 10) return `${count} منتجات`;
   return `${count} منتجًا`;
+}
+
+/** Arabic cart count phrase (adds the empty form). */
+export function cartCountPhrase(count: number): string {
+  return count > 0 ? itemCountPhrase(count) : 'السلة فارغة';
 }

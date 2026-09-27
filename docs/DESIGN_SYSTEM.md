@@ -165,3 +165,5 @@ Every data-driven component needs:
 - success feedback
 
 Do not leave blank white regions while data is loading.
+
+**PHASE_06 additions:** `CartDrawer` (start-side slide-over, persistent count badge, auto-opens on add) + `/cart` full page (summary card with honest disabled checkout CTA) + `CartLine` (shared dense/full rendering: status chips for كمية محدودة/نفدت الكمية/غير متاح, server-price adoption with struck old price, 40px stepper targets) + `WishlistDrawer` + real `WishlistButton` (persistent pressed state across cards/PDP/drawer). All consume the PHASE-01 tokens exclusively; RTL logical properties throughout (drawers open from the start side, `end-*` close buttons).

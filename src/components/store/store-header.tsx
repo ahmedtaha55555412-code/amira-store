@@ -10,16 +10,19 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { CartDrawer } from "@/components/store/cart/cart-drawer";
+import { WishlistDrawer } from "@/components/store/wishlist/wishlist-drawer";
 import { getStorefrontCategoryTree } from "@/lib/storefront/catalog";
 import { HeaderSearch } from "./header-search";
-import { HeaderSoonAction } from "./header-soon-action";
 import { Container } from "./container";
 
 /**
- * Storefront header (PHASE-05 task 1): real category navigation from the
- * database — desktop shows the five departments inline, phone/tablet get the
- * full tree (with children) in a slide-over, and search lives inline on
- * desktop plus as an always-visible row on small screens (task 5).
+ * Storefront header (PHASE-05 task 1, extended by PHASE-06): real category
+ * navigation from the database — desktop shows the five departments inline,
+ * phone/tablet get the full tree (with children) in a slide-over, and search
+ * lives inline on desktop plus as an always-visible row on small screens
+ * (task 5). Cart drawer + guest wishlist drawer (PHASE-06) are the live
+ * header actions with persistent count badges.
  */
 export async function StoreHeader() {
   const tree = await getStorefrontCategoryTree();
@@ -115,8 +118,8 @@ export async function StoreHeader() {
 
         <div className="flex items-center gap-0.5 sm:gap-1">
           <HeaderSearch className="hidden w-48 lg:block xl:w-64" />
-          <HeaderSoonAction feature="المفضلة" />
-          <HeaderSoonAction feature="سلة التسوق" />
+          <WishlistDrawer />
+          <CartDrawer />
         </div>
       </Container>
 

@@ -9,6 +9,10 @@
  * - owns the stock-aware validation cache (task 6) with a freshness window;
  * - listens to `storage` events so two tabs stay consistent.
  *
+ * DERIVED VALUES (count/subtotal) are computed INTO the state object on every
+ * transition — `getSnapshot` must return a STABLE reference between changes
+ * (useSyncExternalStore contract); selectors never allocate.
+ *
  * Consumed by `src/hooks/use-cart.ts` via `useSyncExternalStore`.
  */
 
@@ -57,6 +61,10 @@ export type CartState = {
   validation: Record<string, CartEntryValidation | undefined>;
   validating: boolean;
   lastValidatedAt: string | null;
+  /** Derived with the state (stable between transitions — never per-call). */
+  count: number;
+  subtotalCents: number;
+  excludedLineCount: number;
 };
 
 const EMPTY_STATE: CartState = {
@@ -65,11 +73,10 @@ const EMPTY_STATE: CartState = {
   validation: {},
   validating: false,
   lastValidatedAt: null,
+  count: 0,
+  subtotalCents: 0,
+  excludedLineCount: 0,
 };
-
-function snapshotOf(document: CartDocument, base: CartState): CartState {
-  return { ...base, entries: document.entries };
-}
 
 class CartStore {
   private storage: CartStorage;
@@ -108,11 +115,33 @@ class CartStore {
     for (const listener of this.listeners) listener();
   }
 
+  /** Single state-transition path: merges a partial and recomputes derived
+   *  values from (document.entries, validation) so getSnapshot stays stable. */
+  private updateState(partial: Partial<CartState>): void {
+    const merged = { ...this.state, ...partial };
+    const statusByVariantId = new Map<string, CartEntryStatus>();
+    const priceOverrideByVariantId = new Map<string, string>();
+    for (const [variantId, validation] of Object.entries(merged.validation)) {
+      if (!validation) continue;
+      statusByVariantId.set(variantId, validation.status);
+      if (validation.priceChanged && validation.currentPrice) {
+        priceOverrideByVariantId.set(variantId, validation.currentPrice);
+      }
+    }
+    const subtotal = cartSubtotalCents(this.document, statusByVariantId, priceOverrideByVariantId);
+    this.state = {
+      ...merged,
+      count: cartCount(this.document),
+      subtotalCents: subtotal.totalCents,
+      excludedLineCount: subtotal.excludedLineCount,
+    };
+    this.emit();
+  }
+
   private commit(document: CartDocument): void {
     this.document = document;
     saveCartDocument(this.storage, document);
-    this.state = snapshotOf(document, this.state);
-    this.emit();
+    this.updateState({ entries: document.entries });
   }
 
   /* -------------------------------- hydration ------------------------------ */
@@ -128,15 +157,14 @@ class CartStore {
       this.document = createEmptyCartDocument();
       if (result.reason !== 'missing') saveCartDocument(this.storage, this.document);
     }
-    this.state = { ...snapshotOf(this.document, this.state), hydrated: true };
-    this.emit();
+    this.updateState({ hydrated: true, entries: this.document.entries });
   }
 
   /* --------------------------------- actions ------------------------------- */
 
   add(
     draft: CartEntryDraft,
-    options: { maxStock?: number; imageUrl?: string | null } = {},
+    options: { maxStock?: number; imageUrl?: string | null; now?: string } = {},
   ): AddToCartResult {
     const { document, result } = addCartEntry(this.document, draft, options);
     // A refused zero-quantity add (zero stock) returns the unchanged document —
@@ -158,16 +186,14 @@ class CartStore {
    *  confirms order creation. Also the manual "clear cart" action. */
   clear(): void {
     this.commit(clearCart(this.document));
-    this.state = { ...this.state, validation: {}, lastValidatedAt: null };
-    this.emit();
+    this.updateState({ validation: {}, lastValidatedAt: null });
   }
 
   /* ------------------------- stock-aware validation ------------------------ */
 
   private markValidating(validating: boolean): void {
     if (this.state.validating === validating) return;
-    this.state = { ...this.state, validating };
-    this.emit();
+    this.updateState({ validating });
   }
 
   applyAvailability(payload: AvailabilityResponse): void {
@@ -176,29 +202,25 @@ class CartStore {
     };
     for (const item of payload.availability) {
       const entry = this.document.entries.find((e) => e.variantId === item.variantId);
-      const status = deriveEntryStatus(item);
       validation[item.variantId] = {
-        status,
+        status: deriveEntryStatus(item),
         currentPrice: item.found ? item.currentPrice : null,
         priceChanged: entry ? item.currentPrice !== entry.unitPrice : false,
         stockQuantity: item.found ? item.stockQuantity : null,
       };
     }
-    this.state = {
-      ...this.state,
+    this.updateState({
       validation,
       validating: false,
       lastValidatedAt: new Date().toISOString(),
-    };
-    this.emit();
+    });
   }
 
   /** POST the live variant ids to the read-only availability endpoint. */
   async revalidate(): Promise<void> {
     const variantIds = this.document.entries.map((entry) => entry.variantId);
     if (variantIds.length === 0) {
-      this.state = { ...this.state, validation: {}, validating: false };
-      this.emit();
+      this.updateState({ validation: {}, validating: false });
       return;
     }
     if (typeof fetch !== 'function') return; // Node/test environments
@@ -224,8 +246,7 @@ class CartStore {
     if (typeof window === 'undefined' || typeof fetch !== 'function') return;
     if (this.validationTimer !== null) return; // one in-flight round max
     const last = this.state.lastValidatedAt ? Date.parse(this.state.lastValidatedAt) : 0;
-    const isFresh = Date.now() - last < CART_VALIDATION_FRESH_MS;
-    if (isFresh && this.state.lastValidatedAt !== null) return;
+    if (last > 0 && Date.now() - last < CART_VALIDATION_FRESH_MS) return;
     this.validationTimer = setTimeout(() => {
       this.validationTimer = null;
       void this.revalidate();
@@ -235,21 +256,3 @@ class CartStore {
 
 /** App-wide singleton (module scope → one store per page). */
 export const cartStore = new CartStore();
-
-
-/* ------------------------------- selectors -------------------------------- */
-
-export function selectCartCount(state: CartState): number {
-  return cartCount({ version: 1, entries: state.entries });
-}
-
-export function selectSubtotalCents(state: CartState): {
-  totalCents: number;
-  excludedLineCount: number;
-} {
-  const statusByVariantId = new Map<string, CartEntryStatus>();
-  for (const [variantId, validation] of Object.entries(state.validation)) {
-    if (validation) statusByVariantId.set(variantId, validation.status);
-  }
-  return cartSubtotalCents({ version: 1, entries: state.entries }, statusByVariantId);
-}

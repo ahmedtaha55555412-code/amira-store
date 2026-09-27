@@ -382,3 +382,20 @@ indexes: they match through the Arabic-aware `translate()` normalization express
 Seed note (same phase): demo media assets now carry DISTINCT per-product placeholder URLs
 (`/brand/demo/<slug>.svg`, dev-only) so the storefront's variant-image switching is visually
 verifiable in development QA; the upsert is re-run safe and demo rows remain clearly marked.
+
+## 12. PHASE_06 schema note + rehearsal-locale lesson (2026-09-27)
+
+- **PHASE-06 introduces NO schema change** — by design: the guest cart and
+  wishlist are durable CLIENT state (versioned localStorage documents,
+  `amira.cart.v1` / `amira.wishlist.v1`), and the one new endpoint
+  (`/api/storefront/cart-availability`) is READ-ONLY. The binding
+  revalidation of price/stock remains the PHASE-07 order-creation
+  transaction (MASTER_PLAN §10). No migration; `__drizzle_migrations`
+  stays 2/2.
+- **Disposable-rehearsal locale requirement:** an embedded/local PostgreSQL
+  rehearsal cluster must be initialized with a UTF-8 ctype that classifies
+  Arabic as word characters (`--locale=C.UTF-8`), or `pg_trgm` extracts ZERO
+  trigrams from Arabic strings and the migration-0001 fuzzy tier silently
+  fails (`strict_word_similarity(...) = 0`). Neon's managed clusters are
+  UTF-8 by default — this only affects disposable local rehearsals.
+  Verified: similarity('مرطاب','مرطب') = 0 under `C`, 0.375 under `C.utf8`.
