@@ -172,6 +172,9 @@
     scroll-behavior: smooth;
     /* Global responsive overflow protection (PHASE-01) */
     overflow-x: clip;
+    /* Keep anchor/keyboard/programmatic scroll targets clear of the admin
+       sticky save bar (PHASE-04 final-gate finding D-1) */
+    scroll-padding-bottom: 7rem;
     -webkit-text-size-adjust: 100%;
   }
   body {

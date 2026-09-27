@@ -36,7 +36,7 @@ bun run db:bootstrap       # production-safe init: settings + 5 categories IF AB
 bun run db:seed            # DEV seed: deterministic demo catalog (NODE_ENV=development only)
 bun run db:verify          # probes: migrations current + all business invariants (non-prod only)
 bun run verify:auth        # PHASE-03 auth/security suite (44 checks; non-prod only)
-bun run verify:catalog     # PHASE-04 catalog/media service suite (37 checks; non-prod only)
+bun run verify:catalog     # PHASE-04 catalog/media service suite (43 checks; non-prod only)
 bun run db:verify:local    # full disposable-PG rehearsal: fresh DB → migrate → bootstrap →
                            # seed (×2, idempotency) → guard check → 28 invariant probes
 ```

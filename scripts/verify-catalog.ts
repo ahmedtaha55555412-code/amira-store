@@ -17,6 +17,8 @@
  *   9. ledger-referenced variant delete guard (deactivate instead)
  *  10. media attach/reorder/replace without orphans; guarded asset deletion
  *  11. size guide upsert/rows
+ *  14. media credential surfaces: OIDC pair vs legacy token decision logic
+ *      (no real values; process-local env, always restored)
  *
  * Safety:
  * - REFUSES NODE_ENV=production;
@@ -818,6 +820,38 @@ try {
   const unusedColor = await createAttributeValue(colorAttribute.id, { value: 'unused' }, TEST_ADMIN_ID);
   await deleteAttributeValue(unusedColor.id, TEST_ADMIN_ID);
   pass('unused value deleted cleanly');
+
+  /* ------------------------------------- 14) media credential surfaces (OIDC era) */
+  // Pure decision-logic checks on isVercelBlobConfigured() — no real values, no
+  // network calls; env mutations are process-local and always restored.
+  console.log('\n[14] media credential surfaces (OIDC + legacy token)');
+  const isConfigured = (await import('@/lib/media/vercel-blob')).isVercelBlobConfigured;
+  const blobEnvKeys = ['BLOB_READ_WRITE_TOKEN', 'BLOB_STORE_ID', 'VERCEL_OIDC_TOKEN'] as const;
+  const savedBlobEnv = blobEnvKeys.map((key) => [key, process.env[key]] as const);
+  try {
+    for (const key of blobEnvKeys) delete process.env[key];
+    assert('no credentials → unconfigured', isConfigured() === false);
+    process.env['BLOB_STORE_ID'] = 'store_unit_test';
+    assert('store id alone → still unconfigured', isConfigured() === false);
+    process.env['VERCEL_OIDC_TOKEN'] = 'oidc_unit_test';
+    assert('store id + OIDC token → configured (OIDC path)', isConfigured() === true);
+    delete process.env['BLOB_STORE_ID'];
+    delete process.env['VERCEL_OIDC_TOKEN'];
+    process.env['BLOB_READ_WRITE_TOKEN'] = 'rw_unit_test';
+    assert('legacy read-write token → configured', isConfigured() === true);
+    assert('empty-string token → unconfigured', (() => {
+      process.env['BLOB_READ_WRITE_TOKEN'] = '   ';
+      const result = isConfigured();
+      delete process.env['BLOB_READ_WRITE_TOKEN'];
+      return result === false;
+    })());
+  } finally {
+    for (const [key, value] of savedBlobEnv) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+  pass('media credential env restored exactly');
 } catch (error) {
   failures += 1;
   console.error('\n[verify-catalog] UNEXPECTED FAILURE:', (error as Error)?.name, (error as Error)?.message);

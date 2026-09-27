@@ -131,12 +131,15 @@ export function MediaManager({
           <div>
             <p className="font-semibold text-foreground">رفع الصور غير مفعّل في هذه البيئة.</p>
             <p className="mt-1 leading-relaxed text-muted-foreground">
-              اربط مخزن Vercel Blob بالمشروع ليُضاف المتغير{' '}
+              اربط مخزن Vercel Blob بالمشروع ليُضاف متغيرات المصادقة{' '}
+              <span dir="ltr" className="font-mono text-xs">
+                BLOB_STORE_ID + VERCEL_OIDC_TOKEN
+              </span>{' '}
+              تلقائيًا (أو التوكن القديم{' '}
               <span dir="ltr" className="font-mono text-xs">
                 BLOB_READ_WRITE_TOKEN
-              </span>{' '}
-              تلقائيًا. حتى ذلك يمكنك إدارة أصول المكتبة الموجودة وإرفاقها
-              بالمنتجات.
+              </span>
+              ). حتى ذلك يمكنك إدارة أصول المكتبة الموجودة وإرفاقها بالمنتجات.
             </p>
           </div>
         </div>

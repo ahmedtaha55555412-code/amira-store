@@ -328,16 +328,43 @@
 - Notes: found only by the owner's post-completion audit; recorded per ERROR_PROTOCOL. Non-browser clients have no sanctioned use of the admin dashboard (single-admin model, MASTER_PLAN §16) — requests without Origin/Referer are rejected by design.
 
 ### ISSUE-2026-09-27-023
-- Phase: PHASE_04 (2026-09-27)
+- Phase: PHASE_04 (2026-09-27; UPDATED by the PHASE-04 final integration/visual gate, same day)
 - Severity: MEDIUM (deployment-time configuration gap; does not block any PHASE-04 task's logic)
-- Status: OPEN — configuration pending (owner action at deployment; tracked for PHASE-14)
-- Symptom: `BLOB_READ_WRITE_TOKEN` is absent from the sandbox environment, so the Vercel Blob provider cannot be exercised live here; the admin media UI shows an honest "uploads not configured" banner and the upload endpoint answers 503 with the exact remediation.
-- Root cause: connecting a Vercel Blob store to the project (which provisions the token in Vercel environments) is an owner-side dashboard action; nothing in the sandbox can mint it.
-- Impact: 13/14 PHASE-04 tasks fully implemented AND verified, including the entire media service abstraction (validation: magic-byte mime sniffing / 8 MB ceiling / sharp dimensions; registry; reference guards; attach/reorder/replace). Only the live "bytes → Blob" hop awaits the token; the provider is isolated behind `src/lib/media/service.ts` per MASTER_PLAN §20, so enabling it requires zero code changes.
-- Minimal fix (owner action at deployment): Vercel dashboard → project `amira-store` → Storage → create/connect a Blob store → the token appears automatically in Vercel environments. For local use, copy it into git-ignored `.env.local`.
-- Verification performed: upload endpoint 503 + honest banner in the unconfigured state; full validation + registry + reference-guard behavior verified with fixture assets against the development branch (verify-catalog [10]).
-- Related files: `src/lib/media/*`, `.env.example`
-- Notes: NOT a workaround — the media service abstraction with the honest unconfigured state is exactly the MASTER_PLAN §20 contract; live-verification of the Blob hop is recorded as a PHASE-14 deployment-checklist item.
+- Status: OPEN — configuration pending (owner action at deployment; tracked for PHASE-14). The code side was narrowed by this audit: the media service now accepts BOTH current Vercel auth models.
+- Symptom: no Blob credential is present in the sandbox environment, so the Vercel Blob provider cannot be exercised live here; the admin media UI shows an honest "uploads not configured" banner and the upload endpoint answers 503 with the exact remediation.
+- Root cause: connecting a Vercel Blob store to the project is an owner-side dashboard action; nothing in the sandbox can mint credentials. Additionally (found by this gate): the provider's configured-state check recognized ONLY the legacy long-lived `BLOB_READ_WRITE_TOKEN` and would have reported "unconfigured" on a modern OIDC-connected store.
+- Impact: 13/14 PHASE-04 tasks fully implemented AND verified, including the entire media service abstraction (validation: magic-byte mime sniffing / 8 MB ceiling / sharp dimensions; registry; reference guards; attach/reorder/replace). Only the live "bytes → Blob" hop awaits credentials; the provider is isolated behind `src/lib/media/service.ts` per MASTER_PLAN §20.
+- Current-state audit performed by the final gate (owner directive, no workarounds, no new store created, no tokens exposed):
+  1. Installed client: `@vercel/blob` 2.8.0 with bundled `@vercel/oidc` 3.8.9. Its `resolveBlobAuth()` accepts — in order — presigned payloads, an explicit `token`, an OIDC token (`options.oidcToken` or auto via `getVercelOidcToken()`) paired with `storeId` (option or `BLOB_STORE_ID` env), then falls back to `BLOB_READ_WRITE_TOKEN`.
+  2. Official Vercel docs (vercel.com/docs/vercel-blob, retrieved 2026-09-27): for OIDC-connected stores Vercel injects `BLOB_STORE_ID` + `VERCEL_OIDC_TOKEN` automatically; the SDK pairs them; the OIDC token is short-lived and rotated by the Vercel runtime. June 2026 announcement (cross-checked via two independent search results): OIDC became the DEFAULT for newly connected stores; existing stores can be upgraded from the store's Projects tab.
+  3. Verdict: OIDC IS supported for this exact project/store model at deployment — via the installed client version itself (≥2.4), needing no rewrite of the media architecture. `VERCEL_OIDC_TOKEN` is minted only inside the Vercel runtime, so a live OIDC hop is NOT technically possible from this sandbox (no token, and `@vercel/oidc`'s refresh path exists only on Vercel's network); the legacy-token path is equally absent here. Hence the live upload/delete hop remains recorded for PHASE-14 and this issue stays OPEN — precisely per the owner's conditional.
+  4. Minimal code changes made (the only code the audit changed): `isVercelBlobConfigured()` now returns true for EITHER `BLOB_READ_WRITE_TOKEN` OR the OIDC pair (`BLOB_STORE_ID` + `VERCEL_OIDC_TOKEN`) — the exact surfaces `resolveBlobAuth()` accepts; the 503 error message, the admin banner copy (Arabic), and `.env.example` now name both mechanisms. `.env.example` notes OIDC values are Vercel-injected/runtime-minted and must never be committed.
+- Verification performed: verify-catalog new section [14] (6 checks — no creds → unconfigured; store id alone → unconfigured; store id + OIDC token → configured; legacy token → configured; blank token → unconfigured; env restored exactly), suite now 43/43; banner text visually confirmed in browser at 1440/768/375; upload endpoint still answers 503 honestly in the sandbox.
+- Related files: `src/lib/media/vercel-blob.ts`, `src/lib/media/types.ts`, `src/app/api/admin/media/upload/route.ts`, `src/app/admin/(protected)/media/media-manager.tsx`, `.env.example`, `scripts/verify-catalog.ts`
+- Notes: NOT a workaround — the media service abstraction with the honest unconfigured state is exactly the MASTER_PLAN §20 contract; at deployment the owner connects the store (OIDC default) and the existing code path activates with zero further changes; if the owner instead upgrades an existing store from its Projects tab, the same code path applies.
+
+### ISSUE-2026-09-27-026 (final gate finding D-1)
+- Phase: PHASE_04 final integration/visual gate (2026-09-27)
+- Severity: LOW (UX polish; no data or security impact)
+- Status: FIXED
+- Symptom: in the product editor, programmatic/keyboard/smooth scrolling could land interactive controls (attribute checkbox, value combobox, size-guide "إضافة صف") visually underneath the sticky bottom save bar; browser automation hit "element covered by sticky bar" three times during the golden flow.
+- Root cause: the editor's sticky save bar (`sticky bottom-4`) overlays page content while `scroll-padding-bottom` on `html` was unset (`auto`), so scroll-into-view operations positioned targets at the viewport bottom edge — under the bar. The editor also sets `scroll-behavior: smooth` (inherited from PHASE-01), making transient overlap longer.
+- Impact: cosmetic/ergonomic only — content is fully reachable by manual scrolling; no data, security, or functionality impact.
+- Minimal fix: `scroll-padding-bottom: 7rem` on `html` in `src/app/globals.css` (global, benefits every admin surface with a sticky bar).
+- Verification: browser re-measurement on the editor — checkbox scrolls to y=398 with the bar top at y=690 (fully clear); automated click-through of the previously failing interactions no longer hits the bar; typecheck/lint clean; no-op save round-trip still 200.
+- Related files: `src/app/globals.css`
+- Notes: the sticky save bar itself is correct, deliberate UX (PHASE-04); the fix only compensates scroll targeting.
+
+### ISSUE-2026-09-27-027 (final gate finding N-3)
+- Phase: PHASE_04 final integration/visual gate (2026-09-27)
+- Severity: MEDIUM (accessibility; MASTER_PLAN §22 targets WCAG 2.2 AA) — FIXED
+- Symptom: the five per-variant inputs in the product editor (SKU, السعر الأصلي, السعر الحالي, المخزون, حد التنبيه) exposed NO accessible name — the visible labels were sibling `<Label>` elements without htmlFor/id association, so assistive technology announced unnamed textboxes (confirmed in the accessibility tree during visual QA).
+- Root cause: the variant row markup used visual-only label siblings; the size-guide table inputs by contrast carried `aria-label`s (and were announced correctly), so the gap was specific to the variant row.
+- Impact: screen-reader users could not tell which value each variant input holds; a WCAG 2.2 AA gap on a PHASE-04 admin surface. No functional/data impact.
+- Minimal fix: `aria-label` added to each of the five inputs (mirroring the existing size-guide pattern): رمز SKU للمتغير / السعر الأصلي للمتغير / السعر الحالي للمتغير / المخزون للمتغير / حد التنبيه للمتغير.
+- Verification: accessibility tree now reports all five named inputs; visual snapshot unchanged; editor save round-trip 200; typecheck/lint clean.
+- Related files: `src/app/admin/(protected)/products/[id]/editor-sections.tsx`
+- Notes: found only by actually inspecting the accessibility tree (not just screenshots) — recorded per ERROR_PROTOCOL.
 
 ### ISSUE-2026-09-27-024
 - Phase: PHASE_04 (browser QA round, 2026-09-27)

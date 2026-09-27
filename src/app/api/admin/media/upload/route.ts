@@ -5,9 +5,11 @@
  * - same-origin gate → session authorization → file validation
  *   (magic-byte mime sniffing, 8 MB ceiling, sharp dimensions) →
  *   provider put (Vercel Blob) → media_assets registration.
- * - When BLOB_READ_WRITE_TOKEN is absent the endpoint answers 503 with the
- *   exact remediation — the honest unconfigured state, never a silent
- *   fallback (MASTER_PLAN §20: Vercel Blob IS the media store).
+ * - When no Blob credentials are present (BLOB_READ_WRITE_TOKEN, or the
+ *   OIDC pair BLOB_STORE_ID + VERCEL_OIDC_TOKEN inside the Vercel runtime)
+ *   the endpoint answers 503 with the exact remediation — the honest
+ *   unconfigured state, never a silent fallback (MASTER_PLAN §20: Vercel
+ *   Blob IS the media store).
  */
 
 import { NextResponse, type NextRequest } from 'next/server';

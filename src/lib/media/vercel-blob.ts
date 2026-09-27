@@ -1,12 +1,20 @@
 /**
  * Amira Store — Vercel Blob storage provider (PHASE-04 task 9).
  *
- * Thin adapter over @vercel/blob. Configuration is checked lazily: when
- * BLOB_READ_WRITE_TOKEN is absent the service layer surfaces an honest
+ * Thin adapter over @vercel/blob. Configuration is checked lazily: when no
+ * Blob credentials are present the service layer surfaces an honest
  * "not configured" state instead of failing mid-upload (see service.ts).
  *
- * NOTE: @vercel/blob reads BLOB_READ_WRITE_TOKEN from the environment at
- * call time; access "public" maps to Blob's default public store behavior
+ * Authentication (current Vercel model, verified 2026-09-27):
+ * - OIDC (default for newly connected stores): Vercel injects
+ *   BLOB_STORE_ID + VERCEL_OIDC_TOKEN into the connected project; the SDK
+ *   pairs them per request with a short-lived auto-rotating token. Only
+ *   available inside the Vercel runtime (VERCEL_OIDC_TOKEN is minted there).
+ * - Legacy long-lived BLOB_READ_WRITE_TOKEN for stores not yet upgraded.
+ * @vercel/blob ≥2.4 resolves auth itself (OIDC first, token fallback); this
+ * adapter only decides whether ANY supported credential surface exists.
+ *
+ * NOTE: access "public" maps to Blob's default public store behavior
  * (MASTER_PLAN §20: public catalog imagery; admin-only originals would use
  * the private store in a later phase that consumes them).
  */
@@ -19,9 +27,15 @@ import type {
   PutObjectResult,
 } from './types';
 
+function hasEnv(name: string): boolean {
+  const value = process.env[name];
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 export function isVercelBlobConfigured(): boolean {
-  const token = process.env['BLOB_READ_WRITE_TOKEN'];
-  return typeof token === 'string' && token.trim().length > 0;
+  // Same surfaces @vercel/blob's resolveBlobAuth() accepts: a long-lived
+  // read-write token, or the OIDC pair (store id + runtime OIDC token).
+  return hasEnv('BLOB_READ_WRITE_TOKEN') || (hasEnv('BLOB_STORE_ID') && hasEnv('VERCEL_OIDC_TOKEN'));
 }
 
 export const vercelBlobProvider: MediaStorageProvider = {

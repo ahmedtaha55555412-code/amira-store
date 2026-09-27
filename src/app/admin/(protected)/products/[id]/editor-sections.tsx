@@ -480,6 +480,7 @@ export function VariantsEditor({
                     <Label className="text-xs text-muted-foreground">SKU</Label>
                     <Input
                       dir="ltr"
+                      aria-label="رمز SKU للمتغير"
                       value={variant.sku}
                       onChange={(event) =>
                         updateVariant(variant.clientKey, { sku: event.target.value.toUpperCase() })
@@ -492,6 +493,7 @@ export function VariantsEditor({
                     <Label className="text-xs text-muted-foreground">السعر الأصلي</Label>
                     <Input
                       dir="ltr"
+                      aria-label="السعر الأصلي للمتغير"
                       inputMode="decimal"
                       value={variant.originalPrice}
                       onChange={(event) =>
@@ -504,6 +506,7 @@ export function VariantsEditor({
                     <Label className="text-xs text-muted-foreground">السعر الحالي</Label>
                     <Input
                       dir="ltr"
+                      aria-label="السعر الحالي للمتغير"
                       inputMode="decimal"
                       value={variant.currentPrice}
                       onChange={(event) =>
@@ -516,6 +519,7 @@ export function VariantsEditor({
                     <Label className="text-xs text-muted-foreground">المخزون</Label>
                     <Input
                       dir="ltr"
+                      aria-label="المخزون للمتغير"
                       inputMode="numeric"
                       value={Number.isFinite(variant.stockQuantity) ? variant.stockQuantity : 0}
                       onChange={(event) =>
@@ -530,6 +534,7 @@ export function VariantsEditor({
                     <Label className="text-xs text-muted-foreground">حد التنبيه</Label>
                     <Input
                       dir="ltr"
+                      aria-label="حد التنبيه للمتغير"
                       inputMode="numeric"
                       value={
                         Number.isFinite(variant.lowStockThreshold) ? variant.lowStockThreshold : 3

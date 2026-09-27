@@ -38,7 +38,9 @@ export interface MediaStorageProvider {
 export class MediaStorageUnavailableError extends Error {
   readonly status = 503;
   constructor() {
-    super('media storage is not configured (BLOB_READ_WRITE_TOKEN missing)');
+    super(
+      'media storage is not configured (no Blob credentials: BLOB_READ_WRITE_TOKEN, or BLOB_STORE_ID + VERCEL_OIDC_TOKEN inside the Vercel runtime)',
+    );
     this.name = 'MediaStorageUnavailableError';
   }
 }
