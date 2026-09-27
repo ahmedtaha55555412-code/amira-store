@@ -15,6 +15,45 @@
 
 ---
 
+### ISSUE-2026-09-27-037
+- Phase: Environment event between PHASE-05 closure and PHASE-06 (discovered 2026-09-27 during the owner-paused disposition round) — RECOVERED (with two owner-side gaps pending)
+- Severity: HIGH (environment), mitigated to LOW for project data (zero project data loss proven)
+- Status: OPEN (recovery complete in-sandbox; two credential re-issues pending owner action)
+- Symptom: the sandbox was recycled to a disk snapshot from the PHASE-01 closure moment (~Sep 27 19:03) while the live session was mid-PHASE-06. On-disk effects: working tree reverted to PHASE-01 state; `.auth/` credential vault gone (GitHub + Vercel tokens — ISSUE-009 class); `.env.local` (Neon `development` pooled credential) gone; local git history after PHASE-01 gone; `EXECUTION_STATUS.md`/worklog reverted to their PHASE-01-closure content. The conversation-side state (PHASE-02..05 complete, PHASE-06 authorized) no longer matched the disk.
+- Reproduction: platform lifecycle event, not reproducible in-project.
+- Root cause: ephemeral sandbox disk; the only surviving current artifacts were (a) the remote git history (canonical, incl. PHASE-05 commit a7eaa03 — confirmed via the owner-provided GitHub/Vercel views) and (b) the `/tmp/my-project` PolarFS snapshot taken 2026-09-27T17:44Z holding the full PHASE-05 working tree + gate state (`CURRENT_PHASE=PHASE_06`).
+- Impact: NO project data lost — PHASE-05 code/docs fully recovered from (b) and diffable against (a). Lost pending re-issue: GitHub push auth, Vercel auth (neither needed for PHASE-06 itself), and the Neon `development` branch pooled string (needed for live-branch verification; a local disposable PostgreSQL rehearsal restores development capability meanwhile, per DATABASE.md §7). Lost session work after 17:44: the verify:cart placement discussion only — no PHASE-06 code had been written yet (verified: snapshot has zero cart files).
+- Minimal fix (recovery, executed): rsync-restored the working tree from the PolarFS snapshot (preserving `.git`, `.env`, `node_modules`); `bun install` + typecheck + lint → green; platform auto-snapshot commit `f96db0e` + branch `wip/recovery-phase06-20260927` preserve everything in git objects; disposable rehearsal PG 18.4 (outside the repo, `/home/z/pgdata`, port 5433) migrated/seeded → `db:verify` 28/28; production disposition for the owner-flagged build log recorded as ISSUE-035/036.
+- Reconciliation plan (executes when GitHub auth is restored): `git fetch` → verify `origin/main = a7eaa03` → diff the working tree against it (expected: near-zero delta on PHASE-05 files; real delta = the disposition fix + PHASE-06 work) → re-commit in clean logical commits on top of a7eaa03 → push. Local `main` history is considered stale until then; the remote is canonical.
+- Verification: typecheck ✅ lint ✅ db:verify 28/28 (rehearsal) ✅ production build ✅ (post-disposition) — the recovered tree behaves identically to the pushed PHASE-05 state.
+- Related files: none (environment event); standing protocols referenced: ISSUE-025 restart protocol, DATABASE.md §7/§9.3/§10
+- Notes: two owner actions remain: (1) GitHub device-flow re-authorization → restores push/CI verification; (2) re-provision the Neon `development` pooled string into git-ignored `.env.local` (owner copies from Neon Console → Connect → branch `development`; never through tracked files) → restores live-branch verification + final `verify:cart` run. Both were anticipated by the vault-persistence design (`.auth/` was always git-ignored and re-issuable; ISSUE-018 precedent).
+
+### ISSUE-2026-09-27-035
+- Phase: Production infra disposition (owner-paused PHASE-06 round, 2026-09-27) — FIXED
+- Severity: LOW today (deprecation warning), MEDIUM forward-compatibility (the convention will be removed in a future Next.js major)
+- Status: FIXED
+- Symptom: the Vercel production build of `main` (commit a7eaa03) logs `⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy`. The deployment itself completes and runs.
+- Reproduction: any production `next build` (Vercel 20:42:18 log) with `src/middleware.ts` present and no `src/proxy.ts`.
+- Root cause: Next.js 16 renamed the edge-middleware file convention from `middleware.ts` to `proxy.ts` (verified against the installed next 16.1.3: `build/index.js` warns when `MIDDLEWARE_FILENAME` exists without `PROXY_FILENAME`; `get-page-static-info.js` accepts a default export or a named `proxy` function export, and still parses `export const config = { matcher }` via the shared middleware-config schema; the proxy always runs on the Node.js runtime). PHASE-03's admin boundary guard predates the rename.
+- Impact: warning-only today; the runtime behavior (cookie-presence redirect for /admin, no-store stamps) is unchanged. Left in place it becomes a breaking upgrade later and normalizes warning noise in production builds.
+- Minimal fix: `git mv src/middleware.ts src/proxy.ts`; renamed the exported function `middleware` → `proxy`; logic byte-identical (same matcher `['/admin', '/admin/:path*']`, same no-store stamps, same login passthrough); updated the live comment in `src/lib/auth/guard.ts` (historical ISSUE_LOG entries intentionally not rewritten). No other file touched.
+- Verification: typecheck ✅ · lint ✅ · production build ✅ with the deprecation warning ABSENT and `ƒ Proxy (Middleware)` listed in the route table · dev-server smoke: `/admin` → 307 `/admin/login` + `cache-control: no-store`; `/admin/products` → 307 with `next=%2Fadmin%2Fproducts`; `/admin/login` → 200 + `no-store, must-revalidate`; homepage 200; suggestions endpoint regression spot ✅; origin-gate spot (cross-origin + no-origin login POST → 403/403) ✅ · dev.log zero errors.
+- Related files: `src/proxy.ts` (renamed from `src/middleware.ts`), `src/lib/auth/guard.ts` (comment), `next.config.ts` (see ISSUE-2026-09-27-036)
+- Notes: the deployed production runtime was NEVER broken by this — the disposition closes the forward-compatibility gap and silences the warning the owner flagged from the a7eaa03 build log.
+
+### ISSUE-2026-09-27-036
+- Phase: Production infra disposition (owner-paused PHASE-06 round, 2026-09-27) — FIXED
+- Severity: MEDIUM (deploy-time safety gap)
+- Status: FIXED
+- Symptom: the same Vercel production build log (a7eaa03) prints `Skipping validation of types` — TypeScript errors could never fail a production deployment.
+- Root cause: scaffold-default `typescript: { ignoreBuildErrors: true }` in `next.config.ts`. CI runs `typecheck`, but Vercel deploys on push and does NOT gate on the CI result — the only enforcement at deploy time was this disabled check.
+- Impact: a type-broken `main` commit could ship to production (runtime mismatch vs. the verified type surface). No actual type error has shipped (every phase record shows typecheck ✅), so this is a hardened-posture fix, not an incident.
+- Minimal fix: removed the `typescript.ignoreBuildErrors` block; a comment pins the decision ("a deploy must never ship type-broken code; CI `typecheck` alone does not gate Vercel deployments").
+- Verification: production build ✅ and now logs `Running TypeScript ...` (validation ON) with zero type errors across the full tree including the recovered PHASE-05 code and the in-flight PHASE-06 working files.
+- Related files: `next.config.ts`
+- Notes: found while dispositioning the deprecation warning in the same build log; recorded separately because it is an independent control.
+
 ### ISSUE-2026-09-27-028
 - Phase: PHASE_05 (browser E2E round, 2026-09-27) — FIXED
 - Symptom: after navigating to /category/[slug] or /product/[slug], the page rendered breadcrumbs/content but had NO store header, footer, or WhatsApp FAB — only the homepage carried the storefront chrome.

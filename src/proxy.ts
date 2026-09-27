@@ -1,5 +1,6 @@
 /**
- * Amira Store — admin boundary UX guard (PHASE-03).
+ * Amira Store — admin boundary UX guard (PHASE-03; Next.js 16 `proxy`
+ * convention — the file was migrated from `middleware.ts`, logic unchanged).
  *
  * Edge-level, cookie-PRESENCE-ONLY redirect for /admin pages: without a
  * session cookie the visitor goes straight to the login page. This is a UX
@@ -18,7 +19,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const ADMIN_SESSION_COOKIE = 'amira_admin_session';
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
 
   if (pathname === '/admin/login') {

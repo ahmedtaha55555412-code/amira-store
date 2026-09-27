@@ -549,3 +549,22 @@ Stage Summary:
 - Database safety held: development branch only; migration 0001 committed as the schema mechanism; probe rows cleaned.
 - Known notes: ISSUE-034 (dev-only hydration warnings) + 4-letter transposition fuzzy limit documented; FAB transient overlap = inherited floating-CTA pattern.
 - Next: PHASE-06 (cart + guest wishlist) — LOCKED until owner go-ahead.
+
+---
+Task ID: 15 (production infra disposition — owner-ordered PHASE-06 pause)
+Agent: Z.ai Code (main)
+Task: Owner paused PHASE-06 with the a7eaa03 Vercel production build log ("middleware deprecated" warning + "Skipping validation of types"): investigate and disposition before phase work resumes. Round also absorbed the sandbox-recycle recovery (ISSUE-037).
+
+Work Log:
+- PHASE-06 implementation paused mid-flight; the half-built cart work (domain/stores/hooks/availability API/drawer) left untouched by the disposition.
+- Investigated both anomalies against the INSTALLED next 16.1.3 (authoritative): build/index.js deprecation warning path; get-page-static-info.js proxy export contract (default OR named `proxy`; `config.matcher` still honored via the shared middleware-config schema; proxy runs on the Node.js runtime).
+- Fix 1 (ISSUE-035): git mv src/middleware.ts → src/proxy.ts; export renamed `middleware` → `proxy`; logic byte-identical; live comment in src/lib/auth/guard.ts updated (historical ISSUE_LOG entries intentionally not rewritten).
+- Fix 2 (ISSUE-036): removed scaffold-default `typescript.ignoreBuildErrors: true` from next.config.ts — Vercel deploys now run TypeScript validation.
+- Build-environment discovery: local production build failed prerendering `/` (ECONNREFUSED) — the local env had NO reachable DB (the scaffold .env); prior-phase builds relied on .env.local (Neon development). Unblocked via the sanctioned disposable rehearsal (DATABASE.md §7): embedded PostgreSQL 18.4 outside the repo (/home/z/pgtool binaries + /home/z/pgdata cluster, port 5433, trust auth, database amira_rehearsal); migrate → bootstrap → seed → db:verify 28/28; git-ignored .env.rehearsal (chmod 600) carries the local URL, keeping .env.local reserved for the real development-branch credential.
+- Verification: typecheck ✅ · lint ✅ · production build ✅ (zero deprecation warnings, "Running TypeScript ..." = validation ON, `ƒ Proxy (Middleware)` listed) · dev smoke (ISSUE-025 restart protocol with sourced env): /admin → 307 /admin/login + no-store; /admin/products → 307 with next=%2Fadmin%2Fproducts; /admin/login → 200 + no-store, must-revalidate; homepage 200; suggestions regression spot ✅; origin-gate spot 403/403 · dev.log zero errors.
+- Docs: ISSUE_LOG +037 (sandbox recycle + recovery + reconciliation plan) +035/+036 (dispositions); EXECUTION_STATUS state block corrected (honest stale-local-main note, PHASE_06_STATUS=IN_PROGRESS/paused-once) + "Production infra disposition" addendum; this worklog entry.
+- Git safety: platform auto-snapshot commit f96db0e + branch wip/recovery-phase06-20260927 preserve the recovered PHASE-05 tree + PHASE-06 WIP in git objects; the disposition fix is committed separately on top (local main only — push awaits GitHub auth re-issue; origin/main a7eaa03 stays canonical).
+
+Stage Summary:
+- DISPOSITION COMPLETE: the production deployment was NOT broken (warning + disabled type check only); both findings fixed with byte-scoped changes and fully re-verified; PHASE-06 resumes.
+- Standing state: local dev on rehearsal PG (28/28); live development-branch verification + push/CI blocked ONLY on the two owner credential re-issues (GitHub device flow; Neon development pooled string → .env.local).

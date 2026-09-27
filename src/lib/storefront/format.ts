@@ -31,3 +31,12 @@ export function discountPercent(
   if (original <= 0 || current >= original) return 0;
   return Math.round((1 - current / original) * 100);
 }
+
+/** Arabic product count phrase for cart/wishlist surfaces: 1/2/3–10/11+ forms. */
+export function cartCountPhrase(count: number): string {
+  if (count <= 0) return 'السلة فارغة';
+  if (count === 1) return 'منتج واحد';
+  if (count === 2) return 'منتجان';
+  if (count <= 10) return `${count} منتجات`;
+  return `${count} منتجًا`;
+}

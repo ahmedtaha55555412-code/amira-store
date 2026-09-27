@@ -13,7 +13,15 @@ PROJECT_STATUS=READY_FOR_NEXT_PHASE
 CURRENT_PHASE=PHASE_06
 LAST_COMPLETED_PHASE=PHASE_05
 CURRENT_BRANCH=main
-PHASE_06_STATUS=LOCKED — opens only on the owner's explicit go-ahead (MASTER_PLAN §29: next phase starts only on the next agent run/command). PHASE-05 is COMPLETE (record below); local main == origin/main; CI green on the PHASE-05 commit.
+PHASE_06_STATUS=IN_PROGRESS — owner-authorized ("PHASE-06 IS NOW EXPLICITLY AUTHORIZED"), paused once (2026-09-27) for the owner-flagged production-deployment disposition (ISSUE-035/036 — both FIXED), now resumed. Implementation partially delivered (cart/wishlist domain + stores + hooks + availability service/API + cart drawer); remaining scope per docs/phases/PHASE-06.md.
+ENVIRONMENT_NOTE: the sandbox was recycled to a PHASE-01-era disk snapshot mid-PHASE-06 (ISSUE-2026-09-27-037). The PHASE-05 working state was fully recovered from the surviving /tmp PolarFS snapshot; `origin/main` (a7eaa03, PHASE-05) is the CANONICAL history — local `main` is stale until GitHub auth is re-issued (owner device flow) and the tree is re-committed on top of a7eaa03. Local development meanwhile runs on a disposable PostgreSQL rehearsal (DATABASE.md §7); live development-branch verification resumes when the owner re-provisions `.env.local` (Neon Console → Connect → branch `development`).
+
+### Production infra disposition (owner-paused round, 2026-09-27)
+- Owner paused PHASE-06 with the a7eaa03 Vercel production build log flagging a deployment concern. Full investigation + disposition recorded as ISSUE-2026-09-27-035 and ISSUE-2026-09-27-036 (both FIXED, verified):
+  1. `middleware` → `proxy` convention migration (Next.js 16): `src/middleware.ts` → `src/proxy.ts` (named `proxy` export, logic byte-identical, same matcher). Production build warning eliminated; admin boundary behavior re-proven (307 + no-store; login passthrough; `next` param preserved).
+  2. `typescript.ignoreBuildErrors: true` (scaffold default) removed from `next.config.ts`: production builds now RUN TypeScript validation (`Running TypeScript ...` in the build log) — a Vercel deploy can no longer ship type-broken code. Build verified green with validation on.
+- Verification: typecheck ✅ · lint ✅ · production build ✅ (no deprecation warning, types validated, `ƒ Proxy (Middleware)` in route table) · dev smoke: /admin 307+no-store, /admin/login 200+no-store, /admin/products 307 with next param, homepage 200, suggestions ✅, origin-gate 403/403 · db:verify 28/28 (local rehearsal PG) · dev.log zero errors.
+- Scope discipline: no PHASE-06 or unrelated changes rode along with the disposition; the deployed production runtime had NOT been broken by either finding (warning + disabled check only).
 
 ### PHASE_00 record (2026-09-26)
 - Local baseline scope: PASS — workspace inspected; tooling verified (Node v24.21.0, Bun 1.3.14, Git 2.47.3); planning pack preserved in-repo (AGENTS.md, MASTER_PLAN.md, EXECUTION_STATUS.md, docs/); `.env.example` contract committed; `.gitignore` secret-safe (`.env*` ignored, `!.env.example` tracked); baseline CI scaffolding (.github/workflows/ci.yml); baseline Arabic placeholder page boots; `bun install` clean; lint + typecheck pass; no secrets committed.

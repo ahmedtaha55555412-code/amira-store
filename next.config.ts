@@ -3,9 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // TypeScript is validated on EVERY build — including the Vercel production
+  // deploy (the scaffold default `ignoreBuildErrors: true` was removed
+  // 2026-09-27: a deploy must never ship type-broken code; CI `typecheck`
+  // alone does not gate Vercel deployments). Keep this off.
   reactStrictMode: false,
   // Dev-only: the dev-tools indicator collides with the store's fixed overlays
   // (WhatsApp FAB / QA playground trigger / RTL header) on phone and desktop

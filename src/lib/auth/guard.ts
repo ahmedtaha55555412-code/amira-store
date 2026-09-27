@@ -6,7 +6,8 @@
  * - `requireAdminMutation()`  → API routes; throws AdminAuthError (→ 401).
  * - `getAdminSession()`       → optional inspection (header rendering).
  *
- * The middleware (`src/middleware.ts`) performs only a cookie-presence
+ * The proxy (`src/proxy.ts`, Next.js 16 successor of `middleware.ts`)
+ * performs only a cookie-presence
  * redirect for UX; authorization ALWAYS re-validates the session against the
  * database here — the cookie alone is never trusted.
  */
