@@ -228,5 +228,5 @@ Work Log:
 - Fix: explicit `bun run db:generate` step in .github/workflows/ci.yml (documented as scaffold-scope, revisited in PHASE_02 with Drizzle); ISSUE-2026-09-27-012 recorded
 
 Stage Summary:
-- main CI restored to green (verification run id recorded below after push)
+- main CI restored to green: run 36298243140 → completed success (commit 48a0e94)
 - PHASE_00 fully closed: git link ✅, preview deployment READY ✅, production deployment READY ✅, CI green ✅

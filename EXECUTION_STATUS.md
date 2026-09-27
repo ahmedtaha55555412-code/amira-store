@@ -48,7 +48,7 @@ CURRENT_BRANCH=main
 - Status: COMPLETE (all DoD + integration checks pass; evidence in BASELINE.md §7/§9)
 - Commit: baseline `c82c9d9` … closure commit of 2026-09-27 (see `git log main`)
 - Date/time: 2026-09-27 (Africa/Cairo)
-- Tests: lint ✅, typecheck ✅ (local, Task-2 record); Vercel build ✅ (dpl_E5DU…); CI workflow active on main/PRs (first run on closure push)
+- Tests: lint ✅, typecheck ✅ (local, Task-2 record); Vercel build ✅ (dpl_E5DU… preview, dpl_AQD3… production); CI: first run 36298109713 RED (prisma client — ISSUE-012) → fixed → run 36298243140 GREEN on 48a0e94
 - Manual verification: preview deployment READY; page URL serves with SSO protection (Hobby default)
 - Known non-blocking notes: ISSUE-2026-09-27-010 (orphan Neon resource — owner decision); ISSUE-2026-09-27-011 (FIXED); sandbox recycles require vault-based credential restore (ISSUE-2026-09-26-009, mitigation in place)
 - Linked issues: ISSUE-2026-09-26-001/002/003 (cleared), ISSUE-2026-09-27-010 (open, owner), ISSUE-2026-09-27-011 (fixed)
