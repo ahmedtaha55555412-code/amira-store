@@ -146,3 +146,15 @@
 - Verification: new deployment `dpl_E5DUbpcL6633dBh9iXrmA5QkHSm3` → `READY` (framework `nextjs`, 36.6 s, author `ahmedtaha55555412-code`); blocked deployment left in place as a record (non-functional).
 - Related files: `.git/config` (repo-local), `docs/ops/BASELINE.md` §3/§7/§9
 - Notes: All future commits in this workspace must be authored with the owner-attributed identity; repo-local config persists but the shell resets between sessions — the config lives in `.git/config`, which persists with the workspace.
+
+### ISSUE-2026-09-27-012
+- Phase: PHASE_00 (closure hygiene)
+- Severity: MEDIUM (first CI run on main red)
+- Status: FIXED
+- Symptom: First GitHub Actions run (36298109713, push `f397c02`) failed at Typecheck: `src/lib/db.ts(1,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'`. Sandbox typecheck passed because its Prisma client was generated earlier.
+- Reproduction: fresh runner + `bun install --frozen-lockfile` → `bun run typecheck` → TS2305.
+- Root cause: Bun blocks `@prisma/client`'s postinstall hook on CI (trustedDependencies policy), so `prisma generate` never ran before `tsc --noEmit`.
+- Minimal fix: explicit CI step `bun run db:generate` between install and typecheck (comment in workflow explains scope: scaffold helper only; PHASE_02 introduces Drizzle and revisits).
+- Verification: follow-up CI run on main green (run id recorded in worklog Task 4-h).
+- Related files: `.github/workflows/ci.yml`, `src/lib/db.ts` (untouched scaffold file)
+- Notes: Production deployment unaffected (`dpl_AQD3anGMnopwHDcxn4bnDJWdzrNJ` READY — Next build on Vercel does not typecheck `src/lib/db.ts` in the same way).
