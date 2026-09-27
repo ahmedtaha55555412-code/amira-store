@@ -99,3 +99,24 @@ Stage Summary:
 - PHASE_00 remains BLOCKED: waiting on owner browser authorizations (GitHub CB2F-4254, Vercel VVLF-BSQC) and Neon path decision
 - GitHub repo amira-store creation + push executes immediately after GitHub auth verifies
 - Vault ensures future recycles no longer destroy CLI auth (ISSUE-009 mitigation)
+---
+Task ID: 4-b
+Agent: Z.ai Code (main)
+Task: PHASE-00 provisioning — GitHub repo pushed; Vercel device-flow restarted (manual one-shot)
+
+Work Log:
+- Owner authorized GitHub + Vercel in browser (previous turn)
+- GitHub: one-shot device exchange SUCCESS (scopes read:org, repo, workflow); credential registered into vault-pinned GH_CONFIG_DIR (.auth/gh/hosts.yml) — survives recycles; gh auth status + identity verified (ahmedtaha55555412-code)
+- Vercel: background `vercel login` process was KILLED by sandbox before owner authorization could be exchanged (auth.json absent; log frozen at "Waiting for authentication...") — root cause: sandbox reaps detached processes on session gaps; recorded as environment constraint (extends ISSUE-009)
+- Reverse-engineered vercel CLI 60.1.3 official OAuth device flow from installed CLI source: discovery https://vercel.com/.well-known/oauth-authorization-server → device_authorization_endpoint https://api.vercel.com/login/oauth/device-authorization, token_endpoint https://api.vercel.com/login/oauth/token, client_id VERCEL_CLI_CLIENT_ID; auth.json format {token, expiresAt(unix s), refreshToken} per @vercel/cli-config schema — enables user-paced one-shot exchange with NO resident process
+- Minted exactly ONE fresh Vercel device code (user_code shown to owner; device_code persisted in .auth/vercel-device-flow.json 600, never displayed); validity 600 s
+- Created durable repo-local git credential helper (.auth/bin/gh-cred → gh auth git-credential with GH_CONFIG_DIR pinned to vault)
+- GitHub repo CREATED: https://github.com/ahmedtaha55555412-code/amira-store (PRIVATE, confirmed via gh repo view: visibility=PRIVATE, isPrivate=true, defaultBranchRef=main)
+- Pushed baseline: git push -u origin main SUCCESS; remote main SHA == local HEAD (b3f4f0b) verified via API
+- Added `.vercel/` to .gitignore (local link metadata must not be committed) before any linking; commit b3f4f0b
+
+Stage Summary:
+- B-001 FULLY CLEARED: private amira-store repo exists; baseline pushed; remote/visibility/default-branch/commit all verified
+- B-002 in progress: awaiting owner authorization of fresh Vercel device code (one-shot exchange protocol; on success write vault auth.json + verify whoami/team)
+- B-003 path DECIDED by owner: official Vercel-Neon Marketplace integration ("Link Existing Neon Account"), org org-frosty-darkness-82889078; no Neon CLI OAuth attempts
+- Next: owner authorizes Vercel code → verify whoami/team → create/link project → git connect → STOP at exact Neon-integration browser step
