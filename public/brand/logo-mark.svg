@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="شعار أميرة استور">
+  <rect x="24" y="24" width="464" height="464" rx="116" fill="#F8ECEA"/>
+  <rect x="38" y="38" width="436" height="436" rx="104" fill="none" stroke="#C9A25E" stroke-opacity="0.55" stroke-width="5"/>
+  <path d="M158 222 C158 170 186 154 210 180 C230 138 246 130 256 126 C266 130 282 138 302 180 C326 154 354 170 354 222" fill="none" stroke="#803049" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="256" cy="86" r="16" fill="#C9A25E"/>
+  <rect x="238" y="234" width="36" height="206" rx="18" fill="#803049"/>
+</svg>

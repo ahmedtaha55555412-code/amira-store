@@ -10,8 +10,8 @@ Allowed project states:
 
 ## Current state
 PROJECT_STATUS=READY_FOR_NEXT_PHASE
-CURRENT_PHASE=PHASE_01
-LAST_COMPLETED_PHASE=PHASE_00
+CURRENT_PHASE=PHASE_02
+LAST_COMPLETED_PHASE=PHASE_01
 CURRENT_BRANCH=main
 
 ### PHASE_00 record (2026-09-26)
@@ -53,12 +53,29 @@ CURRENT_BRANCH=main
 - Known non-blocking notes: ISSUE-2026-09-27-010 (orphan Neon resource — owner decision); ISSUE-2026-09-27-011 (FIXED); sandbox recycles require vault-based credential restore (ISSUE-2026-09-26-009, mitigation in place)
 - Linked issues: ISSUE-2026-09-26-001/002/003 (cleared), ISSUE-2026-09-27-010 (open, owner), ISSUE-2026-09-27-011 (fixed)
 
+## PHASE_01 completion record
+- Status: COMPLETE (all DoD items pass; see verification below)
+- Commit: `feat(phase-01): foundation + design system + brand assets` (hash via `git log main`)
+- Date/time: 2026-09-27 (Africa/Cairo)
+- Tests: lint ✅ (exit 0) · typecheck ✅ (`tsc --noEmit` clean) · dev-server runtime clean (no errors/warnings in dev.log across full QA session) · CI build verified on push (see run in `git log`/Actions)
+- Manual verification (agent-browser, route `/` only):
+  - Renders correctly at 375 / 768 / 1440 px; **zero horizontal overflow** at all three widths (scrollWidth == clientWidth)
+  - `lang=ar` `dir=rtl` confirmed; Arabic ligatures/wrapping sound (Cairo shaping, text-balance headings)
+  - Keyboard navigation: skip-link reveals on focus (focus:not-sr-only verified via computed styles), Tab order sound, focus outline visible (2px solid rose ring)
+  - Reduced-motion override present in compiled CSS (`@media (prefers-reduced-motion: reduce)` block confirmed in served stylesheet)
+  - Homepage shell order per MASTER_PLAN §4: announcement bar → header → hero → categories → وصل حديثًا → العروض → benefits → story → reviews/testimonials → WhatsApp CTA → footer; all nav links are real anchors (`/#…`) — no broken links; not-yet-built affordances (search/wishlist/cart, category pages, policies) are clearly labeled "قريبًا" with explanatory toast — never presented as complete functionality
+  - Component primitives exercised: playground overlay (8 tabs), toasts, confirm dialog, mobile sheet nav (open → navigate → close → scroll), table/skeleton/empty/error states
+  - Logo is a replaceable asset: `BrandLogo` resolves `getBrandSettings().logoUrl` (future Admin override) with default original mark fallback; assets in `public/brand/*` + favicon `src/app/icon.svg` + `apple-icon.png`
+- Known non-blocking notes: ISSUE-2026-09-27-013 (RTL close-button — FIXED during QA), ISSUE-2026-09-27-014 (dev-indicator collision — FIXED, dev-only); QA playground gated/removal before launch phases; scaffold-era `tailwind.config.ts` left untouched (Tailwind 4 uses CSS-first config; file is inert)
+- Linked issues: ISSUE-2026-09-27-013 (fixed), ISSUE-2026-09-27-014 (fixed), ISSUE-2026-09-27-010 (open, owner, unaffected)
+- Scope discipline kept: no products DB logic, no cart/checkout/admin auth/payment, no new routes, PHASE-00 infra untouched
+
 ## Rule
 Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not fully green, the next phase is forbidden.
 
 ## Phase board
 - [x] PHASE_00 — Repository audit + execution controls
-- [ ] PHASE_01 — Foundation + design system + brand assets
+- [x] PHASE_01 — Foundation + design system + brand assets
 - [ ] PHASE_02 — Database schema + migrations + seed strategy
 - [ ] PHASE_03 — Admin authentication + security foundation
 - [ ] PHASE_04 — Categories + products + variants + media

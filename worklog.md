@@ -230,3 +230,46 @@ Work Log:
 Stage Summary:
 - main CI restored to green: run 36298243140 → completed success (commit 48a0e94)
 - PHASE_00 fully closed: git link ✅, preview deployment READY ✅, production deployment READY ✅, CI green ✅
+---
+Task ID: 5-a
+Agent: general-purpose (brand assets)
+Task: PHASE-01 brand asset generation (script + committed default assets)
+
+Work Log:
+- Read worklog.md (Tasks 1–4-h) for context; confirmed PHASE_00 gate flipped to CURRENT_PHASE=PHASE_01
+- Created /home/z/my-project/scripts/generate-brand-assets.mjs (mkdir scripts/ first — parent did not exist) with EXACTLY the specified content (SVG sources: logo mark, icon, Arabic lockup, 1200x630 OG image; sharp-based rasterization)
+- Ran `bun scripts/generate-brand-assets.mjs` → exit code 0; sharp imported successfully (no install needed)
+- Verified all 7 outputs exist and are non-empty: public/brand/{logo-mark.svg 665B, logo-lockup.svg 1130B, logo-mark-512.png 20719B, logo-mark-512.webp 8334B, og-default.png 36360B}, src/app/icon.svg 443B, src/app/apple-icon.png 4253B
+- PNG dimension check via sharp: logo-mark-512.png 512x512; apple-icon.png 180x180; og-default.png 1200x630 — all as specified
+- No dev server started/stopped; no git commands; no packages installed; no other files modified
+
+Stage Summary:
+- SUCCESS: brand-asset generator committed at scripts/generate-brand-assets.mjs; default replaceable brand assets produced in public/brand/ + src/app (icon.svg, apple-icon.png) for the future admin-phase swap via store settings
+- All PNG/WebP outputs rasterized at correct dimensions (512², 180², 1200x630); zero failures
+---
+Task ID: 5
+Agent: Z.ai Code (main)
+Task: Execute PHASE-01 — Foundation + Design System + Brand Assets (Amira Store)
+
+Work Log:
+- Re-read PHASE-01.md, MASTER_PLAN.md, docs/DESIGN_SYSTEM.md, docs/DATA_DICTIONARY.md, AGENTS.md, EXECUTION_STATUS.md; confirmed DoD + PHASE-00 dependency (no infra changes needed)
+- Design tokens finalized in globals.css (OKLCH): ivory base, warm charcoal text, burgundy-rose primary (AA vs white text), blush/gold accents, status colors, rose focus ring, radius 1rem, warm dark variant retained; global overflow-x clip protection + reduced-motion override + visible :focus-visible outlines + warm scrollbars
+- Typography: single Arabic family Cairo via next/font (subsets arabic+latin; weights 400/500/600/700/800 only) wired as --font-sans
+- Root metadata defaults: metadataBase from APP_URL, Arabic title/template/description, applicationName, ar_EG OpenGraph with /brand/og-default.png, robots; viewport themeColor #FBF7F1; skip-to-content link added (layout)
+- Brand layer (replaceability contract): src/config/brand.ts (single source: store name, WhatsApp +201019003677, asset paths, announcement default), src/lib/branding.ts getBrandSettings() (future store_settings override point), BrandLogo + LogoMark components (custom logoUrl → default mark fallback)
+- Original logo (Task 5-a subagent): crown + gem above stylized Arabic alef on blush tile w/ gold frame → public/brand/{logo-mark.svg,logo-lockup.svg,logo-mark-512.png,logo-mark-512.webp,og-default.png} + src/app/icon.svg + apple-icon.png via scripts/generate-brand-assets.mjs (sharp; 512/180/1200x630 verified)
+- Store components: Container, Section/SectionHeading, LoadingState/EmptyState/ErrorState, AnnouncementBar, StoreHeader (sticky; desktop anchor nav; mobile Sheet; search/wishlist/cart as aria-disabled "قريبًا" with explanatory toast — no fake functionality), Hero, CategoryShowcase (5 departments), NewArrivals/Offers placeholders (honest skeletons + auto-rule notes), Benefits (factual claims only), BrandStory, SocialProofPlaceholder (site reviews vs WhatsApp testimonials distinct), WhatsAppCta + WhatsAppFloatingButton (real wa.me links), StoreFooter (charcoal, categories/policies honestly labeled)
+- Homepage shell (/) composed in MASTER_PLAN §4 order; sticky footer via flex-col + mt-auto + flex-1 main
+- QA playground overlay on / ("فحص التصميم"): 8 tabs (colors/typography/buttons/inputs/cards/table/states/alerts) exercising every primitive incl. toasts + confirm dialog — no new route (system constraint)
+- Browser QA (agent-browser): overflow none at 375/768/1440; rtl/ar verified; all anchors exist; keyboard nav + visible focus verified; reduced-motion CSS verified in compiled output; mobile sheet nav open→navigate→close→scroll; toasts + dialogs + tabs all functional; full-page screenshots at 3 widths reviewed
+- Fixed during QA (ISSUE-013): RTL close-button overlap in Sheet/Dialog → physical `right-4` → logical `end-4` in ui/sheet.tsx + ui/dialog.tsx; re-verified
+- Fixed during QA (ISSUE-014): Next dev-indicator colliding with store fixed overlays on both breakpoints → devIndicators:false (dev-only)
+- Removed stale scaffold public/logo.svg (unreferenced)
+- Checks: bun run lint exit 0; bun run typecheck clean; dev.log zero errors across session
+- Docs: DESIGN_SYSTEM.md finalized (tokens/typography/breakpoints/brand contract/playground), TRACEABILITY.md +10 PHASE-01 rows, ISSUE_LOG.md +013/+014, EXECUTION_STATUS.md PHASE_01 completion record + gate flip
+- Scope: no DB logic, no cart/checkout/admin/payment, no new routes, PHASE-00 infra untouched
+
+Stage Summary:
+- PHASE_01 COMPLETE: all DoD pass (build/typecheck/lint/renders/baseline-3-viewports)
+- Gate advanced: CURRENT_PHASE=PHASE_02, LAST_COMPLETED_PHASE=PHASE_01, PROJECT_STATUS=READY_FOR_NEXT_PHASE
+- Design system now the enforced foundation: tokens via CSS vars, Cairo only, branding via BrandLogo/getBrandSettings contract

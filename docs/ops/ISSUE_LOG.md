@@ -158,3 +158,27 @@
 - Verification: follow-up CI run on main green (run id recorded in worklog Task 4-h).
 - Related files: `.github/workflows/ci.yml`, `src/lib/db.ts` (untouched scaffold file)
 - Notes: Production deployment unaffected (`dpl_AQD3anGMnopwHDcxn4bnDJWdzrNJ` READY — Next build on Vercel does not typecheck `src/lib/db.ts` in the same way).
+
+### ISSUE-2026-09-27-013
+- Phase: PHASE_01
+- Severity: MEDIUM (visual/RTL defect in foundational primitives)
+- Status: FIXED
+- Symptom: In the RTL storefront, the close (✕) button of the mobile navigation Sheet overlapped the sheet title "القائمة" (both anchored to the physical right edge). The shared shadcn `Dialog`/`Sheet` close buttons used physical positioning (`absolute top-4 right-4`), which is wrong under `dir="rtl"` where inline-start = right. Browser QA (agent-browser, 375px viewport) surfaced it.
+- Reproduction: open `/` at 375px → tap "فتح قائمة التنقل" → sheet title glyphs collide with the ✕.
+- Root cause: stock shadcn primitives assume LTR; physical `right-4` does not mirror in RTL documents.
+- Minimal fix: `top-4 right-4` → `top-4 end-4` (CSS logical property) in `src/components/ui/sheet.tsx` and `src/components/ui/dialog.tsx` — correct in both LTR (admin, later) and RTL.
+- Verification: re-opened the mobile sheet at 375px after fix — title clean at inline-start, ✕ at inline-end; sheet nav click closes sheet and scrolls to `#offers` (scrollY 2616, section in view); playground dialog unaffected.
+- Related files: `src/components/ui/sheet.tsx`, `src/components/ui/dialog.tsx`
+- Notes: Any future shadcn primitive copied into the repo must be re-audited for physical positioning (`left/right`) versus logical (`start/end`) under RTL.
+
+### ISSUE-2026-09-27-014
+- Phase: PHASE_01
+- Severity: LOW (dev-only cosmetic; QA tooling collision)
+- Status: FIXED
+- Symptom: Next.js dev-tools indicator (fixed, bottom-left default) overlapped the QA playground trigger at 1440px; after moving it to `top-right`, it overlapped the RTL header hamburger at 375px (both are fixed corner overlays in the same corners as the store's own overlays).
+- Reproduction: `bun run dev` → open `/` at 375/1440px → observe overlay collisions with `<nextjs-portal>`.
+- Root cause: the store intentionally occupies fixed corners (WhatsApp FAB bottom-start, QA playground bottom-end, dense header top); every dev-indicator corner collides on at least one breakpoint.
+- Minimal fix: `devIndicators: false` in `next.config.ts` (development-only flag; production bundle unaffected).
+- Verification: dev server restarted; no `<nextjs-portal>` element present; FAB/playground/header interactions clear at 375/768/1440px.
+- Related files: `next.config.ts`
+- Notes: recorded for transparency; not a product defect.
