@@ -93,3 +93,13 @@ All PHASE_00 blockers cleared. Resource identity registry (no secrets):
 | Preview deployment proof | `dpl_E5DUbpcL6633dBh9iXrmA5QkHSm3` → READY | branch `phase-00/bootstrap-preview`, commit `e7e1c49` (owner-attributed), `nextjs`, 36.6 s; URL SSO-protected (302) as expected on Hobby |
 
 Known non-blocking findings: ISSUE-2026-09-27-010 (orphan Neon resource `amira-store` / `nameless-bar-74352862`, 0 connections — owner decides keep/delete); ISSUE-2026-09-27-011 (Vercel blocked first Git deployment over commit-author mapping — FIXED via repo-local git identity). Legacy Vercel Marketplace resource named `amira-store` is NOT bound to anything; the bound resource is `neon-cobalt-globe`.
+
+## 10. Addendum (2026-09-27) — environment-binding topology (pre-PHASE_03 safety round)
+
+| Binding | Target | Status |
+|---|---|---|
+| Production | Neon `neondb` on the primary (main) branch of `tiny-mud-82763154` (`neon-cobalt-globe`, fra1) | UNCHANGED — never migrated/seeded/written by agents; hash fingerprint recorded (sha256 `a77fc2afd8ac2bd7…`) |
+| Preview | isolated copy-on-write Neon branch per Preview Deployment (integration-native) | ISOLATED ✅ |
+| Development | **same value as production** (integration default; no dedicated branch) | GAP — ISSUE-2026-09-27-019 OPEN; standing guardrail: treated as production-equivalent (no migrate/seed/writes); remediation path documented in `docs/ops/DATABASE.md` §9 (owner console steps + compensating control + hash-only verification) |
+
+The 18 `DATABASE_*` variables are integration-store secrets (ciphertext to user tokens; single entries targeting all three environments); rebinding one environment is not exposed by the Vercel↔Neon public API and branch creation requires the Neon control plane — recorded as the exact limitation in `docs/ops/DATABASE.md` §9.2.

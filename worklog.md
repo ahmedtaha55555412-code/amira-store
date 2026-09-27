@@ -313,3 +313,24 @@ Stage Summary:
 - PHASE-02 task 12 GENUINELY PROVEN on real Neon: migration applies cleanly from empty, schema matches dictionary/snapshot, migration-ledger hash matches the committed file byte-for-byte, smoke write+rollback OK, zero residue, production untouched
 - PHASE_02 COMPLETE (gate reopened by owner directive, then closed with real evidence); CURRENT_PHASE=PHASE_03, LAST_COMPLETED_PHASE=PHASE_02, PROJECT_STATUS=READY_FOR_NEXT_PHASE; PHASE-03 NOT started per directive
 - Remaining owner-side: gh credential restore → git push origin main (b4fca6e, 49ce1f0, completion commit) → first green CI run on the Drizzle workflow
+---
+Task ID: 8
+Agent: Z.ai Code (main)
+Task: Pre-PHASE_03 safety/continuity round — (1) development database isolation, (2) GitHub source-of-truth sync. PHASE-03 stays LOCKED.
+
+Work Log:
+- Read worklog Tasks 1–7, EXECUTION_STATUS, ISSUE_LOG (018/019), DATABASE.md §8, BASELINE.md; confirmed owner ACCEPTED PHASE-02 + real-Neon verification; confirmed no Vercel token / no gh credential / no Neon API key in sandbox (vault recycled; tokens shredded after Task 7)
+- Task 1: honored all constraints (no second Neon project; neon-cobalt-globe untouched; no secrets printed; no migrate/seed/write against Production). Confirmed the development→dev-branch binding is NOT achievable via the current configuration: 18 DATABASE_* vars are integration-store secrets (ciphertext to user tokens — proven Task 4-f), jointly targeting [development, preview, production]; Vercel↔Neon native integration exposes no public API for branch creation or per-environment rebinding; Neon branch creation needs the Neon console or an owner-issued API key; same-branch CREATE DATABASE explicitly rejected as a substitute (no compute/storage isolation from main)
+- Per the owner's fallback instruction: documented the exact limitation + concrete safe remediation path in docs/ops/DATABASE.md §9 (owner steps: Neon console branch `development` from main → Vercel Storage mapping if offered → otherwise recommended compensating control (.env.local → development branch; Vercel development env production-equivalent) or documented manual per-env option with tradeoffs → hash-only post-change verification procedure) + standing guardrails (§9.4)
+- ISSUE_LOG: ISSUE-2026-09-27-019 updated — severity LOW→MEDIUM, status ACCEPTED→OPEN (REMEDIATION DOCUMENTED), full addendum recorded; BASELINE.md §10 addendum (binding topology table: production UNCHANGED / preview ISOLATED / development GAP + guardrail)
+- Production state: UNCHANGED — zero writes, zero binding changes, no DB connections opened this round
+- Task 2: gh CLI 2.101.0 reinstalled to ~/.local/bin (releases API rate-limited → pinned release URL, matches previously registered version); verified origin = exactly https://github.com/ahmedtaha55555412-code/amira-store.git; local main ahead 3 commits (b4fca6e, 49ce1f0, d82ed08); push-range secret scan clean (3 grep hits = 127.0.0.1 loopback placeholders in the committed rehearsal script — not secrets)
+- Issued ONE GitHub OAuth device-flow code (GitHub CLI client, scope repo workflow read:org — workflow scope required because b4fca6e edits .github/workflows/ci.yml; read:org required by gh token validation); device_code saved to /tmp/ghdevice_code (chmod 600); NO background poller (sandbox kills them); token exchange happens next cycle after owner approval; token will never be displayed
+- Planning repository: local clone /home/z/amira-store-plan was lost to a sandbox recycle (it was always clone-only per Tasks 1/2); remote-untouched verification (HEAD == 2f4e4b31927b9caa28f32c0ac7c26f0a537dfbf8, no pushes from us) re-runs next cycle via the restored credential
+- EXECUTION_STATUS.md: state block updated (PROJECT_STATUS=IN_PROGRESS; CURRENT_PHASE=PHASE_02 held; PHASE_03_STATUS=LOCKED) + new "Safety/continuity round" record; PHASE_02 board row annotated owner-ACCEPTED
+- Checks: push-range secret scan clean; lint + typecheck clean (docs-only round); commit of this docs round made locally (rides the push next cycle)
+
+Stage Summary:
+- Task 1 COMPLETE within the owner's sanctioned fallback: limitation reported exactly, remediation path documented (DATABASE.md §9), ISSUE-019 resolution recorded, Production untouched
+- Task 2 IN PROGRESS at the mandated owner-paced gate: device code A449-C771 issued (expires ~15 min); push + remote==local + planning-repo verification execute immediately after owner approval
+- PHASE_03 remains LOCKED; STOP executed — no PHASE-03 work performed or scheduled this cycle

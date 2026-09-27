@@ -9,10 +9,11 @@ Allowed project states:
 - `COMPLETE`
 
 ## Current state
-PROJECT_STATUS=READY_FOR_NEXT_PHASE
-CURRENT_PHASE=PHASE_03
+PROJECT_STATUS=IN_PROGRESS
+CURRENT_PHASE=PHASE_02 (owner-ACCEPTED; pointer HELD for the pre-PHASE_03 safety/continuity round)
 LAST_COMPLETED_PHASE=PHASE_02
 CURRENT_BRANCH=main
+PHASE_03_STATUS=LOCKED (opens only after the safety/continuity checks complete)
 
 ### PHASE_00 record (2026-09-26)
 - Local baseline scope: PASS — workspace inspected; tooling verified (Node v24.21.0, Bun 1.3.14, Git 2.47.3); planning pack preserved in-repo (AGENTS.md, MASTER_PLAN.md, EXECUTION_STATUS.md, docs/); `.env.example` contract committed; `.gitignore` secret-safe (`.env*` ignored, `!.env.example` tracked); baseline CI scaffolding (.github/workflows/ci.yml); baseline Arabic placeholder page boots; `bun install` clean; lint + typecheck pass; no secrets committed.
@@ -94,13 +95,20 @@ CURRENT_BRANCH=main
 - Linked issues: ISSUE-2026-09-27-015 (FIXED), 016 (FIXED), 017 (FIXED), 018 (OPEN — GitHub half only), 019 (ACCEPTED)
 - Scope discipline kept: no cart/checkout/orders/inventory/reviews/admin-auth workflows implemented; no PHASE-01 design changes; no production data touched
 
+### Safety/continuity round (2026-09-27) — pre-PHASE_03 gate (owner directive)
+- Owner ACCEPTED the PHASE-02 schema + real-Neon migration verification. Before PHASE_03 may open, exactly two safety/continuity tasks were ordered: (1) development-database isolation, (2) GitHub source-of-truth sync. PHASE_03 stays LOCKED until both complete; it must NOT start in this cycle.
+- **Task 1 — development database isolation:** directive constraints honored (no second Neon project, `neon-cobalt-globe` untouched, no secrets printed, no migrations/seed/writes against Production). The required development→dev-branch binding is NOT achievable through the current configuration: the 18 `DATABASE_*` vars are integration-store secrets (ciphertext to user tokens, proven PHASE_00) jointly targeting all three environments, the Vercel↔Neon native integration exposes no public API for branch creation or per-environment rebinding, and Neon branch creation requires the Neon console or an owner-issued API key. Per the owner's fallback instruction: no workaround was invented; the exact limitation plus a concrete safe remediation path (owner console steps + compensating control + hash-only post-change verification) is documented in `docs/ops/DATABASE.md` §9; ISSUE-2026-09-27-019 updated (OPEN — REMEDIATION DOCUMENTED, severity MEDIUM, standing guardrails in force: Vercel `development` env treated as production-equivalent). Production: UNCHANGED — zero writes, zero binding changes this round.
+- **Task 2 — GitHub source-of-truth sync (IN PROGRESS, owner-paced):** gh CLI 2.101.0 reinstalled (`~/.local/bin/gh`); remote verified as exactly `https://github.com/ahmedtaha55555412-code/amira-store.git` (origin). Local `main` is 3 commits ahead (`b4fca6e` PHASE-02 implementation, `49ce1f0` sandbox auto-commit [documented], `d82ed08` PHASE-02 completion docs) + this docs commit → push executes immediately after the owner approves the freshly issued GitHub OAuth device-flow code (same safe owner-paced method as PHASE_00; no background polling; device_code held in a chmod-600 temp file; token will never be displayed). Push will be plain `git push origin main` — no force, no history rewrite. Post-push verification: `remote main == local main`; planning repository `ahmedtaha55555412-code/amira-store-plan` verified untouched via API (local clone was lost to a sandbox recycle; it was always clone-only, and the remote-HEAD check `2f4e4b3…` will be re-run with the restored credential).
+- Relevant checks this round: push-range secret scan clean (3 grep hits = loopback `127.0.0.1` placeholders in the local rehearsal script); lint/typecheck re-run clean (docs-only round); no database of any environment touched.
+- Next cycle (after owner approves the device code): token exchange → `gh auth` verification → push → remote==local + planning-repo-untouched verification → ISSUE-2026-09-27-018 GitHub half closed → gate review for PHASE_03 unlock. STOP point enforced: PHASE_03 must not be started even if everything is green.
+
 ## Rule
 Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not fully green, the next phase is forbidden.
 
 ## Phase board
 - [x] PHASE_00 — Repository audit + execution controls
 - [x] PHASE_01 — Foundation + design system + brand assets
-- [x] PHASE_02 — Database schema + migrations + seed strategy (live-Neon proof completed 2026-09-27)
+- [x] PHASE_02 — Database schema + migrations + seed strategy (live-Neon proof completed 2026-09-27; owner-ACCEPTED; safety/continuity round recorded above)
 - [ ] PHASE_03 — Admin authentication + security foundation
 - [ ] PHASE_04 — Categories + products + variants + media
 - [ ] PHASE_05 — Storefront navigation + search + filters + product pages

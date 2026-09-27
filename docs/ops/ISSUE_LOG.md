@@ -237,9 +237,9 @@
 - STILL OPEN (GitHub half): `gh` credential restore + `git push origin main` (commits b4fca6e, 49ce1f0, and the PHASE-02 completion commit) + first green CI run on the Drizzle CI workflow. Owner-side action unchanged.
 
 ### ISSUE-2026-09-27-019
-- Phase: PHASE_02 (verification-round discovery)
-- Severity: LOW (operational topology fact; no defect)
-- Status: ACCEPTED (integration default; revisit in PHASE_14 production hardening)
+- Phase: PHASE_02 (verification-round discovery) → elevated to pre-PHASE_03 safety gate (owner directive 2026-09-27)
+- Severity: MEDIUM (development writes would hit the production database; controlled by standing guardrails)
+- Status: OPEN — REMEDIATION DOCUMENTED (awaiting owner console/dashboard action; compensating controls in force)
 - Symptom: On the Vercel↔Neon integration, the project's `development` and `production` environments resolve to the IDENTICAL Neon database (`neondb` on the primary branch) — sha256(DATABASE_URL) hashes are equal. There is no dedicated isolated development branch.
 - Reproduction: `vercel env pull --environment=development|production` → both DATABASE_URL values hash to a77fc2afd8ac2bd7…; public tables of neondb = [] (only the platform `neon_auth` schema exists).
 - Root cause: Neon Vercel-native integration default — one primary-branch database serves production + development; isolated copy-on-write branches are created only per Preview Deployment.
@@ -248,3 +248,10 @@
 - Verification: the PHASE-02 live-Neon round used `phase02_drizzle_verify_tmp` (created empty → migrated → verified → dropped, zero residue); production `neondb` unmodified (public tables [] before/after).
 - Related files: docs/ops/DATABASE.md §8
 - Notes: the Neon Free plan supports console-created branches if the owner prefers a true dev branch later.
+
+**Addendum (2026-09-27, pre-PHASE_03 safety/continuity round — owner directive):**
+- Owner set development-environment isolation as a PHASE_03 gate and prescribed the target architecture: production → main branch, development → dedicated development branch, preview → isolated per-deployment branches, all inside `neon-cobalt-globe` (no second project, no rename/delete, no secrets printed, production untouched).
+- Integration limitation CONFIRMED, not worked around: the 18 `DATABASE_*` vars are integration-store secrets (ciphertext to user tokens, proven PHASE_00) jointly targeting all three environments; the Vercel↔Neon native integration exposes no public API for branch creation or per-environment branch rebinding; Neon branch creation requires the console or a Neon API key (neither available owner-paced in-sandbox). A same-branch `CREATE DATABASE` is explicitly NOT accepted as a substitute (no compute/storage isolation from main).
+- RESOLUTION RECORDED: exact limitation + concrete safe remediation path written to **docs/ops/DATABASE.md §9** — owner steps: (1) create `development` branch from `main` in the Neon console; (2) map development → `development` in Vercel Storage settings if the integration UI offers it; (3) otherwise owner chooses compensating control (recommended: `.env.local` → development branch for local work; Vercel development env treated as production-equivalent) or explicit manual per-env management (documented tradeoffs); (4) hash-only post-change verification procedure (fingerprints differ, endpoint hosts differ, production hash unchanged, neondb tables unchanged).
+- Standing guardrails effective immediately: the Vercel `development` environment is treated as production-equivalent (no migrate/seed/writes through it); disposable targets remain temporary databases on `tiny-mud-82763154`; `drizzle-kit push` remains forbidden; no secret values printed.
+- Production state this round: UNCHANGED — zero writes, zero binding changes; evidence from the PHASE-02 live-Neon round stands (public tables [] before/after).

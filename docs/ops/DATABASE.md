@@ -145,3 +145,95 @@ Executed procedure (all against real Neon, PostgreSQL 18.6, region fra1):
 Intentionally NOT done: no seed/bootstrap on any Neon database (dev seed is development-only;
 SEED_PLAN forbids demo data outside development); no schema/data change to `neondb` — the real
 application databases are migrated at deploy time per the deployment runbook.
+
+## 9. Environment isolation — verified topology, integration limitation, remediation path (2026-09-27, pre-PHASE_03 safety round)
+
+Owner directive: Development must never point at Production; preferred architecture is
+Production → `main` Neon branch, Development → dedicated development Neon branch, Preview →
+isolated per-deployment branches — all inside the existing `neon-cobalt-globe` resource
+(Neon project `tiny-mud-82763154`). No second project; no rename/delete.
+
+### 9.1 Verified current topology (hash-only fingerprints, no secrets)
+
+| Vercel environment | Neon target (resolved via `vercel env pull`) | Fingerprint |
+|---|---|---|
+| `production` | `neondb` on the primary (main) branch, `tiny-mud-82763154`, fra1 | sha256 `a77fc2afd8ac2bd7…` |
+| `development` | **IDENTICAL to production** | sha256 `a77fc2afd8ac2bd7…` (equal) |
+| `preview` | isolated copy-on-write branch per Preview Deployment (integration-native, auto-created/deleted) | n/a (ephemeral) |
+
+Preview isolation is already satisfied by the integration's product-inherent preview branching
+(official Neon Vercel-native integration docs, cross-checked in PHASE_00). The gap is exactly one
+binding: `development`.
+
+### 9.2 Exact limitation (why the binding cannot be changed through the current configuration)
+
+1. **The 18 `DATABASE_*` variables are integration-store secrets, not user variables.** Their
+   values are ciphertext envelopes to a user token (`decrypt=true` returns ciphertext — proven
+   PHASE_00); they jointly target `[development, preview, production]` as single entries and are
+   owned by the Neon marketplace installation (`icfg_XaLDAPAdjX8ajtYn8mL9vC0a`). Rebinding one
+   environment selectively is not an operation the public Vercel API exposes for
+   marketplace-managed variables; hand-editing or shadowing them would desynchronize the
+   integration that supplies the production binding and the preview predeploy actions.
+2. **Creating a Neon branch is a control-plane operation.** The Vercel↔Neon integration exposes
+   no public API for branch creation or per-environment branch mapping (installation endpoints
+   probed in PHASE_00: read-only listing only; 403/404 on everything else). Branch creation
+   requires the Neon console (owner browser) or a Neon API key (owner-issued). Neither exists in
+   the sandbox, and secrets must never pass through chat.
+3. **A same-branch extra database is NOT an acceptable substitute.** `CREATE DATABASE` on the
+   main branch (the mechanism legitimately used for the one-shot PHASE-02 verification target)
+   shares the primary branch's compute endpoint and storage lineage — it provides database-name
+   isolation only, never the branch-level isolation the owner's architecture requires. It is a
+   disposable-verification tool, not a development environment.
+
+Per the owner directive, no workaround was invented and Production was left untouched.
+
+### 9.3 Concrete safe remediation path (owner-paced; agent-verifiable)
+
+**Step 1 — create the branch (owner, Neon console, ~1 minute):**
+console.neon.tech → project `tiny-mud-82763154` (`neon-cobalt-globe`) → **Branches → Create
+branch** → name `development`, parent `main` (copy-on-write; Free plan supports it). No data
+moves; production is untouched.
+
+**Step 2 — bind the development environment (owner, Vercel dashboard):**
+Vercel → `amira-store` → **Storage → neon-cobalt-globe** → open the integration's settings and
+check whether an environment→branch mapping (or "Development branch") selector is offered by the
+current UI. If it is: map `development` → `development`. This is the fully supported path and the
+integration then rewrites the development-environment value itself.
+
+**Step 3 — if (and only if) the UI offers no per-environment mapping (the expected case):**
+the owner chooses, and only the owner executes, one of:
+- **(a) Compensating control (recommended — zero integration risk):** keep the integration
+  binding as-is; treat the Vercel `development` environment as production-equivalent from this
+  document onward: **never** run `db:migrate`/`db:seed`/any write through a pulled development
+  `DATABASE_URL`. Local development instead uses a git-ignored `.env.local` whose `DATABASE_URL`
+  is the `development` branch's **pooled** connection string copied from the Neon console —
+  so all local schema/seed work lands on the isolated branch, while deploys reach production
+  only through committed migrations at build time.
+- **(b) Manual per-environment management (owner decision only; NOT executed by the agent):**
+  replace the integration-managed binding with explicit per-environment variables
+  (production → main pooled; development → `development` branch pooled). Documented tradeoff:
+  this forfeits the integration-managed preview branching/predeploy wiring unless the
+  integration stays attached for preview only, which is not a supported configuration. Do not
+  choose (b) without accepting those tradeoffs in writing.
+
+**Step 4 — verification after ANY binding change (agent-runnable, hash-only):**
+```bash
+vercel env pull /tmp/env.production --environment=production && \
+vercel env pull /tmp/env.development --environment=development
+# then, WITHOUT printing values:
+#   sha256(DATABASE_URL.production) vs sha256(DATABASE_URL.development)  → MUST differ
+#   print only URL host part (endpoint id, non-secret)                   → endpoints MUST differ
+#   host of production MUST be unchanged vs the recorded pre-change hash → production untouched
+#   re-check neondb public tables before/after                            → MUST stay unchanged
+```
+Fail any check ⇒ revert the binding change; production state is the invariant.
+
+### 9.4 Standing guardrails (effective immediately, until Step 2/3 lands)
+
+- The Vercel `development` environment is **production-equivalent**: no migrations, no seed,
+  no application writes through it. Disposable targets remain temporary databases (or, once it
+  exists, the `development` branch) on `tiny-mud-82763154`.
+- `drizzle-kit push` stays forbidden everywhere; the only schema mechanism is a committed
+  migration applied by `drizzle-kit migrate`.
+- No secret value is ever printed, logged, or committed; only hashes and host/endpoint
+  identifiers are quotable.
