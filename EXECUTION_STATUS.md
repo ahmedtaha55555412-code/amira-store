@@ -10,8 +10,8 @@ Allowed project states:
 
 ## Current state
 PROJECT_STATUS=READY_FOR_NEXT_PHASE
-CURRENT_PHASE=PHASE_02
-LAST_COMPLETED_PHASE=PHASE_01
+CURRENT_PHASE=PHASE_03
+LAST_COMPLETED_PHASE=PHASE_02
 CURRENT_BRANCH=main
 
 ### PHASE_00 record (2026-09-26)
@@ -70,13 +70,29 @@ CURRENT_BRANCH=main
 - Linked issues: ISSUE-2026-09-27-013 (fixed), ISSUE-2026-09-27-014 (fixed), ISSUE-2026-09-27-010 (open, owner, unaffected)
 - Scope discipline kept: no products DB logic, no cart/checkout/admin auth/payment, no new routes, PHASE-00 infra untouched
 
+## PHASE_02 completion record
+- Status: COMPLETE (all 4 DoD items pass; see below)
+- Commit: `feat(phase-02): PostgreSQL/Neon schema + Drizzle migrations + seed strategy` (hash via `git log main`; pushed after ISSUE-018 credential restore)
+- Date/time: 2026-09-27 (Africa/Cairo)
+- Tests/verification:
+  - `bun run db:verify:local` → **exit 0**: disposable PostgreSQL 18 rehearsal — migrations apply cleanly to TWO fresh DBs; production-safe bootstrap + dev seed both idempotent on re-run (7 products / 18 variants / 24 variant-attribute assignments / 13 images stable); seed REFUSES `NODE_ENV=production`; **28/28 invariant+scenario probes pass** (size-only / color-only / size+color non-Cartesian / no-attribute default variant; per-variant price/stock/image independence; multi-image products; unique SKU+slugs; no negative stock; one-value-per-attribute-per-variant; composite-FK pair consistency; order money identities; one verified review per order item; one cancellation-return per order; ledger identities; session-token uniqueness; settings singleton; New-Arrivals index)
+  - typecheck ✅ (`tsc --noEmit` clean) · lint ✅ (0 errors, 0 warnings) · dev-server runtime clean (dev.log no errors)
+  - Browser QA (agent-browser): `/` renders at desktop+mobile, `ar/rtl`, zero overflow, no console/page errors — PHASE-02 is schema-only, UI untouched, no regression
+  - `next build`: NOT executed in-sandbox (sandbox runtime constraint forbids `bun run build` while the dev server owns `.next`); build evidence = CI `next build` on next push (workflow updated to Drizzle) — tracked under ISSUE-018, same green-CI path as PHASE_00/01
+- Schema delivered: 23 tables / 9 enums per `docs/DATA_DICTIONARY.md` + 15 documented implementation decisions (denormalized variant-attribute guard, unique phone_normalized, order idempotency slot, money-identity CHECKs, ledger restore-exactly-once partial unique, verified-review uniqueness, image partial uniques, settings singleton, no featured flags, pg_trgm deferred to PHASE_05)
+- Seed strategy: committed `scripts/db-seed.ts` (dev-only, deterministic, re-run safe), `scripts/db-bootstrap.ts` (production-safe, absent-only init incl. WhatsApp +201019003677 as store data), `scripts/verify-migrations.ts` + `scripts/verify-local-database.mjs` (committed rehearsal)
+- Data layer switch: Prisma + SQLite REMOVED (`prisma/`, `src/lib/db.ts`, deps, CI step, scripts); Drizzle + `pg` is the single data layer (`src/db/client.ts`, driver isolated; Neon pooled for app, direct for migrations)
+- Known non-blocking notes: ISSUE-2026-09-27-018 (credential vault wiped by sandbox recycle → git push + live-Neon apply + CI green run pending owner-side restore; pre-written procedure in `docs/ops/DATABASE.md` §8); ISSUE-2026-09-27-010 (orphan Neon resource — still owner-discretionary)
+- Linked issues: ISSUE-2026-09-27-015 (FIXED), 016 (FIXED), 017 (FIXED), 018 (OPEN, owner)
+- Scope discipline kept: no cart/checkout/orders/inventory/reviews/admin-auth workflows implemented; no PHASE-01 design changes; no production data touched
+
 ## Rule
 Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not fully green, the next phase is forbidden.
 
 ## Phase board
 - [x] PHASE_00 — Repository audit + execution controls
 - [x] PHASE_01 — Foundation + design system + brand assets
-- [ ] PHASE_02 — Database schema + migrations + seed strategy
+- [x] PHASE_02 — Database schema + migrations + seed strategy
 - [ ] PHASE_03 — Admin authentication + security foundation
 - [ ] PHASE_04 — Categories + products + variants + media
 - [ ] PHASE_05 — Storefront navigation + search + filters + product pages

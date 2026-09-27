@@ -61,3 +61,6 @@ db/*.db
 .auth/
 # vercel project link metadata (local only)
 .vercel/
+
+# sandbox tool artifacts (never commit)
+tool-results/

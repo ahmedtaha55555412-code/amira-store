@@ -21,12 +21,8 @@ jobs:
       - name: Install dependencies (locked)
         run: bun install --frozen-lockfile
 
-      # Bun blocks @prisma/client's postinstall on CI (trustedDependencies policy),
-      # so the client must be generated explicitly or `tsc --noEmit` fails on
-      # src/lib/db.ts (TS2305). Scaffold-era helper only — Prisma is NOT the
-      # Amira Store data layer (PHASE_02 introduces Drizzle; revisit then).
-      - name: Generate Prisma client (scaffold helper)
-        run: bun run db:generate
+      # Data layer is Drizzle ORM + PostgreSQL/Neon since PHASE_02 (Prisma removed).
+      # Schema type-safety comes from src/db/schema; no client generation step needed.
 
       - name: Typecheck
         run: bun run typecheck

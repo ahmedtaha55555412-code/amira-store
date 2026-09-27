@@ -3,13 +3,13 @@
 | Requirement | Source of truth | Phase | Verification | Status |
 |---|---|---:|---|---|
 | Arabic-only RTL storefront | MASTER_PLAN §2 | 01,05+ | Visual/manual | PENDING |
-| Egypt + EGP | MASTER_PLAN §2 | 01,02 | Unit/manual | PENDING |
-| 5 main categories | MASTER_PLAN §2,3 | 02,04 | Integration | PENDING |
-| Simple parent/child categories | §6 | 02,04 | CRUD test | PENDING |
-| Generic variants | §6 | 02,04 | Unit/integration | PENDING |
-| Size not forced to color | §6 | 02,04 | Matrix tests | PENDING |
-| Variant-level original/current price | §7 | 02,04,07 | Order pricing test | PENDING |
-| Variant-level stock | §13 | 02,04,07,08 | Concurrency/inventory tests | PENDING |
+| Egypt + EGP | MASTER_PLAN §2 | 01,02 | Unit/manual | PARTIAL — schema defaults EGP/ar/Africa-Cairo in store_settings (PHASE_02); UI per-page checks 05+ |
+| 5 main categories | MASTER_PLAN §2,3 | 02,04 | Integration | PARTIAL — schema + bootstrap/seed init the 5 departments (PHASE_02); admin CRUD PHASE_04 |
+| Simple parent/child categories | §6 | 02,04 | CRUD test | PARTIAL — self-FK tree with RESTRICT + hierarchy index (PHASE_02); admin CRUD PHASE_04 |
+| Generic variants | §6 | 02,04 | Unit/integration | PARTIAL — generic attributes/values + explicit variants, DB-verified (PHASE_02); editor PHASE_04 |
+| Size not forced to color | §6 | 02,04 | Matrix tests | PARTIAL — matrix-free model proven by probes (size-only/color-only/size+color subset) (PHASE_02); editor PHASE_04 |
+| Variant-level original/current price | §7 | 02,04,07 | Order pricing test | PARTIAL — per-variant numeric(12,2) + positivity CHECKs (PHASE_02); pricing flow PHASE_07 |
+| Variant-level stock | §13 | 02,04,07,08 | Concurrency/inventory tests | PARTIAL — per-variant stock + no-negative-stock CHECK + ledger identities (PHASE_02); flows PHASE_07/08 |
 | Multi-product cart | §8 | 06,07 | Integration | PENDING |
 | Guest wishlist | §8 | 06 | Browser/manual | PENDING |
 | Guest checkout | §9 | 07 | E2E | PENDING |
@@ -25,7 +25,7 @@
 | Admin order editing | §18 | 08,12 | Integration | PENDING |
 | Reviews | §15 | 09 | E2E | PENDING |
 | WhatsApp testimonials | §15 | 09 | Admin/manual | PENDING |
-| New Arrivals from createdAt | §4 | 04,10 | Data-driven test | PENDING |
+| New Arrivals from createdAt | §4 | 04,10 | Data-driven test | PARTIAL — created_at DESC index, no featured flags anywhere in schema (PHASE_02); UI PHASE_10 |
 | No featured/selected products | §4,29 | all | Static/code audit | PENDING |
 | No brands | §2 | all | schema/UI audit | PENDING |
 | No coupons | §2 | all | route/schema audit | PENDING |
@@ -39,9 +39,11 @@
 | Foundational primitives + loading/empty/error states | PHASE-01 | 01 | Manual playground | DONE |
 | Homepage shell (announcement→footer, honest placeholders) | PHASE-01 | 01 | Browser QA | DONE |
 | Visible focus + keyboard navigation on primitives | PHASE-01, MASTER_PLAN §22 | 01 | Browser keyboard QA | DONE (AA audit PHASE_11) |
-| GitHub-ready | §28 | 14 | CI | PENDING |
-| Neon-ready | §25,27 | 02,14 | migration rehearsal | PENDING |
+| GitHub-ready | §28 | 14 | CI | PARTIAL — CI updated for Drizzle (PHASE_02); green run pending credential restore (ISSUE-018) |
+| Neon-ready | §25,27 | 02,14 | migration rehearsal | PARTIAL — committed migration validated on real PostgreSQL fresh-DB rehearsal, 28/28 probes (PHASE_02); live-Neon apply pending credential restore (ISSUE-018, procedure in docs/ops/DATABASE.md §8) |
 | Vercel-ready | §27 | 14 | Preview/production | PENDING |
-| No secrets in repo | §24,27 | 01,13,14 | secret scan/manual | PARTIAL — PHASE_01 staged scan clean; final audits 13/14 |
+| No secrets in repo | §24,27 | 01,13,14 | secret scan/manual | PARTIAL — PHASE_01/02 staged scans clean (DATABASE_URL never committed); final audits 13/14 |
+| Production PostgreSQL schema + Drizzle migrations + seed strategy | PHASE-02, DATA_DICTIONARY | 02 | bun run db:verify:local (exit 0; 28/28) | DONE (live-Neon apply pending ISSUE-018) |
+| Order/inventory/reviews/settings schema readiness for later phases | PHASE-02, DATA_DICTIONARY | 02 | invariant probes (money identities, snapshots, ledger, singleton) | DONE |
 | WCAG 2.2 AA target | §22 | 11,13 | axe/manual | PENDING |
 | Core Web Vitals target | §23 | 11,13 | Lighthouse/Web Vitals | PENDING |

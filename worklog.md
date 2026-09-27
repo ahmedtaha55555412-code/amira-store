@@ -273,3 +273,20 @@ Stage Summary:
 - PHASE_01 COMPLETE: all DoD pass (build/typecheck/lint/renders/baseline-3-viewports)
 - Gate advanced: CURRENT_PHASE=PHASE_02, LAST_COMPLETED_PHASE=PHASE_01, PROJECT_STATUS=READY_FOR_NEXT_PHASE
 - Design system now the enforced foundation: tokens via CSS vars, Cairo only, branding via BrandLogo/getBrandSettings contract
+
+---
+Task ID: 6
+Agent: Z.ai Code (main)
+Task: Execute PHASE-02 — Database Schema + Migrations + Seed Strategy (Amira Store)
+
+Work Log:
+- Re-read PHASE-02.md, MASTER_PLAN.md, docs/DATA_DICTIONARY.md, AGENTS.md, EXECUTION_STATUS.md, docs/ops/SEED_PLAN.md, docs/qa/{TRACEABILITY,TEST_CASES}.md; confirmed 4-item DoD + schema dependencies of PHASE-03..PHASE-10
+- Environment finding: sandbox recycle wiped `.auth/` vault (recurrence of ISSUE-009 class) → gh/vercel/git-push unavailable this session; live-Neon steps documented as ready-to-run procedure (docs/ops/DATABASE.md §8); validation done on real disposable PostgreSQL instead
+- Installed drizzle-orm@0.45.3, drizzle-kit@0.31.11, pg@8.23.0, @neondatabase/serverless@1.1.0, embedded-postgres (dev); REMOVED Prisma+SQLite data layer (prisma/, src/lib/db.ts, deps, CI step, db:* scripts)
+- Implemented full schema in src/db/schema/{enums,admin,media,catalog,customers-orders,inventory,reviews,settings,relations,index}.ts: 23 tables, 9 enums, UUID PKs, timestamptz, numeric(12,2) money, composite FK for variant↔attribute consistency, UNIQUE(variant_id,attribute_id), unique phone_normalized, orders.idempotency_key partial unique, money-identity CHECKs (grand_total, subtotal), ledger CHECKs + cancellation-return partial unique, verified-review partial unique, image partial uniques, settings singleton, New-Arrivals created_at DESC index, offers partial index — no featured/brand/coupon/multi-vendor/customer-auth concepts anywhere
+- src/db/client.ts: lazy Proxy drizzle client over pg Pool (TLS for non-local hosts; driver isolated; Neon pooled=app / direct=migrations documented); drizzle.config.ts (DRIZZLE_DATABASE_URL override)
+- Scripts: db-seed.ts (dev-only guard, deterministic upserts: 5 departments + children, size/color/volume/shade attributes, 7 products covering no-attr/size-only/color-only/size+color-subset/volume-only/volume+shade/draft, variant images, reviews approved+pending, testimonials, settings w/ +201019003677 as DATA, homepage sections), db-bootstrap.ts (production-safe absent-only init + migrations-current check), verify-migrations.ts (28 probes), verify-local-database.mjs (one-shot rehearsal)
+- Generated drizzle/0000_init_schema.sql; validated via bun run db:verify:local on disposable PostgreSQL 18 — caught and fixed 3 real defects: ISSUE-015 (composite FK before referenced unique index — reordered generated SQL), ISSUE-016 (attributeId miswired to attributeValues.id → attributes.id), ISSUE-017 (gallery rows lacked unique constraint → 2 partial unique indexes added); also fixed seed-guard test harness (NODE_ENV override)
+- Final: exit 0, 28/28 probes, migrations apply on 2 fresh DBs, bootstrap+seed idempotent (7/18/24/13 stable), seed refuses production
+- typecheck clean, lint 0/0, dev server + agent-browser QA no regression (ar/rtl, 0 overflow, no errors); next build deferred to CI per sandbox constraint (documented)
+- Docs: DATA_DICTIONARY.md +15 implementation notes; new docs/ops/DATABASE.md (guide + rules + decisions + live-Neon procedure); TRACEABILITY +8 rows updated; ISSUE_LOG +015/016/017/018; EXECUTION_STATUS PHASE_02 record + gate flip to PHASE_03

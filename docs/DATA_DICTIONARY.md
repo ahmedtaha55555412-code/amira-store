@@ -262,3 +262,70 @@ Allowed section keys are limited by code to prevent arbitrary product selection 
 - Order items must always have positive quantity and nonnegative monetary amounts.
 - All inventory-affecting order mutations run in a transaction.
 - Never derive historical order totals from current product data.
+
+---
+
+## PHASE_02 implementation notes (2026-09-27)
+
+The schema above was implemented in `src/db/schema/*` with Drizzle ORM. The following
+justified decisions/additions were made during implementation; each is DB-enforced and
+verified by `scripts/verify-migrations.ts` (see `docs/ops/DATABASE.md`):
+
+1. **`variant_attribute_values.attribute_id` (added, denormalized)** — references
+   `attributes.id`; guarded by a composite FK
+   `(attribute_value_id, attribute_id) → attribute_values(id, attribute_id)` and
+   `UNIQUE(variant_id, attribute_id)`. This turns the documented application-level rule
+   "a variant does not contain two values from the same attribute" into a hard database
+   invariant (concurrency-safe for checkout/order-edit phases) without coupling size to
+   color. Mismatched value/attribute pairs are structurally impossible.
+2. **`customers.phone_normalized` is UNIQUE** (dictionary said "indexed") — MASTER_PLAN §10
+   requires create/update-by-normalized-phone; uniqueness makes that upsert race-safe and
+   prevents duplicate customer rows. Order snapshots keep historical truth independent.
+3. **`orders.idempotency_key` (added)** — partial unique index `WHERE idempotency_key IS NOT NULL`.
+   Schema slot for the PHASE-07 duplicate-submit contract; NULL for non-checkout provenance.
+4. **`orders` CHECK `grand_total = products_total + COALESCE(shipping_cost, 0)`** — encodes
+   the §11 totals flow (grand total starts at products total; updates only when shipping
+   is recorded). Also `products_total >= 0`, `shipping_cost` NULL-or-nonnegative,
+   `grand_total >= 0`, non-empty snapshots.
+5. **`order_items` CHECKs** — `quantity > 0`, all unit-price snapshots `> 0`,
+   `subtotal >= 0`, and exact identity `subtotal = unit_price * quantity`
+   (scale-2 value × integer never rounds). `UNIQUE(order_id, variant_id)` enforces one
+   line per variant per order (quantities merge at checkout).
+6. **`order_items.product_id` is NOT NULL with ON DELETE RESTRICT** (dictionary allowed
+   nullable "if future deletion policy requires") — we adopt the dictionary's PREFERRED
+   soft-delete policy: products are archived, never hard-deleted, so order history keeps
+   a permanent referential link. `variant_id` likewise NOT NULL RESTRICT.
+7. **`inventory_movements` ledger integrity** — CHECKs `quantity_delta <> 0`,
+   `stock_before >= 0`, `stock_after >= 0`, `stock_after = stock_before + quantity_delta`
+   ("no negative stock" is structural). Partial unique index
+   `(order_id) WHERE movement_type = 'cancellation_return'` enforces MASTER_PLAN §13
+   "restore stock exactly once" per order at the database level.
+8. **`reviews` partial unique index** `(order_item_id) WHERE order_item_id IS NOT NULL AND
+   is_verified_purchase` — implements "one review per order_item for verified reviews".
+   `rating` CHECK 1..5; comment non-empty; status defaults to `pending` (moderation).
+9. **`product_images`** — partial unique indexes: exactly one product-level primary
+   (`WHERE is_primary AND variant_id IS NULL`), at most one variant-level primary
+   (`WHERE is_primary AND variant_id IS NOT NULL`), plus media-uniqueness per level
+   (`(product_id, media_asset_id)` where gallery / `(variant_id, media_asset_id)` where
+   variant image) — keeps catalog edits and seeds idempotent.
+10. **`store_settings` is a true singleton** — `id integer PRIMARY KEY DEFAULT 1` with
+    CHECK `id = 1`. Dictionary said "singleton-style row"; this makes it structural.
+11. **`products.canonical_slug`** chosen from the dictionary's "canonical_slug/url as
+    appropriate" — slug is domain-independent; absolute URLs are built at render time.
+12. **Enum sets frozen as dictionary/MASTER_PLAN define them** — `product_status`
+    (draft/active/archived), `order_status`, `shipping_status` (§12), `payment_method`
+    (cod only), `payment_status` (pending/collected/failed), `inventory_movement_type`
+    (§13), `review_status`, `testimonial_status`, `media_access_mode`.
+13. **`pg_trgm` intentionally NOT in the initial migration** (task 10 allows optional) —
+    portable baseline with btree indexes now; PHASE-05 may add the extension in its own
+    migration if it provides measurable search value on Neon.
+14. **`updated_at` is application-maintained** (defaults to `now()`; no triggers) — all
+    writes flow through the app layer; keeps migrations simple.
+15. **Index set** (task 9) — slugs (unique), SKU (unique), `categories(parent_id)`,
+    `customers(phone_normalized)` unique, `orders(order_number)` unique,
+    status/filter columns (`products(category_id,status)`, `orders` status/shipping/payment,
+    `reviews(product_id,status,created_at)`, `whatsapp_testimonials(status,sort_order)`,
+    `homepage_banners(is_active,sort_order)`), inventory variant lookup
+    (`inventory_movements(variant_id, created_at DESC)`), review/product lookup,
+    `products(created_at DESC)` for New Arrivals, and a partial offers index
+    `product_variants(product_id, current_price) WHERE is_active AND current_price < original_price`.
