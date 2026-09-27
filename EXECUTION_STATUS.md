@@ -9,11 +9,11 @@ Allowed project states:
 - `COMPLETE`
 
 ## Current state
-PROJECT_STATUS=READY_FOR_NEXT_PHASE
+PROJECT_STATUS=BLOCKED
 CURRENT_PHASE=PHASE_03
 LAST_COMPLETED_PHASE=PHASE_02
 CURRENT_BRANCH=main
-PHASE_03_STATUS=LOCKED — NOT started in the safety/continuity cycle; opens only on the owner's explicit go-ahead
+PHASE_03_STATUS=BLOCKED — owner go-ahead received 2026-09-27, but the mandatory database prerequisite is unavailable: the isolated Neon `development`-branch DATABASE_URL is absent from the sandbox (ISSUE-2026-09-27-020). PHASE-03 NOT started; zero code written; Vercel Development DATABASE_URL (points at Production) never opened. Owner action required: create git-ignored `.env.local` with the `development` branch's POOLED connection string (docs/ops/DATABASE.md §9.3 Step 1.6; details in ISSUE_LOG ISSUE-2026-09-27-020).
 
 ### PHASE_00 record (2026-09-26)
 - Local baseline scope: PASS — workspace inspected; tooling verified (Node v24.21.0, Bun 1.3.14, Git 2.47.3); planning pack preserved in-repo (AGENTS.md, MASTER_PLAN.md, EXECUTION_STATUS.md, docs/); `.env.example` contract committed; `.gitignore` secret-safe (`.env*` ignored, `!.env.example` tracked); baseline CI scaffolding (.github/workflows/ci.yml); baseline Arabic placeholder page boots; `bun install` clean; lint + typecheck pass; no secrets committed.
@@ -107,6 +107,14 @@ PHASE_03_STATUS=LOCKED — NOT started in the safety/continuity cycle; opens onl
 - **Verdict — NO supported binding exists under the owner's constraints** (full analysis: docs/ops/DATABASE.md §9.5): Vercel resource settings expose no per-environment branch selector and the integration-managed `DATABASE_*` variables are not overridable; the integration's only documented per-environment Development mechanism is the installation-time "Create a branch for your development environment" option (binds its own `vercel-dev` branch — not an existing named branch — and has no documented post-install toggle; enabling it would require the reconnect/reinstall the owner forbade this round).
 - **Consequence:** integration untouched; compensating control (§9.3(a)) remains operative — local work on the `development` branch via git-ignored `.env.local` (pooled string, owner-copied); Vercel `development` environment stays production-equivalent and write-prohibited; ISSUE-2026-09-27-019 stays OPEN (branch exists, binding pending / future `vercel-dev` option recorded).
 - **Gate unchanged:** LAST_COMPLETED_PHASE=PHASE_02, CURRENT_PHASE=PHASE_03, PROJECT_STATUS=READY_FOR_NEXT_PHASE, PHASE_03_STATUS=LOCKED — opens only on the owner's explicit go-ahead.
+
+### PHASE_03 start round (2026-09-27) — BLOCKED at the database-safety gate (owner directive honored verbatim)
+- Owner explicitly authorized PHASE-03 and prescribed the DB contract: ALL PHASE-03 database writes/testing on the isolated Neon `development` branch ONLY (project `tiny-mud-82763154`); NEVER the Vercel Development DATABASE_URL (still maps to Production); NEVER Neon `main`/Production; STOP if the isolated development DATABASE_URL is not available in the sandbox.
+- Prerequisite reading completed before any code: `docs/phases/PHASE-03.md` read COMPLETELY (11 tasks, 8 verification items, DoD); MASTER_PLAN admin/security contract (§16 Admin domain, §24 Security, §26 admin tables) read; `.env.example` env contract read; ERROR_PROTOCOL read; EXECUTION_STATUS/ISSUE_LOG/DATABASE/worklog current state read.
+- Exhaustive availability scan (name/shape-only, no secret values printed): `.env.local` ABSENT; no `.env.*` variants; only scaffold 1-line `.env` (non-Neon value); shell env has no NEON/PG/AUTH_SESSION/APP_URL vars; no Neon config dirs, no Neon CLI/API key anywhere; git-ignored `.auth/` vault contains ONLY the four expired PHASE-02 disposable-verification scripts (`.auth/verify/neon-*.mjs`) — verified CLEAN: zero embedded connection strings (they read credentials via `process.env`; the temp database they targeted was dropped at PHASE-02 end).
+- CONCLUSION per the owner's conditional: the ONLY Neon URL reachable from this ecosystem is the Vercel Development/Production shared DATABASE_URL — FORBIDDEN (Production). Therefore the round STOPPED exactly at the gate: **zero code written, zero database connections, zero migrations/seed/bootstrap, zero Vercel/Neon control-plane calls.**
+- Gate: `PHASE_03_STATUS=BLOCKED` (NOT started), `PROJECT_STATUS=BLOCKED`, `CURRENT_PHASE=PHASE_03` unchanged, `LAST_COMPLETED_PHASE=PHASE_02` unchanged. Blocker fully documented as **ISSUE-2026-09-27-020** (BLOCKER) with the exact owner action (docs/ops/ISSUE_LOG.md). No workaround invented, per directive.
+- When the owner lands the URL: the implementation round will begin with the complete `MASTER_PLAN.md` read (the one remaining prerequisite), then implement PHASE-03 exactly (username+password, single admin, no register/forgot/email, hashed session tokens, HttpOnly/Secure/SameSite cookie, expiry+logout, login throttling, authorization helper on every admin mutation, non-web bootstrap command, change-password flow, activity logging without secrets, session-leak prevention) and verify against the `development` branch ONLY.
 
 ## Rule
 Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not fully green, the next phase is forbidden.
