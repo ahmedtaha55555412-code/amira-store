@@ -8,6 +8,10 @@
  * src/lib/auth/guard.ts), and every admin API route re-validates via
  * `requireAdminMutation()`. API routes (/api/admin/*) are intentionally NOT
  * matched here: they must answer 401 JSON, not redirect.
+ *
+ * PHASE-03 security audit addition: every /admin response is stamped with
+ * Cache-Control: no-store — session-sensitive UI must never be cached by
+ * browsers or intermediaries.
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
@@ -18,7 +22,9 @@ export function middleware(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
 
   if (pathname === '/admin/login') {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
   }
 
   if (!request.cookies.has(ADMIN_SESSION_COOKIE)) {
@@ -30,10 +36,14 @@ export function middleware(request: NextRequest): NextResponse {
     if (pathname !== '/admin') {
       url.searchParams.set('next', `${pathname}${search}`);
     }
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set('Cache-Control', 'no-store');
+  return response;
 }
 
 export const config = {

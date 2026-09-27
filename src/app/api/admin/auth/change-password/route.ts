@@ -11,6 +11,11 @@
  *   session the moment the owner rotates a credential.
  * - Activity recorded without any password material; audit row is written
  *   inside the same transaction as the credential update + revocation.
+ * - CSRF: strict same-origin validation (Origin/Referer vs. deployment
+ *   origin, OWASP "Verifying Origin With Standard Headers") +
+ *   application/json content-type enforcement, before any credential work;
+ *   SameSite=Lax cookie stays as defense-in-depth. Responses carry
+ *   Cache-Control: no-store.
  */
 
 import { eq } from 'drizzle-orm';
@@ -20,6 +25,7 @@ import { z } from 'zod';
 import { db } from '@/db/client';
 import { adminActivityLogs, adminSessions, adminUsers } from '@/db/schema';
 import { AdminAuthError, requireAdminMutation } from '@/lib/auth/guard';
+import { isJsonRequest, isSameOriginRequest, withNoStore } from '@/lib/auth/origin';
 import { hashPassword, passwordPolicyIssues, verifyPassword } from '@/lib/auth/password';
 import { ADMIN_SESSION_COOKIE } from '@/lib/auth/session';
 
@@ -33,12 +39,19 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // CSRF/same-origin gate (ISSUE-2026-09-27-022) — before auth/body parsing.
+  if (!isSameOriginRequest(request) || !isJsonRequest(request)) {
+    return withNoStore(
+      NextResponse.json({ error: 'طلب غير صالح.' }, { status: 403 }),
+    );
+  }
+
   let session;
   try {
     session = await requireAdminMutation();
   } catch (error) {
     if (error instanceof AdminAuthError) {
-      return NextResponse.json({ error: 'غير مصرح.' }, { status: 401 });
+      return withNoStore(NextResponse.json({ error: 'غير مصرح.' }, { status: 401 }));
     }
     throw error;
   }
@@ -47,25 +60,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'طلب غير صالح.' }, { status: 400 });
+    return withNoStore(NextResponse.json({ error: 'طلب غير صالح.' }, { status: 400 }));
   }
 
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'طلب غير صالح.' }, { status: 400 });
+    return withNoStore(NextResponse.json({ error: 'طلب غير صالح.' }, { status: 400 }));
   }
   const { currentPassword, newPassword, confirmNewPassword } = parsed.data;
 
   if (newPassword !== confirmNewPassword) {
-    return NextResponse.json(
-      { error: 'كلمتا المرور الجديدتان غير متطابقتين.' },
-      { status: 422 },
+    return withNoStore(
+      NextResponse.json(
+        { error: 'كلمتا المرور الجديدتان غير متطابقتين.' },
+        { status: 422 },
+      ),
     );
   }
 
   const policyIssues = passwordPolicyIssues(newPassword);
   if (policyIssues.length > 0) {
-    return NextResponse.json({ error: policyIssues.join(' ') }, { status: 422 });
+    return withNoStore(NextResponse.json({ error: policyIssues.join(' ') }, { status: 422 }));
   }
 
   try {
@@ -76,22 +91,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .limit(1);
     const user = matched[0];
     if (!user) {
-      return NextResponse.json({ error: 'الحساب غير موجود.' }, { status: 401 });
+      return withNoStore(NextResponse.json({ error: 'الحساب غير موجود.' }, { status: 401 }));
     }
 
     const currentOk = await verifyPassword(currentPassword, user.passwordHash);
     if (!currentOk) {
-      return NextResponse.json(
-        { error: 'كلمة المرور الحالية غير صحيحة.' },
-        { status: 401 },
+      return withNoStore(
+        NextResponse.json(
+          { error: 'كلمة المرور الحالية غير صحيحة.' },
+          { status: 401 },
+        ),
       );
     }
 
     const sameAsCurrent = await verifyPassword(newPassword, user.passwordHash);
     if (sameAsCurrent) {
-      return NextResponse.json(
-        { error: 'اختر كلمة مرور مختلفة عن كلمة المرور الحالية.' },
-        { status: 422 },
+      return withNoStore(
+        NextResponse.json(
+          { error: 'اختر كلمة مرور مختلفة عن كلمة المرور الحالية.' },
+          { status: 422 },
+        ),
       );
     }
 
@@ -116,7 +135,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     });
 
-    const response = NextResponse.json({ ok: true, requireRelogin: true });
+    const response = withNoStore(NextResponse.json({ ok: true, requireRelogin: true }));
     response.cookies.set(ADMIN_SESSION_COOKIE, '', {
       httpOnly: true,
       secure: request.nextUrl.protocol === 'https:',
@@ -127,9 +146,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return response;
   } catch (error) {
     console.error('[auth/change-password] handler failure', (error as Error)?.name);
-    return NextResponse.json(
-      { error: 'حدث خطأ غير متوقع. حاول مرة أخرى.' },
-      { status: 500 },
+    return withNoStore(
+      NextResponse.json(
+        { error: 'حدث خطأ غير متوقع. حاول مرة أخرى.' },
+        { status: 500 },
+      ),
     );
   }
 }

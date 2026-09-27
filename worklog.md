@@ -451,3 +451,29 @@ Stage Summary:
 - ISSUE-2026-09-27-020 RESOLVED; ISSUE-2026-09-27-021 FIXED; ISSUE-2026-09-27-019 OPEN (binding gap only, narrowed)
 - Gate: LAST_COMPLETED_PHASE=PHASE_03, CURRENT_PHASE=PHASE_04, PROJECT_STATUS=READY_FOR_NEXT_PHASE, PHASE_04 LOCKED (opens only on explicit owner go-ahead) — no PHASE-04 work performed
 - STOP executed per owner directive
+---
+Task ID: 12-a
+Agent: Z.ai Code (main)
+Task: PHASE-03 targeted security audit (owner directive, post-completion): verify explicit CSRF protection or an equivalent same-origin request validation mechanism on ALL state-changing admin endpoints (login / logout / change-password / bootstrap-mutations) against current OWASP guidance and the owner's 10 criteria; fix ONLY defects found; NO PHASE-04, no new features, no unrelated refactors; dev database ONLY; STOP after the audit.
+
+Work Log:
+- Read worklog + tracking docs first; git state verified: tree clean, local main == origin/main == 06a4f86 (PHASE-03 commit), 0 pending both directions
+- Enumerated every state-changing admin surface: POST /api/admin/auth/{login,logout,change-password} (the ONLY admin API routes; all POST-only, no GET handlers — criterion #4 PASS); bootstrap is a CLI (scripts/db-bootstrap-admin.ts) that refuses a second admin and is never a web route — criterion #8 authorization PASS (requireAdminMutation + DB re-validation on change-password; logout token-scoped idempotent)
+- Audited the 10 criteria against src/lib/auth/{session,guard,throttle,password,activity}.ts, middleware, next.config headers, and the three route files: #4/#6/#7/#8/#9/#10 PASS (cookie flags, fixation-proof session creation, ISSUE-021-fixed throttle, redaction filter, name-only error logs)
+- DEFECTS FOUND (outcome B): #1/#2 — no Origin/Referer validation and no CSRF token; SameSite=Lax was the SOLE cross-site defense (OWASP: must not be sole) · #5 — no Cache-Control: no-store on auth responses / admin pages
+- FIX (minimal, in-scope): new src/lib/auth/origin.ts — isSameOriginRequest() (strict Origin→Referer-fallback→reject-if-neither vs. deployment origin from APP_URL + x-forwarded-host/proto/host; default-port normalisation; literal-null Origin rejected; localhost allowances only when NODE_ENV !== 'production') + isJsonRequest() (application/json enforcement) + withNoStore(); gates wired BEFORE any body parsing / DB work in all three endpoints; every response wrapped in no-store; middleware stamps ALL /admin responses with Cache-Control: no-store
+- RETEST on the isolated Neon development branch ONLY (.env.local sourced per command; Vercel Development DATABASE_URL never opened; Production never connected):
+  - verify:auth extended with section [12] (15 new checks) → 44 passed, 0 failed
+  - curl matrix 15/15: cross-origin login 403+no-store; no-Origin 403; text/plain form-spoof 403; same-origin wrong creds 401 (gate passed); real login 200 + no-store + HttpOnly/SameSite=lax/Path=/ host-only cookie; Referer fallback 200; authenticated CROSS-SITE logout → 403 and the session SURVIVED (GET /admin 200); same-origin logout 200+no-store; cross-site & no-origin change-password 403/403; same-origin wrong-current-password 401 with NO credential rotation; unauthenticated change-password 401; /admin/login no-store; /admin → 307 /admin/login + no-store; real password still valid after the whole matrix
+  - typecheck clean; lint clean
+  - Browser QA (agent-browser): browser-native same-origin fetch → 401 + no-store (the browser's automatic Origin passes the gate through the real request path); text/plain fetch → 403; wrong-credential UI generic Arabic error; /admin unauthenticated → redirect to login; zero console/page errors; zero horizontal overflow at 375/1440 px
+  - dev.log clean (no runtime errors); test artifacts removed from the dev branch (1 probe failure row + 4 test sessions deleted)
+- DATABASE SAFETY: all DB work against the development branch ONLY via git-ignored .env.local; no schema changes; credentials never printed/committed (cookie values redacted in all outputs)
+- Docs updated: docs/ops/ISSUE_LOG.md (ISSUE-2026-09-27-022 HIGH → FIXED with full 10-criterion record), docs/qa/TRACEABILITY.md (2 new DONE security rows), EXECUTION_STATUS.md (PHASE_03 targeted security audit record; gate unchanged), this worklog
+- Pending at write time: commit + push + local==origin verification + CI watch (executed immediately after this entry)
+
+Stage Summary:
+- PHASE-03 security audit COMPLETE: 7/10 criteria already PASS; 3 defects (#1/#2 same-origin CSRF control, #5 no-store) FIXED with a single focused change set; affected area fully retested green (44/44 service checks, 15/15 curl matrix, browser QA clean)
+- ISSUE-2026-09-27-022: FIXED; ISSUE-2026-09-27-021 remains FIXED; ISSUE-2026-09-27-019 remains OPEN (binding gap only; compensating control active)
+- PHASE-04: NOT started — gate stays CURRENT_PHASE=PHASE_04 / LOCKED pending explicit owner go-ahead
+- STOP executed after the audit per owner directive

@@ -3,6 +3,11 @@
  *
  * Security contract:
  * - POST + JSON body {username, password}; anything else → generic rejection.
+ * - CSRF: strict same-origin validation (Origin/Referer vs. deployment origin,
+ *   OWASP "Verifying Origin With Standard Headers") + application/json
+ *   content-type enforcement, BEFORE any body parsing or database work.
+ *   SameSite=Lax on the session cookie stays as defense-in-depth. All
+ *   responses carry Cache-Control: no-store.
  * - Unknown username and wrong password produce the SAME generic error and
  *   the SAME response shape (no account enumeration; timing equalized via
  *   DUMMY_PASSWORD_HASH).
@@ -23,6 +28,7 @@ import { db } from '@/db/client';
 import { adminUsers } from '@/db/schema';
 import { recordAdminActivity } from '@/lib/auth/activity';
 import { getClientIpHash, isSecureRequest } from '@/lib/auth/guard';
+import { isJsonRequest, isSameOriginRequest, withNoStore } from '@/lib/auth/origin';
 import { DUMMY_PASSWORD_HASH, verifyPassword } from '@/lib/auth/password';
 import {
   ADMIN_SESSION_COOKIE,
@@ -49,16 +55,23 @@ const GENERIC_INVALID = 'بيانات الدخول غير صحيحة.';
 const GENERIC_ERROR = 'حدث خطأ غير متوقع. حاول مرة أخرى.';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // CSRF/same-origin gate (ISSUE-2026-09-27-022) — runs before any parsing.
+  if (!isSameOriginRequest(request) || !isJsonRequest(request)) {
+    return withNoStore(
+      NextResponse.json({ error: GENERIC_INVALID }, { status: 403 }),
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: GENERIC_INVALID }, { status: 400 });
+    return withNoStore(NextResponse.json({ error: GENERIC_INVALID }, { status: 400 }));
   }
 
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: GENERIC_INVALID }, { status: 400 });
+    return withNoStore(NextResponse.json({ error: GENERIC_INVALID }, { status: 400 }));
   }
 
   const username = parsed.data.username.trim();
@@ -71,12 +84,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 1) Throttle before any credential work.
     const throttle = await getLoginThrottleState(username, ipHash);
     if (throttle.throttled) {
-      return NextResponse.json(
-        {
-          error: `تم تجاوز عدد المحاولات المسموح. حاول بعد ${Math.ceil(throttle.retryAfterSeconds / 60)} دقيقة تقريبًا.`,
-          retryAfterSeconds: throttle.retryAfterSeconds,
-        },
-        { status: 429, headers: { 'Retry-After': String(throttle.retryAfterSeconds) } },
+      return withNoStore(
+        NextResponse.json(
+          {
+            error: `تم تجاوز عدد المحاولات المسموح. حاول بعد ${Math.ceil(throttle.retryAfterSeconds / 60)} دقيقة تقريبًا.`,
+            retryAfterSeconds: throttle.retryAfterSeconds,
+          },
+          { status: 429, headers: { 'Retry-After': String(throttle.retryAfterSeconds) } },
+        ),
       );
     }
 
@@ -95,7 +110,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (!user || !passwordOk) {
       await recordLoginFailure({ usernameAttempted: username, ipHash });
-      return NextResponse.json({ error: GENERIC_INVALID }, { status: 401 });
+      return withNoStore(NextResponse.json({ error: GENERIC_INVALID }, { status: 401 }));
     }
 
     if (!user.isActive) {
@@ -105,7 +120,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         adminUserId: user.id,
         reason: 'inactive_account',
       });
-      return NextResponse.json({ error: GENERIC_INVALID }, { status: 401 });
+      return withNoStore(NextResponse.json({ error: GENERIC_INVALID }, { status: 401 }));
     }
 
     // 3) Success: clear transient failure state, create the session.
@@ -135,7 +150,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       metadata: { ipHash },
     });
 
-    const response = NextResponse.json({ ok: true });
+    const response = withNoStore(NextResponse.json({ ok: true }));
     response.cookies.set(
       ADMIN_SESSION_COOKIE,
       session.token,
@@ -145,6 +160,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     // No tokens/passwords/usernames in server logs (PHASE-03 task 11).
     console.error('[auth/login] handler failure', typeof error, (error as Error)?.name);
-    return NextResponse.json({ error: GENERIC_ERROR }, { status: 500 });
+    return withNoStore(NextResponse.json({ error: GENERIC_ERROR }, { status: 500 }));
   }
 }

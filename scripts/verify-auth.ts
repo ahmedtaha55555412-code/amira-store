@@ -16,6 +16,7 @@
  *   9. repeated failures trigger throttling; success clears it
  *  10. activity logs never contain credential-shaped keys
  *  11. single-admin invariant
+ *  12. same-origin request validation (explicit CSRF control) + no-store
  *
  * Safety:
  * - REFUSES NODE_ENV=production (mutates transient state);
@@ -33,6 +34,12 @@ import { and, eq, like, sql } from 'drizzle-orm';
 import { db, getPool } from '../src/db/client';
 import { adminActivityLogs, adminSessions, adminUsers } from '../src/db/schema';
 import { sanitizeMetadata } from '../src/lib/auth/activity';
+import {
+  isJsonRequest,
+  isSameOriginRequest,
+  normalizeOrigin,
+  withNoStore,
+} from '../src/lib/auth/origin';
 import { hashPassword, passwordPolicyIssues, usernameIssues, verifyPassword } from '../src/lib/auth/password';
 import {
   SESSION_TTL_MS,
@@ -245,6 +252,87 @@ try {
     .select({ n: sql<number>`count(*)::int` })
     .from(adminUsers);
   assert('exactly one admin exists', adminCount === 1, `count=${adminCount}`);
+
+  // ---------------------------------------- 12) same-origin validation
+  // Explicit CSRF control on the state-changing admin endpoints (OWASP
+  // "Verifying Origin With Standard Headers"). Pure Request-level logic —
+  // no database involved. NOTE: `host` is a forbidden header for new
+  // Request(), so the derived-host cases use x-forwarded-host/proto.
+  console.log('\n[12] same-origin request validation (CSRF control)');
+  const originBase = 'https://store.example';
+  const sameOriginRequest = () =>
+    new Request(`${originBase}/api/admin/auth/login`, {
+      method: 'POST',
+      headers: {
+        'x-forwarded-host': 'store.example',
+        'x-forwarded-proto': 'https',
+        'content-type': 'application/json',
+      },
+    });
+
+  const originOk = sameOriginRequest();
+  originOk.headers.set('origin', originBase);
+  assert('same-site Origin accepted', isSameOriginRequest(originOk));
+
+  const originDefaultPort = sameOriginRequest();
+  originDefaultPort.headers.set('origin', `${originBase}:443`);
+  assert('default-port Origin normalised to a match', isSameOriginRequest(originDefaultPort));
+
+  const originHostPort = sameOriginRequest();
+  originHostPort.headers.set('x-forwarded-host', 'store.example:443');
+  originHostPort.headers.set('origin', originBase);
+  assert('forwarded default-port host normalised to a match', isSameOriginRequest(originHostPort));
+
+  const originEvil = sameOriginRequest();
+  originEvil.headers.set('origin', 'https://evil.attacker');
+  assert('cross-site Origin rejected', !isSameOriginRequest(originEvil));
+
+  const originLookalike = sameOriginRequest();
+  originLookalike.headers.set('origin', `${originBase}.evil.attacker`);
+  assert('suffix look-alike Origin rejected', !isSameOriginRequest(originLookalike));
+
+  const originNullValue = sameOriginRequest();
+  originNullValue.headers.set('origin', 'null');
+  assert('literal null Origin rejected', !isSameOriginRequest(originNullValue));
+
+  const refererOk = sameOriginRequest();
+  refererOk.headers.set('referer', `${originBase}/admin/settings/security`);
+  assert('same-origin Referer fallback accepted (no Origin)', isSameOriginRequest(refererOk));
+
+  const refererEvil = sameOriginRequest();
+  refererEvil.headers.set('referer', 'https://evil.attacker/login');
+  assert('cross-site Referer rejected', !isSameOriginRequest(refererEvil));
+
+  const bareRequest = sameOriginRequest();
+  assert('no Origin AND no Referer rejected', !isSameOriginRequest(bareRequest));
+
+  const appUrlOrigin = normalizeOrigin(process.env.APP_URL);
+  if (appUrlOrigin) {
+    const appUrlRequest = new Request('https://some-other-host.example/api/admin/auth/login', {
+      method: 'POST',
+    });
+    appUrlRequest.headers.set('origin', appUrlOrigin);
+    assert('APP_URL origin accepted (deployment allowlist)', isSameOriginRequest(appUrlRequest));
+  } else {
+    fail('APP_URL origin accepted (deployment allowlist)', 'APP_URL not set in this environment');
+  }
+
+  const jsonOk = sameOriginRequest();
+  assert('application/json content type accepted', isJsonRequest(jsonOk));
+  const jsonFormSpoof = sameOriginRequest();
+  jsonFormSpoof.headers.set('content-type', 'text/plain');
+  assert('text/plain content type rejected (form-spoofed JSON)', !isJsonRequest(jsonFormSpoof));
+  const jsonMissing = sameOriginRequest();
+  jsonMissing.headers.delete('content-type');
+  assert('missing content type rejected', !isJsonRequest(jsonMissing));
+
+  const noStoreProbe = new Response('{}', { status: 200 });
+  withNoStore(noStoreProbe);
+  assert('withNoStore sets Cache-Control: no-store', noStoreProbe.headers.get('cache-control') === 'no-store');
+  assert(
+    'normalizeOrigin rejects malformed input',
+    normalizeOrigin('not a url') === null && normalizeOrigin('ftp://x') === null && normalizeOrigin(null) === null,
+  );
 } catch (error) {
   failures += 1;
   console.error('\n[verify-auth] UNEXPECTED FAILURE:', (error as Error)?.name, (error as Error)?.message);
