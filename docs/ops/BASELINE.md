@@ -28,10 +28,10 @@ recorded as BLOCKED and are **not faked**.
 
 ## 3. Repository state
 
-- Local git: initialized, branch `main`, identity `Z User <z@container>`.
+- Local git: initialized, branch `main`, identity `Z User <z@container>` (sandbox default at bootstrap time). **2026-09-27 update:** repo-local identity corrected to the owner's GitHub noreply address (`323053819+ahmedtaha55555412-code@users.noreply.github.com`) so Vercel can attribute commits to the owner's Git account — see ISSUE-2026-09-27-011. Commits before `d23f236` retain the sandbox identity (history not rewritten).  
 - Baseline commit: created this phase (see `git log`).
-- GitHub remote: **NOT CONFIGURED** — blocked by B-001. Target repo name: `amira-store` (private, per PHASE-00 task 5) under the owner's account.
-- CI scaffolding: `.github/workflows/ci.yml` (install → typecheck → lint → build). Activates automatically once the GitHub remote exists.
+- GitHub remote: `https://github.com/ahmedtaha55555412-code/amira-store` (**PRIVATE**, default branch `main`, repo id `1390099417`) — created and pushed 2026-09-26 (B-001 cleared).
+- CI scaffolding: `.github/workflows/ci.yml` (install → typecheck → lint → build; triggers: push/PR on `main`).
 
 ## 4. Application baseline
 
@@ -60,11 +60,11 @@ Real values only in `.env` (git-ignored) and platform secret stores (GitHub Acti
 
 | Check | Result |
 |---|---|
-| Dependencies install successfully | ✅ `bun install` clean |
+| Dependencies install successfully | ✅ `bun install` clean; also clean on Vercel build (deployment `dpl_E5DUbpcL6633dBh9iXrmA5QkHSm3`) |
 | New app starts successfully in development | ✅ dev server on port 3000, `/` renders Arabic baseline page |
-| GitHub remote exists and baseline commit is pushed | ⛔ BLOCKED by B-001 |
-| Vercel project linked + non-production deployment path proven | ⛔ BLOCKED by B-002 |
-| Neon project/branch access proven without exposing credentials | ⛔ BLOCKED by B-003 |
+| GitHub remote exists and baseline commit is pushed | ✅ private repo `amira-store` pushed (B-001 cleared, 2026-09-26); remote `main` verified == local HEAD at each docs push |
+| Vercel project linked + non-production deployment path proven | ✅ project `prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA` linked locally + Git-linked to `ahmedtaha55555412-code/amira-store` (`productionBranch: main`); **preview deployment READY** — `dpl_E5DUbpcL6633dBh9iXrmA5QkHSm3`, branch `phase-00/bootstrap-preview`, commit `e7e1c49`, framework `nextjs`, time-to-ready 36.6 s (B-002 cleared, 2026-09-27) |
+| Neon project/branch access proven without exposing credentials | ✅ Neon-Managed Postgres resource `neon-cobalt-globe` (`store_Xot2tvwkL5JACcF7`) → Neon project `tiny-mud-82763154` (fra1, `ready`) bound to all three environments with 18 `DATABASE_*` vars (B-003 cleared via Vercel Marketplace integration path, 2026-09-27); secret values not decryptable with user token — proven via API metadata only |
 | No real secrets committed | ✅ after fix — scaffold-era tracked `.env` and `db/custom.db` discovered during pre-commit review and untracked (ISSUE-2026-09-26-006); `.env*` ignored with `!.env.example` exception; `db/*.db` ignored; staged-diff secret scan clean |
 
 ## 8. Provisioning pending owner authorization
@@ -76,3 +76,20 @@ The following resources cannot be created until the owner authorizes each accoun
 3. **Neon (B-003):** install `neonctl` and authenticate (`neonctl auth` — browser/OAuth). Then: create Amira Store Postgres project + dev/preview/prod branch strategy.
 
 No unrelated GitHub/Neon/Vercel resources were touched. No secrets were stored in Git or printed.
+
+## 9. Addendum (2026-09-27) — infrastructure registry + provisioning closure
+
+All PHASE_00 blockers cleared. Resource identity registry (no secrets):
+
+| Resource | ID | Notes |
+|---|---|---|
+| GitHub repo | `ahmedtaha55555412-code/amira-store` (repo id `1390099417`, PRIVATE) | default branch `main`; GitHub App access granted by owner 2026-09-27 |
+| Vercel team/account | `team_5ThEi7AtAs9s7KUjKD9sR9zy` (user `ahmedtaha55555412-7683`, Hobby) | OAuth device-flow auth, credential in git-ignored vault |
+| Vercel project | `prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA` (`amira-store`, framework `nextjs`, region iad1) | git link `{type: github, org: ahmedtaha55555412-code, repo: amira-store, productionBranch: main}` |
+| Neon installation | `icfg_XaLDAPAdjX8ajtYn8mL9vC0a` (slug `neon`, marketplace, plan `free_v3`) | linked to owner's existing Neon org (`org-frosty-darkness-82889078`, install-time record) |
+| Neon resource | `neon-cobalt-globe` (`store_Xot2tvwkL5JACcF7`) | Neon project `tiny-mud-82763154`, region fra1, status `ready`, Neon Auth on |
+| Neon env binding | 18 `DATABASE_*` vars | targets `development`+`preview`+`production`; prefix `DATABASE`; 1:1 with store secrets |
+| Other env vars | `AUTH_SESSION_SECRET` ×3 targets (distinct values, sensitive); `APP_URL` ×development | provisioned 2026-09-26 |
+| Preview deployment proof | `dpl_E5DUbpcL6633dBh9iXrmA5QkHSm3` → READY | branch `phase-00/bootstrap-preview`, commit `e7e1c49` (owner-attributed), `nextjs`, 36.6 s; URL SSO-protected (302) as expected on Hobby |
+
+Known non-blocking findings: ISSUE-2026-09-27-010 (orphan Neon resource `amira-store` / `nameless-bar-74352862`, 0 connections — owner decides keep/delete); ISSUE-2026-09-27-011 (Vercel blocked first Git deployment over commit-author mapping — FIXED via repo-local git identity). Legacy Vercel Marketplace resource named `amira-store` is NOT bound to anything; the bound resource is `neon-cobalt-globe`.

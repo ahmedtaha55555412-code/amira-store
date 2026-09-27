@@ -9,9 +9,9 @@ Allowed project states:
 - `COMPLETE`
 
 ## Current state
-PROJECT_STATUS=BLOCKED
-CURRENT_PHASE=PHASE_00
-LAST_COMPLETED_PHASE=NONE
+PROJECT_STATUS=READY_FOR_NEXT_PHASE
+CURRENT_PHASE=PHASE_01
+LAST_COMPLETED_PHASE=PHASE_00
 CURRENT_BRANCH=main
 
 ### PHASE_00 record (2026-09-26)
@@ -37,11 +37,27 @@ CURRENT_BRANCH=main
 - **FINDING**: orphan duplicate resource `amira-store` (`store_dqlFkjRT5Qe6XRyB`, Neon project `nameless-bar-74352862`, 0 connected projects) exists on the team — recorded as ISSUE-2026-09-27-010; NO action taken (owner constraint); owner decides keep/delete.
 - **Still pending for PHASE_00 gate**: Vercel↔GitHub link (`link: null` — Vercel GitHub App repo access for `ahmedtaha55555412-code/amira-store` still required, then `vercel git connect` retry), owner decision on ISSUE-2026-09-27-010, and PHASE-00 validation/deployment steps. `PROJECT_STATUS` remains `BLOCKED`; `CURRENT_PHASE` remains `PHASE_00`.
 
+### PHASE_00 closure (2026-09-27) — all integration checks PASS; gate advanced to PHASE_01
+- Owner granted Vercel GitHub App access to `ahmedtaha55555412-code/amira-store`; `vercel git connect` succeeded; link verified via API: `{type: github, org: ahmedtaha55555412-code, repo: amira-store, repoId: 1390099417, productionBranch: main}`.
+- Project framework set to `nextjs` (was `null` — required for correct Next.js builds).
+- **Non-production deployment path PROVEN**: push to branch `phase-00/bootstrap-preview` → Git integration → deployment `dpl_E5DUbpcL6633dBh9iXrmA5QkHSm3` → **READY** (commit `e7e1c49`, author-attributed to owner, framework `nextjs`, 36.6 s, `buildSkipped: false`). First attempt (`dpl_3fJuSPdnrPUR5Tneeor7CpvDK8rC`) was BLOCKED — commit-author/Git-account mapping; FIXED via repo-local git identity (ISSUE-2026-09-27-011).
+- All PHASE-00 integration checks now PASS (see `docs/ops/BASELINE.md` §7/§9); all blockers B-001/B-002/B-003 cleared; remaining ISSUE-2026-09-27-010 is LOW severity, explained, and owner-discretionary — not a gate blocker.
+- Gate: `CURRENT_PHASE` → `PHASE_01`, `LAST_COMPLETED_PHASE` → `PHASE_00`, `PROJECT_STATUS` → `READY_FOR_NEXT_PHASE`.
+
+## PHASE_00 completion record
+- Status: COMPLETE (all DoD + integration checks pass; evidence in BASELINE.md §7/§9)
+- Commit: baseline `c82c9d9` … closure commit of 2026-09-27 (see `git log main`)
+- Date/time: 2026-09-27 (Africa/Cairo)
+- Tests: lint ✅, typecheck ✅ (local, Task-2 record); Vercel build ✅ (dpl_E5DU…); CI workflow active on main/PRs (first run on closure push)
+- Manual verification: preview deployment READY; page URL serves with SSO protection (Hobby default)
+- Known non-blocking notes: ISSUE-2026-09-27-010 (orphan Neon resource — owner decision); ISSUE-2026-09-27-011 (FIXED); sandbox recycles require vault-based credential restore (ISSUE-2026-09-26-009, mitigation in place)
+- Linked issues: ISSUE-2026-09-26-001/002/003 (cleared), ISSUE-2026-09-27-010 (open, owner), ISSUE-2026-09-27-011 (fixed)
+
 ## Rule
 Only the phase named by `CURRENT_PHASE` may be implemented. If that phase is not fully green, the next phase is forbidden.
 
 ## Phase board
-- [ ] PHASE_00 — Repository audit + execution controls
+- [x] PHASE_00 — Repository audit + execution controls
 - [ ] PHASE_01 — Foundation + design system + brand assets
 - [ ] PHASE_02 — Database schema + migrations + seed strategy
 - [ ] PHASE_03 — Admin authentication + security foundation
