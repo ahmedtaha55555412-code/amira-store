@@ -189,42 +189,66 @@ Per the owner directive, no workaround was invented and Production was left unto
 
 ### 9.3 Concrete safe remediation path (owner-paced; agent-verifiable)
 
+> **Owner-side isolation gate (2026-09-27):** the agent's final control-plane re-check enumerated every
+> available credential path — Vercel CLI **logged out** (no token, auth file absent), **no Neon CLI /
+> API key / config anywhere in the sandbox**, only the GitHub credential is live. Neon branch creation
+> is a control-plane operation reachable only through the Neon console or an owner-issued API key.
+> Per the standing directive (no API workarounds), **nothing was created or modified** and ISSUE-019
+> remains OPEN. The exact owner walkthrough follows.
+
 **Step 1 — create the branch (owner, Neon console, ~1 minute):**
-console.neon.tech → project `tiny-mud-82763154` (`neon-cobalt-globe`) → **Branches → Create
-branch** → name `development`, parent `main` (copy-on-write; Free plan supports it). No data
-moves; production is untouched.
+1. Sign in at `console.neon.tech` (owner account; org `org-frosty-darkness-82889078` was recorded at
+   Marketplace install).
+2. Open the project with ID **`tiny-mud-82763154`** (URL pattern
+   `console.neon.tech/app/projects/tiny-mud-82763154`; match by ID, not display name).
+3. Sidebar → **Branches** → **Create branch** (button may read "Create branch" / "New branch").
+4. Fields:
+   - **Branch name**: `development`
+   - **Based on / parent**: `main` (the current primary branch — leave the default)
+   - Keep the **copy data** default (copy-on-write snapshot of `main`; do NOT pick a schema-less/
+     empty variant if offered — development should start from production's schema)
+   - **Compute/endpoint**: keep enabled, Free-plan default size, region inherited (fra1)
+5. Click **Create** → branch `development` gets its own endpoint `ep-…` (distinct from main's).
+6. **Connect** → toggle **Pooled connection** → copy the string ONLY into a local git-ignored
+   `.env.local`. Never into chat, the repo, or any tracked file.
 
 **Step 2 — bind the development environment (owner, Vercel dashboard):**
-Vercel → `amira-store` → **Storage → neon-cobalt-globe** → open the integration's settings and
-check whether an environment→branch mapping (or "Development branch") selector is offered by the
-current UI. If it is: map `development` → `development`. This is the fully supported path and the
-integration then rewrites the development-environment value itself.
+1. Vercel → `amira-store` → **Storage** → **neon-cobalt-globe** → open its **Settings/Edit** view.
+2. Look for a **per-environment** mapping control (environment selector, "Development branch", or
+   per-environment connection settings offered by the integration).
+   - **CRITICAL GUARDRAIL:** if the only control offered is a **single branch selector for the whole
+     connected project, do NOT use it** — it would rebind *all* environments including Production.
+     Production must remain on `main` unconditionally.
+3. If a per-environment mapping exists → map **development → `development`**; the integration rewrites
+   the development value itself (fully supported path).
+4. If NO per-environment mapping exists on this Free-plan resource (the expected case): use **(a)** or
+   **(b)** below — nothing else.
+   - **(a) Compensating control (recommended — zero integration risk):** keep the integration binding
+     as-is; treat the Vercel `development` environment as production-equivalent from this document
+     onward: **never** run `db:migrate`/`db:seed`/any write through a pulled development
+     `DATABASE_URL`. Local development instead uses a git-ignored `.env.local` whose `DATABASE_URL`
+     is the `development` branch's **pooled** connection string copied in Step 1.6 — so all local
+     schema/seed work lands on the isolated branch, while deploys reach production only through
+     committed migrations at build time.
+   - **(b) Manual per-environment management (owner decision only; NOT executed by the agent):**
+     replace the integration-managed binding with explicit per-environment variables
+     (production → main pooled; development → `development` branch pooled). Documented tradeoff:
+     this forfeits the integration-managed preview branching/predeploy wiring unless the
+     integration stays attached for preview only, which is not a supported configuration. Do not
+     choose (b) without accepting those tradeoffs in writing.
 
-**Step 3 — if (and only if) the UI offers no per-environment mapping (the expected case):**
-the owner chooses, and only the owner executes, one of:
-- **(a) Compensating control (recommended — zero integration risk):** keep the integration
-  binding as-is; treat the Vercel `development` environment as production-equivalent from this
-  document onward: **never** run `db:migrate`/`db:seed`/any write through a pulled development
-  `DATABASE_URL`. Local development instead uses a git-ignored `.env.local` whose `DATABASE_URL`
-  is the `development` branch's **pooled** connection string copied from the Neon console —
-  so all local schema/seed work lands on the isolated branch, while deploys reach production
-  only through committed migrations at build time.
-- **(b) Manual per-environment management (owner decision only; NOT executed by the agent):**
-  replace the integration-managed binding with explicit per-environment variables
-  (production → main pooled; development → `development` branch pooled). Documented tradeoff:
-  this forfeits the integration-managed preview branching/predeploy wiring unless the
-  integration stays attached for preview only, which is not a supported configuration. Do not
-  choose (b) without accepting those tradeoffs in writing.
-
-**Step 4 — verification after ANY binding change (agent-runnable, hash-only):**
+**Step 3 — verification after ANY binding change (hash-only; agent-runnable next cycle via a one-shot
+Vercel device flow, or owner-runnable):**
 ```bash
 vercel env pull /tmp/env.production --environment=production && \
 vercel env pull /tmp/env.development --environment=development
 # then, WITHOUT printing values:
-#   sha256(DATABASE_URL.production) vs sha256(DATABASE_URL.development)  → MUST differ
-#   print only URL host part (endpoint id, non-secret)                   → endpoints MUST differ
-#   host of production MUST be unchanged vs the recorded pre-change hash → production untouched
-#   re-check neondb public tables before/after                            → MUST stay unchanged
+#   sha256(DATABASE_URL.production) MUST equal the recorded pre-change fingerprint
+#     a77fc2afd8ac2bd7…  → production unchanged
+#   sha256(DATABASE_URL.development) MUST differ from it → development isolated
+#   URL host part (endpoint id, non-secret) of development MUST differ from production's
+#     (different ep-… ids = different branches)
+#   preview: unchanged (integration-native per-deployment branches)
 ```
 Fail any check ⇒ revert the binding change; production state is the invariant.
 

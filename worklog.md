@@ -355,3 +355,20 @@ Stage Summary:
 - GitHub source-of-truth RESTORED: origin/main == local main == c6fdea52768554385c25a8958c0b8e7c67216943, tree 3a7435818dadbd874fcfd75ad676ff64db814316
 - ISSUE-018 RESOLVED (both halves); ISSUE-019 OPEN (remediation documented; development env write-prohibited)
 - Gate: LAST_COMPLETED_PHASE=PHASE_02, CURRENT_PHASE=PHASE_03, PROJECT_STATUS=READY_FOR_NEXT_PHASE, PHASE_03 LOCKED pending explicit owner start command — STOP executed
+---
+Task ID: 8-c
+Agent: Z.ai Code (main)
+Task: Owner-side database isolation gate for ISSUE-019 — read-only control-plane re-check; determine agent capability; document exact owner action. NO PHASE-03, NO code, NO migrations/seed, NO connections.
+
+Work Log:
+- Enumerated every credential/control-plane path (names only, no secrets): Vercel CLI 60.1.3 present but LOGGED OUT (no auth.json, no token files, no env token); NO neonctl, NO Neon API key, NO Neon config dirs anywhere; only live credential = GitHub (gh auth status → ahmedtaha55555412-code) which is not a Neon control plane; sandbox DATABASE_URL env is the scaffold-local SQLite path, never used
+- Conclusion per directive: the agent CANNOT create a Neon branch through any supported first-party path this cycle (control-plane-only operation). No workaround invented; no API calls made against Neon/Vercel; zero database connections; nothing created/modified
+- Topology re-check therefore rests on same-day recorded API-level evidence (Task 7, 2026-09-27): development ≡ production DATABASE_URL (sha256 a77fc2afd8ac2bd7…), preview isolated per-deployment (integration-native), production = neondb on main of tiny-mud-82763154
+- DATABASE.md §9.3 refined with the EXACT owner walkthrough: Neon console clicks/fields (project tiny-mud-82763154 → Branches → Create branch → name `development`, parent `main`, keep copy-data default, endpoint enabled, region fra1) + Vercel Storage per-environment mapping check with the CRITICAL GUARDRAIL (single project-wide branch selector must NEVER be used — it would move Production) + fallbacks (a) compensating control / (b) manual per-env (owner decision) + hash-only verification procedure tied to the recorded fingerprints
+- ISSUE_LOG: ISSUE-2026-09-27-019 addendum recorded; status stays OPEN — REMEDIATION DOCUMENTED
+- No application source files modified (docs only); PHASE-03 untouched and LOCKED
+
+Stage Summary:
+- Isolated development branch created by agent: NO (control-plane access unavailable without owner-provided secrets — per directive, no action performed)
+- Production/preview/development topology: UNTOUCHED; ISSUE-019 OPEN with exact owner remediation path documented
+- STOP executed; PHASE-03 LOCKED
