@@ -222,7 +222,7 @@
 ### ISSUE-2026-09-27-018
 - Phase: PHASE_02 (environment)
 - Severity: MEDIUM (blocks remote verification + push this session; not a code defect)
-- Status: OPEN (GitHub half only — Vercel/Neon half RESOLVED 2026-09-27, see addendum)
+- Status: RESOLVED (both halves closed — Vercel/Neon half 2026-09-27; GitHub half 2026-09-27, see closing addendum)
 - Symptom: The git-ignored credential vault `.auth/` is missing after the latest sandbox recycle, so `gh`/`vercel` authentication and `git push` (GitHub) are unavailable this session. Recurrence of the ISSUE-2026-09-26-009 environment class.
 - Reproduction: `git push` → credential helper `/home/z/my-project/.auth/bin/gh-cred` not found; no `gh`/`vercel` binaries on PATH.
 - Root cause: sandbox recycles wipe everything outside `/home/z/my-project`; the vault restore step did not run before this session.
@@ -235,6 +235,14 @@
 - Vercel/Neon half RESOLVED: Vercel authentication restored via the OAuth device flow (owner approved in browser; the flow was driven manually because the sandbox kills background pollers between turns; device code displayed, token/refresh token never displayed and shredded after use). No Neon API key was needed — the existing Vercel↔Neon integration supplied per-environment connection secrets via `vercel env pull` (values compared by hash only, never printed).
 - Live-Neon verification EXECUTED and PASSED: exact committed migration applied via `drizzle-kit migrate` to a real EMPTY disposable Neon database (`phase02_drizzle_verify_tmp`, PostgreSQL 18.6/fra1) → SCHEMA_MATCH 23/23 tables + 9/9 enums vs the committed snapshot → `drizzle.__drizzle_migrations` row hash == sha256(drizzle/0000_init_schema.sql) → app-driver smoke (pooled endpoint) write+ROLLBACK clean → disposable db dropped with zero residue → production `neondb` unmodified (public tables [] before/after). Full procedure and evidence: docs/ops/DATABASE.md §8.
 - STILL OPEN (GitHub half): `gh` credential restore + `git push origin main` (commits b4fca6e, 49ce1f0, and the PHASE-02 completion commit) + first green CI run on the Drizzle CI workflow. Owner-side action unchanged.
+
+**Closing addendum (2026-09-27, GitHub half RESOLVED — owner-approved device flow):**
+- GitHub authentication restored owner-paced: one OAuth device code (GitHub CLI client, scope `repo, workflow, read:org`), owner approved in browser, single token exchange, token never displayed/committed (held in a chmod-600 temp file, shredded after registration; credential now lives only in gh's own config outside the repo). `gh auth status` → Logged in to github.com account `ahmedtaha55555412-code` (active).
+- Pushed exactly the pending local history with a plain fast-forward `git push origin main`: `ffcbd43..c6fdea5` — commits `b4fca6e` (PHASE-02 implementation), `49ce1f0` (documented sandbox auto-commit), `d82ed08` (PHASE-02 live-Neon completion docs), `c6fdea5` (pre-PHASE-03 safety-round docs). No force push, no history rewrite, no reset/rebase.
+- Source-of-truth equality verified by hash: local `main` HEAD == `origin/main` HEAD == `c6fdea52768554385c25a8958c0b8e7c67216943`; local tree == remote tree (`3a7435818dadbd874fcfd75ad676ff64db814316`) → byte-identical content, no unexpected files; working tree clean; 0 pending commits; `.github/workflows/ci.yml` present at remote HEAD (`3ee34d4c`).
+- Secret scan of the pushed range `ffcbd43..main`: 3 grep hits, all `127.0.0.1` loopback placeholders inside the committed local-rehearsal script; zero tokens (`gho_`/`ghp_`/PAT: none).
+- Planning repository verified untouched via GitHub API: `ahmedtaha55555412-code/amira-store-plan` HEAD still `2f4e4b31927b9caa28f32c0ac7c26f0a537dfbf8`, `pushed_at=2026-09-26T18:06:04Z` (predates this execution), single branch `main`; no push/edit/recreate/permission change performed.
+- Housekeeping: stale repo-local credential helper (pointed at the recycled vault path) removed from `.git/config`; push used gh's credential helper.
 
 ### ISSUE-2026-09-27-019
 - Phase: PHASE_02 (verification-round discovery) → elevated to pre-PHASE_03 safety gate (owner directive 2026-09-27)
