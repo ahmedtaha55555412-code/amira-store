@@ -985,3 +985,18 @@ Stage Summary:
 - ISSUE-048 = RESOLVED with REAL PRIVATE STORAGE proof (residual of the interim app-level model ELIMINATED). Public catalog imagery untouched (public store + OIDC). Delivery mechanism DECISION: controlled app delivery (Vercel-documented pattern) — chosen over signed URLs and public derivatives; the original never leaves the private store.
 - Production deployment SHA DIRECTLY VERIFIED pre-deploy: origin/main == CI-green == Production == 5b5cb74 (dpl_7Jn4qDtFbRewgtFcxMZ8NCp32spi READY). The closure commit deploys next and will be verified the same way.
 - PHASE-10 remains LOCKED.
+
+---
+Task ID: PHASE-09-CLOSURE-FINAL-GATE
+Agent: Z.ai Code (main)
+Task: Final deployment identity + production verification of the closure commit
+
+Work Log:
+- Closure commit bbfddc20d8a5987a9659caaa30dc6b4c943fc825 pushed; CI workflow completed:success (check-run "verify" success).
+- Vercel Production deployment dpl_CQWQygQ9keQb1aq3rSfxngp6pk3g = READY, sha bbfddc2, created AFTER the BLOB_PRIVATE_READ_WRITE_TOKEN injection (production target) — the runtime carries the private-store credential.
+- Production smoke ALL GREEN: / 200, robots 200, /category/women 200, /cart 200, /review 200, /search 200, missing PDP/category/root 404 (honest), /admin 307, NEW /api/media route live (invalid → 400, unknown → 404, POST → 405), admin content route unauth → 401, zero 5xx.
+- Three-way chain EXACT: origin/main HEAD == CI-green == Production == bbfddc2. Working tree clean.
+- Production DB untouched (read-only probes only); no secrets printed; .auth tools remain git-ignored.
+
+Stage Summary:
+- PHASE-09 FINAL CLOSED: ISSUE-048 = RESOLVED with REAL PRIVATE STORAGE proof; Production deployment SHA = DIRECTLY VERIFIED (bbfddc2). PHASE-10 remains LOCKED until explicit owner unlock.
