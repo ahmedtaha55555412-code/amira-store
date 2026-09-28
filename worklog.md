@@ -902,3 +902,39 @@ Work Log:
 Stage Summary:
 - THREE-WAY EQUALITY: origin/main HEAD == CI-green == Production deployment == face21fe3f64681df513e0d8ea9686a2c4d7d9b2 → PASS — PHASE-08 FINAL CLOSED.
 - Migration 0002 applied + baseline unchanged + regression green + PHASE-09 untouched. This record appended locally (uncommitted) to avoid triggering another docs-only deploy cycle; owner may fold it into the next docs commit.
+
+---
+Task ID: 23-preflight (PHASE-09 — Reviews + WhatsApp Testimonials; owner unlock, 2026-09-28)
+Agent: Z.ai Code (main agent)
+Task: STEP 0 preflight + STEP 1 baseline before any feature code (owner authorized PHASE-09; PHASE-10 stays LOCKED).
+
+Work Log:
+- Baseline: tree clean, HEAD == origin/main == 9f9b143 (PHASE-08 final reconciliation record). db:verify 29/29 on the Neon development branch (.env.local); typecheck clean.
+- Read: MASTER_PLAN.md (full), docs/phases/PHASE-09.md (full), DATA_DICTIONARY, DESIGN_SYSTEM, EXECUTION_STATUS (current-state block), TRACEABILITY (reviews + testimonials = PENDING rows), ISSUE_LOG (043/044/045/046/047 class records), DATABASE.md §§1-9, DEPLOYMENT_RUNBOOK.
+- Inspected: src/db/schema/reviews.ts (reviews/review_images/whatsapp_testimonials COMPLETE with moderation defaults, verified-review partial unique index, rating/comment CHECKs, status+sort indexes), media service (types carry accessMode public|private; provider currently hardcodes public — "later phase that consumes private" = THIS phase), registry guarded-delete (review + testimonial reference sources already registered), @vercel/blob 2.8 SDK (put/get/copy all accept access 'public'|'private'; copy() = one-hop private→public materialization), auth guard/origin/audit/throttle patterns, checkout service (zod + normalizeEgyptianPhone + per-instance IP-hash rate limit patterns), catalog.ts approved-reviews aggregate (PHASE-05), ProductReviews component, SocialProofPlaceholder, homepage, PDP, admin layout/nav/dashboard/orders patterns, verify-orders suite structure.
+- KEY DISCOVERY: PHASE-09 needs ZERO schema changes — every table, constraint, enum, and index already exists from PHASE-02 (media_assets.access_mode included). Migration count stays 3.
+
+Stage Summary:
+- PRE-IMPLEMENTATION MAP recorded (see phase record): no DB migration; new services (storefront/reviews, admin/reviews, admin/testimonials) + media service private-mode extension; new APIs (POST /api/storefront/reviews + lookup, admin moderation, admin testimonials CRUD, authenticated private-media preview); UI (/review entry page, PDP review images+CTA, homepage real social proof, /admin/reviews, /admin/testimonials, nav); privacy model = private blob until approve/publish, copy() materialization to public; rate-limited anonymous submission; no customer accounts.
+- PHASE-09 = IN PROGRESS (preflight recorded). PHASE-10 untouched.
+
+---
+Task ID: 24 (PHASE-09 — Reviews + WhatsApp Testimonials; owner unlock, 2026-09-28)
+Agent: Z.ai Code (main agent)
+Task: Implement docs/phases/PHASE-09.md exactly (site reviews + WhatsApp testimonials, no customer accounts) per MASTER_PLAN §15/§24 after the owner unlocked the phase. Do not start PHASE-10. Keep all gates active.
+
+Work Log:
+- STEP 0 preflight: MASTER_PLAN + PHASE-09.md + DATA_DICTIONARY + DESIGN_SYSTEM + EXECUTION_STATUS + TRACEABILITY + ISSUE_LOG + DATABASE.md read in full; repo tree, schema, media service, auth/origin/audit/throttle, checkout service, catalog/PDP, admin patterns inspected. PRE-IMPLEMENTATION MAP recorded (worklog 23-preflight). KEY: zero schema changes needed.
+- STEP 1 baseline: clean tree at 9f9b143 == origin/main; db:verify 29/29; typecheck green.
+- Services: src/lib/storefront/reviews.ts (public domain: lookup + submit + feeds + rate limit), src/lib/admin/reviews.ts (moderation + lists), src/lib/admin/testimonials.ts (create/publish/hide/update/lists); media service extended (accessMode + folder on uploadImage, materializeMediaPublic disclosure flip, readPrivateMedia + provider getPrivate).
+- APIs: POST /api/storefront/reviews[/lookup] (public, multipart/JSON, same-origin, rate-limited), POST /api/admin/reviews/[id]/moderate, POST /api/admin/testimonials (+[id]/publish|hide|update), GET /api/admin/media/[id]/content (authed private stream / origin-resolved public redirect). Domain errors registered in the shared admin mapper.
+- UI: /review page + 3-step client form; PDP reviews (images + CTA) + product-linked testimonials section; homepage SocialProof real-data section (replaces the placeholder, removed); admin /reviews (queue + moderation controls) + /admin/testimonials (upload + publish/hide/edit); admin nav + dashboard modules live; footer/nav review entries; SECTION_NAV + MASTER_PLAN §3 documented.
+- verify:reviews suite (scripts/verify-reviews.ts, refuses production, LIFO cleanup + pre-clean): 68/68.
+- BREAK-IT discoveries (recorded): ISSUE-048 Blob public-mode store refuses private puts → app-level privacy model (capability pathnames + no public surface + admin-gated preview + registry disclosure flip; residual documented, PHASE-14 owner candidate); ISSUE-049 next/image crash on provider-hosted URLs → plain img per AssetImage precedent; ISSUE-050 content route 500 on seed-relative URLs + uncaught BlobNotFoundError → origin-resolved redirect + honest 404. Suite hardening: pre-clean pass for crashed-run residue.
+- Full battery 578/578 (29+44+43+101+59+134+100+68) + typecheck + lint + build (route table: /review + 8 new API routes, all dynamic).
+- Browser E2E: real checkout AMR-MURL3V → admin delivery chain → /review submission (with image) → moderation approve → PDP + homepage display; testimonial upload→publish→hide→re-publish; security matrix 401/403/405/400/422 all hold; QA artifacts cleaned to zero residue (db:verify 29/29 post-cleanup).
+- Visual QA personally inspected at 375/768/1440 (review entry, homepage social proof, PDP reviews, admin reviews, admin testimonials) — RTL/tokens/touch/overflow all pass; long Arabic text wraps correctly.
+- Docs: ISSUE_LOG (048/049/050), TRACEABILITY (2 rows → DONE), DATA_DICTIONARY (decision #16), EXECUTION_STATUS (completion record), MASTER_PLAN §3 (/review), worklog.
+
+Stage Summary:
+- PHASE-09 COMPLETE: both systems functional, moderated, accurately labeled, no customer accounts. verify:reviews 68/68; full battery 578/578; browser E2E + visual QA PASS; zero QA residue; PHASE-10 untouched (LOCKED). Awaiting owner directive.

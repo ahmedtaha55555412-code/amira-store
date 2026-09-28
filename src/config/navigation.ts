@@ -14,4 +14,5 @@ export const SECTION_NAV: NavLink[] = [
   { href: "/#offers", label: "العروض" },
   { href: "/#story", label: "قصتنا" },
   { href: "/#reviews", label: "آراء العملاء" },
+  { href: "/review", label: "اكتب تقييمًا" },
 ];

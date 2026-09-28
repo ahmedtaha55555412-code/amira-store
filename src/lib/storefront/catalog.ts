@@ -577,7 +577,14 @@ export type StorefrontProductDetail = {
     rows: Array<{ id: string; sizeLabel: string; measurements: Record<string, string>; sortOrder: number }>;
   } | null;
   reviews: {
-    items: Array<{ id: string; rating: number; comment: string; isVerifiedPurchase: boolean; createdAt: Date }>;
+    items: Array<{
+      id: string;
+      rating: number;
+      comment: string;
+      isVerifiedPurchase: boolean;
+      createdAt: Date;
+      imageUrl: string | null;
+    }>;
     average: number | null;
     count: number;
   };
@@ -712,7 +719,13 @@ export async function getStorefrontProductDetail(
     };
   }
 
-  // Approved reviews only (moderation gate, MASTER_PLAN §15).
+  // Approved reviews only (moderation gate, MASTER_PLAN §15). PHASE-09:
+  // the optional customer image rides along — approved reviews carry PUBLIC
+  // assets only (private originals are disclosed at approval time), so the
+  // access_mode filter below is defense-in-depth, not the primary gate.
+  // NOTE: the correlated reference is written as a FULLY-QUALIFIED static
+  // identifier — in a single-table select drizzle renders `${reviews.id}` as
+  // a bare `"id"`, which is ambiguous inside the subquery (42702).
   const reviewRows = await db
     .select({
       id: reviews.id,
@@ -720,6 +733,13 @@ export async function getStorefrontProductDetail(
       comment: reviews.comment,
       isVerifiedPurchase: reviews.isVerifiedPurchase,
       createdAt: reviews.createdAt,
+      imageUrl: sql<string | null>`(
+        select mi.url from review_images ri
+        join media_assets mi on mi.id = ri.media_asset_id
+        where ri.review_id = "reviews"."id" and mi.access_mode = 'public'
+        order by ri.sort_order asc
+        limit 1
+      )`,
     })
     .from(reviews)
     .where(and(eq(reviews.productId, product.id), eq(reviews.status, 'approved')))

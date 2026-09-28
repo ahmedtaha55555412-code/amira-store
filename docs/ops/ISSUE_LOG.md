@@ -15,6 +15,43 @@
 
 ---
 
+### ISSUE-2026-09-28-050
+- Phase: PHASE_09 (admin media content route, 2026-09-28) — fixed during browser QA
+- Severity: LOW (admin-only preview route; dev-seed demo assets triggered it; Production business baseline has ZERO media so no production impact)
+- Status: FIXED
+- Symptom: `GET /api/admin/media/[id]/content` returned **500** for two media assets in the admin reviews/testimonials previews while returning 302 for others; dev.log showed `[admin-mutation] unexpected failure Error`.
+- Reproduction: preview any `demo_seed`-provider asset (e.g. `demo/testimonial-1.png`) → 500.
+- Root cause: TWO stacked defects in the new route: (1) `NextResponse.redirect(asset.url)` throws when the registry URL is not absolute — demo_seed assets carry seed-relative placeholder URLs (`/demo/…`); (2) `getPrivate()` did not catch `BlobNotFoundError`, so a `private` asset whose object is absent from the Blob store (demo assets never existed there) surfaced as an unhandled provider error instead of an honest 404.
+- Minimal fix: (1) resolve the redirect target against the request origin — `new URL(asset.url, new URL(_request.url).origin)` — which is correct for BOTH provider-absolute and seed-relative URLs; (2) `getPrivate` catches `BlobNotFoundError` → returns null → route answers 404.
+- Verification: the two previously-500ing assets now 302; a disposable private asset probe streamed through the authed route (200, `image/png`, byte-identical 150×120 PNG) then removed with zero residue; verify:reviews 68/68; typecheck/lint green.
+- Related files: `src/app/api/admin/media/[id]/content/route.ts`, `src/lib/media/vercel-blob.ts`
+- Notes: the route's catch-all intentionally logs error NAME only (no internals); the root cause was found by out-of-route reproduction, not by widening logs.
+
+### ISSUE-2026-09-28-049
+- Phase: PHASE_09 (storefront social-proof imagery, 2026-09-28) — fixed during browser QA
+- Severity: MEDIUM (PDP client-side crash — Application error — whenever an APPROVED review with an image was rendered; caught by the browser E2E before any deploy)
+- Status: FIXED
+- Symptom: `/product/liquid-foundation` crashed client-side with "next-image-unconfigured-host" as soon as the approved review's image URL (Vercel Blob host `*.public.blob.vercel-storage.com`) reached `<Image>`; the whole page fell to the Application-error shell.
+- Reproduction: approve a review that carries an image (blob URL) → open the PDP → client exception.
+- Root cause: `next/image` requires every remote host in `images.remotePatterns`; the media abstraction (PHASE-04, `AssetImage` precedent) deliberately does NOT anticipate provider hosts — "media URLs may be local placeholders (development seed) or Vercel Blob public URLs (production)". Review/testimonial imagery is the first STOREFRONT surface rendering provider-hosted registry URLs.
+- Minimal fix: render user-uploaded media with plain `<img loading="lazy">` exactly per the `AssetImage` precedent (width/height kept for layout stability) in `ProductReviews` and `WhatsAppTestimonialCard`. No `next.config` host list — keeps the provider abstraction honest.
+- Verification: PDP renders the approved review with badge + image; homepage renders the review card + testimonial cards; no console errors; visual QA 375/768/1440 inspected personally; verify:storefront 101/101; build green.
+- Related files: `src/components/store/product-reviews.tsx`, `src/components/store/whatsapp-testimonial-card.tsx`
+- Notes: the homepage social-proof cards already used `<img>` (written that way initially); the inconsistency between the two components is what the E2E exposed.
+
+### ISSUE-2026-09-28-048
+- Phase: PHASE_09 (media privacy model, 2026-09-28) — OPEN→RESOLVED-BY-DECISION (recorded constraint + adapted design; residual documented and accepted)
+- Severity: MEDIUM (blocks the storage-level interpretation of "unapproved screenshot media should not be publicly exposed"; application-level control still fully achievable)
+- Status: RESOLVED (design adapted to the real storage constraint; residual risk documented for an owner hardening decision)
+- Symptom: `verify:reviews` section 8 FATAL at the first private upload: `Vercel Blob: Cannot use private access on a public store. The store must be configured with private access.`
+- Reproduction: any `put(pathname, body, { access: 'private' })` against the connected `amira-store-media` store.
+- Root cause: the connected Blob store is PUBLIC-mode. Vercel Blob enforces per-STORE access configuration: a public store refuses private blobs outright (SDK probe: put-private throws; get-private on a public-stored object returns 200).
+- Impact: storage-level per-object privacy is NOT available on this store. The PHASE-09 privacy requirement must be enforced at the APPLICATION layer.
+- Minimal fix (implemented): the `media_assets.access_mode` registry column (PHASE-02) becomes the authoritative app-level gate — private assets are (a) stored under unguessable capability pathnames (uuid+timestamp), (b) NEVER rendered by any public surface, (c) NEVER returned by any public API (admin lists null out private URLs), (d) previewable ONLY through the admin-session-gated `/api/admin/media/[id]/content` route (server-side authenticated stream); approval/publish flips the REGISTRY access_mode — the application's deliberate disclosure decision. Provider `put` always stores blob access 'public' (store constraint), documented in `vercel-blob.ts`.
+- Verification: verify:reviews 68/68 (private-while-pending → feed excludes; flip at approval → feed carries the URL; admin list hides private URLs); browser E2E draft-preview + publish flow; production decision unchanged.
+- Related files: `src/lib/media/vercel-blob.ts`, `src/lib/media/service.ts` (`materializeMediaPublic` = registry flip), `src/lib/admin/reviews.ts`, `src/lib/admin/testimonials.ts`
+- Notes (RESIDUAL, accepted for now): a private asset's underlying object is CDN-readable by anyone who LEARNS its URL from OUTSIDE the application — the app never discloses it, but the capability URL itself is not storage-protected. TRUE storage-level privacy requires either a second PRIVATE-mode Blob store for moderated media or a store-mode change (would affect existing public catalog media) — an OWNER infrastructure decision; recorded as a PHASE-14 hardening candidate. DATA_DICTIONARY decision #16 documents the model.
+
 ### ISSUE-2026-09-28-047
 - Phase: PHASE_08 (schema change for the order domain, 2026-09-28) — environment/tooling
 - Severity: MEDIUM (migration tooling false-positive; caught by db:verify before any harm; Production untouched)

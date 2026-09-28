@@ -5,24 +5,33 @@ import { ProductCard } from "@/components/store/product-card";
 import { ProductGrid } from "@/components/store/product-grid";
 import { Benefits } from "@/components/store/benefits";
 import { BrandStory } from "@/components/store/brand-story";
-import { SocialProofPlaceholder } from "@/components/store/social-proof-placeholder";
+import { SocialProof } from "@/components/store/social-proof";
 import { WhatsAppCta } from "@/components/store/whatsapp-cta";
 import { Section, SectionHeading } from "@/components/store/section";
 import { EmptyState } from "@/components/store/states";
 import { ComponentPlayground } from "@/components/store/playground";
+import {
+  getHomepageReviews,
+  getPublishedTestimonials,
+} from "@/lib/storefront/reviews";
 import { getStorefrontHomepageData } from "@/lib/storefront/catalog";
 
 /**
- * Amira Store homepage (PHASE-05): the catalog-facing sections are now
- * data-driven — «وصل حديثًا» by real created_at and «العروض» by real variant
- * discounts only (MASTER_PLAN §4; no featured/selected/best-seller logic).
- * The store chrome (announcement/header/footer/FAB) comes from the (store)
- * layout. Social proof stays an honest placeholder until PHASE-09.
+ * Amira Store homepage: the catalog-facing sections are data-driven —
+ * «وصل حديثًا» by real created_at and «العروض» by real variant discounts only
+ * (MASTER_PLAN §4; no featured/selected/best-seller logic). The store chrome
+ * (announcement/header/footer/FAB) comes from the (store) layout. Social
+ * proof (§4 items 9–10) is REAL data since PHASE-09 — approved site reviews
+ * and published WhatsApp testimonials, each with an honest empty state.
  */
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const { newArrivals, offers } = await getStorefrontHomepageData();
+  const [reviews, testimonials] = await Promise.all([
+    getHomepageReviews(6),
+    getPublishedTestimonials(6),
+  ]);
 
   return (
     <>
@@ -78,7 +87,7 @@ export default async function Home() {
 
         <Benefits />
         <BrandStory />
-        <SocialProofPlaceholder />
+        <SocialProof reviews={reviews} testimonials={testimonials} />
         <WhatsAppCta />
       </main>
 

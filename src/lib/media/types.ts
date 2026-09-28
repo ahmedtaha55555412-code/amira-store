@@ -32,6 +32,13 @@ export interface MediaStorageProvider {
   put(input: PutObjectInput): Promise<PutObjectResult>;
   /** Remove an object (best-effort idempotent). */
   delete(pathname: string): Promise<void>;
+  /**
+   * Server-side read of a PRIVATE object (requires provider credentials).
+   * Used ONLY by admin-authenticated preview routes — a private object must
+   * never be exposed to unauthenticated callers (MASTER_PLAN §20, PHASE-09).
+   * Returns null when the object does not exist.
+   */
+  getPrivate?(pathname: string): Promise<{ stream: ReadableStream<Uint8Array>; contentType: string } | null>;
 }
 
 /** Thrown by the service when uploads are not configured (honest 503 path). */

@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductDetailClient } from "@/components/store/product-detail-client";
 import { ProductReviews } from "@/components/store/product-reviews";
+import {
+  WhatsAppTestimonialCard,
+} from "@/components/store/whatsapp-testimonial-card";
 import { SizeGuideView } from "@/components/store/size-guide-view";
 import { StoreBreadcrumb } from "@/components/store/breadcrumb";
 import { Container } from "@/components/store/container";
@@ -10,6 +13,7 @@ import {
   getStorefrontProductDetail,
   hasStorefrontProductBySlug,
 } from "@/lib/storefront/catalog";
+import { getProductTestimonials } from "@/lib/storefront/reviews";
 import { buildProductJsonLd } from "@/lib/storefront/metadata";
 import { ProductSkeleton } from "./product-skeleton";
 
@@ -82,6 +86,8 @@ async function ProductDetail({ slug }: { slug: string }) {
   if (!detail) notFound();
 
   const { product, category, ancestors, attributes, variants, gallery, variantImages, sizeGuide, reviews } = detail;
+  // PHASE-09: WhatsApp testimonials linked to this product (published only).
+  const productTestimonials = await getProductTestimonials(product.id, 3);
 
   const breadcrumbItems = [
     { label: "الرئيسية", href: "/" },
@@ -182,6 +188,31 @@ async function ProductDetail({ slug }: { slug: string }) {
               </div>
               <ProductReviews reviews={reviews} />
             </section>
+
+            {productTestimonials.length > 0 ? (
+              <section
+                id="product-testimonials"
+                aria-labelledby="product-testimonials-title"
+                className="scroll-mt-24"
+              >
+                <div className="mb-5 flex flex-col gap-1">
+                  <h2 id="product-testimonials-title" className="text-lg font-bold sm:text-xl">
+                    شهادات واتساب عن هذا المنتج
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    لقطات شاشة من محادثات واتساب حقيقية — منشورة بإدارة المتجر بعد
+                    مراجعة الخصوصية، ومميّزة دائمًا عن مراجعات الموقع.
+                  </p>
+                </div>
+                <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {productTestimonials.map((testimonial, index) => (
+                    <li key={testimonial.id} className="h-full">
+                      <WhatsAppTestimonialCard testimonial={testimonial} priority={index < 2} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </div>
         </Container>
       </main>

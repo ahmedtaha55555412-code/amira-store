@@ -58,6 +58,7 @@ Routes planned:
 - `/checkout` Checkout
 - `/order/success` Order success
 - `/track-order` Track order
+- `/review` Write a review (PHASE-09 review entry: order number + checkout phone verification → delivered-item reviews; documented per §3's route-map refinement rule)
 - `/about` About
 - `/contact` Contact
 - `/policies/privacy` Privacy

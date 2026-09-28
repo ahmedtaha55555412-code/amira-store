@@ -21,8 +21,14 @@ import {
   ImageValidationError,
   validateImageUpload,
 } from './validation';
-import { MediaStorageUnavailableError, type MediaStorageProvider } from './types';
-import { isVercelBlobConfigured, vercelBlobProvider } from './vercel-blob';
+import {
+  MediaStorageUnavailableError,
+  type MediaStorageProvider,
+} from './types';
+import {
+  isVercelBlobConfigured,
+  vercelBlobProvider,
+} from './vercel-blob';
 
 /**
  * Resolve the active provider, or null when uploads are not configured.
@@ -40,7 +46,7 @@ export function isMediaUploadConfigured(): boolean {
 }
 
 /** Date-based folder keeps the provider namespace tidy and listing cheap. */
-function buildPathname(contentType: string): string {
+function buildPathname(contentType: string, folder: string): string {
   const ext =
     contentType === 'image/jpeg'
       ? 'jpg'
@@ -51,7 +57,7 @@ function buildPathname(contentType: string): string {
           : 'avif';
   const now = new Date();
   const ym = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-  return `uploads/${ym}/${randomUUID()}-${Date.now()}.${ext}`;
+  return `${folder}/${ym}/${randomUUID()}-${Date.now()}.${ext}`;
 }
 
 export type UploadImageResult = MediaAsset;
@@ -59,24 +65,33 @@ export type UploadImageResult = MediaAsset;
 /**
  * Validate + persist + register one image upload.
  * Throws ImageValidationError (422) or MediaStorageUnavailableError (503).
+ *
+ * PHASE-09 access contract (MASTER_PLAN §20): `accessMode: 'private'` marks
+ * media that is NOT publicly exposed until its owning domain publishes it
+ * (pending review images, draft WhatsApp testimonial screenshots). Private
+ * objects are readable server-side ONLY via admin-authenticated routes.
  */
 export async function uploadImage(input: {
   bytes: Buffer;
   declaredContentType: string | null;
   altText: string | null;
-  adminUserId: string;
+  adminUserId: string | null;
+  accessMode?: 'public' | 'private';
+  folder?: string;
 }): Promise<UploadImageResult> {
   const provider = getMediaStorageProvider();
   if (!provider) throw new MediaStorageUnavailableError();
 
+  const accessMode = input.accessMode ?? 'public';
+  const folder = input.folder ?? 'uploads';
   const validated = await validateImageUpload(input);
 
-  const pathname = buildPathname(validated.contentType);
+  const pathname = buildPathname(validated.contentType, folder);
   const stored = await provider.put({
     pathname,
     body: validated.bytes,
     contentType: validated.contentType,
-    accessMode: 'public',
+    accessMode,
   });
 
   // Orphan prevention (pre-PHASE-08 hardening, ISSUE-023): if the registry
@@ -90,7 +105,7 @@ export async function uploadImage(input: {
         provider: provider.id,
         pathname: stored.pathname,
         url: stored.url,
-        accessMode: 'public',
+        accessMode,
         mimeType: validated.contentType,
         sizeBytes: stored.sizeBytes,
         width: validated.width,
@@ -108,6 +123,43 @@ export async function uploadImage(input: {
   }
 
   return asset;
+}
+
+/* -------------------------------------------------------------------------- */
+/* PHASE-09: private → public disclosure flip (moderation publishes media)     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Flip a private asset's REGISTRY access_mode to public — the application's
+ * deliberate disclosure decision at moderation/publish time (ISSUE-048:
+ * storage-level per-object privacy is unavailable on the public-mode Blob
+ * store, so the gate lives here). Idempotent; no provider operation is
+ * needed (and none could add privacy retroactively).
+ */
+export async function materializeMediaPublic(asset: MediaAsset): Promise<MediaAsset> {
+  if (asset.accessMode === 'public') return asset;
+
+  const [updated] = await db
+    .update(mediaAssets)
+    .set({ accessMode: 'public' })
+    .where(eq(mediaAssets.id, asset.id))
+    .returning();
+  if (!updated) throw new Error('media asset row disappeared during disclosure flip');
+  return updated;
+}
+
+/**
+ * Server-side read stream for a PRIVATE asset (admin-authenticated preview
+ * routes only). Public assets are NOT served through here — callers redirect
+ * to the CDN URL. Returns null when the object no longer exists.
+ */
+export async function readPrivateMedia(
+  asset: MediaAsset,
+): Promise<{ stream: ReadableStream<Uint8Array>; contentType: string } | null> {
+  if (asset.accessMode !== 'private') return null;
+  const provider = getMediaStorageProvider();
+  if (!provider?.getPrivate) throw new MediaStorageUnavailableError();
+  return provider.getPrivate(asset.pathname);
 }
 
 export { ImageValidationError, MediaStorageUnavailableError };

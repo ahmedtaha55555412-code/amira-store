@@ -21,6 +21,7 @@
     "verify:checkout": "bun scripts/verify-checkout.ts",
     "verify:cart": "bun scripts/verify-cart.ts",
     "verify:orders": "bun scripts/verify-orders.ts",
+    "verify:reviews": "bun scripts/verify-reviews.ts",
     "db:verify:local": "node scripts/verify-local-database.mjs"
   },
   "dependencies": {
