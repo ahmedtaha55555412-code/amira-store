@@ -300,6 +300,13 @@ verified by `scripts/verify-migrations.ts` (see `docs/ops/DATABASE.md`):
    ("no negative stock" is structural). Partial unique index
    `(order_id) WHERE movement_type = 'cancellation_return'` enforces MASTER_PLAN §13
    "restore stock exactly once" per order at the database level.
+   **PHASE-08 refinement (2026-09-28, migration 0002):** the partial unique index is
+   now `(order_id, variant_id) WHERE movement_type = 'cancellation_return'`. The
+   original order_id-only form structurally forbade a multi-line order from recording
+   one auditable before/after restoration row PER restored variant, which MASTER_PLAN
+   §13's "auditable movement ledger" requires. The refined index keeps the exactly-once
+   guarantee (a second cancellation_return for the SAME order+variant is still
+   impossible) while allowing exactly one restoration row per distinct variant.
 8. **`reviews` partial unique index** `(order_item_id) WHERE order_item_id IS NOT NULL AND
    is_verified_purchase` — implements "one review per order_item for verified reviews".
    `rating` CHECK 1..5; comment non-empty; status defaults to `pending` (moderation).

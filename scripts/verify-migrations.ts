@@ -10,8 +10,8 @@
  *  3. asserts every BUSINESS INVARIANT is DB-enforced via transient
  *     transactional probes that ALWAYS roll back (duplicate SKU/slug,
  *     negative stock, same-attribute-twice on a variant, money identities,
- *     one verified review per order item, single cancellation return per
- *     order, settings singleton, session token uniqueness).
+ *     one verified review per order item, one cancellation return per
+ *     (order, variant), settings singleton, session token uniqueness).
  *
  * Safety:
  * - REFUSES to run when NODE_ENV === "production" (probes mutate transiently);
@@ -71,6 +71,23 @@ function fail(name: string, detail = ''): void {
 }
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Runs `probe` inside a rolled-back transaction; expects NO rejection. */
+async function expectAccept(name: string, probe: (tx: Tx) => Promise<unknown>): Promise<void> {
+  try {
+    await db.transaction(async (tx) => {
+      await probe(tx);
+      throw new ProbeAlive();
+    });
+    pass(name); // unreachable: ProbeAlive always thrown first
+  } catch (error) {
+    if (error instanceof ProbeAlive) {
+      pass(name); // probe completed; transaction rolled back cleanly
+      return;
+    }
+    fail(name, `DB rejected a legitimate write — ${(error as Error).message}`);
+  }
+}
 
 /** Runs `probe` inside a rolled-back transaction; expects the DB to reject it. */
 async function expectReject(name: string, probe: (tx: Tx) => Promise<unknown>): Promise<void> {
@@ -499,26 +516,64 @@ await db.insert(inventoryMovements).values({
   reason: 'probe sale',
 });
 
-await expectReject('one cancellation-return per order (restore exactly once)', async (tx) => {
-  // First return for this order already exists below? No — create it here, then
-  // attempt a SECOND one; the unique partial index must stop the duplicate.
-  await tx.insert(inventoryMovements).values({
-    variantId: probeVariant.id,
-    orderId: probeOrder.id,
-    movementType: 'cancellation_return',
-    quantityDelta: 1,
-    stockBefore: 4,
-    stockAfter: 5,
-  });
-  await tx.insert(inventoryMovements).values({
-    variantId: probeVariant.id,
-    orderId: probeOrder.id,
-    movementType: 'cancellation_return',
-    quantityDelta: 1,
-    stockBefore: 5,
-    stockAfter: 6,
-  });
-});
+// PHASE-08 index refinement: one cancellation-return per (order, variant).
+// A multi-line order records ONE restoration row per restored variant (each
+// with its own before/after), while a duplicate restoration for the SAME
+// variant of the SAME order stays structurally impossible.
+const [probeVariant2] = await db
+  .insert(productVariants)
+  .values({
+    productId: probeProduct.id,
+    sku: 'ZZ-PROBE-2',
+    originalPrice: '80.00',
+    currentPrice: '70.00',
+    stockQuantity: 3,
+  })
+  .returning({ id: productVariants.id });
+
+await expectAccept(
+  'one cancellation-return row per restored variant (multi-line order allowed)',
+  async (tx) => {
+    await tx.insert(inventoryMovements).values({
+      variantId: probeVariant.id,
+      orderId: probeOrder.id,
+      movementType: 'cancellation_return',
+      quantityDelta: 1,
+      stockBefore: 4,
+      stockAfter: 5,
+    });
+    await tx.insert(inventoryMovements).values({
+      variantId: probeVariant2.id,
+      orderId: probeOrder.id,
+      movementType: 'cancellation_return',
+      quantityDelta: 1,
+      stockBefore: 3,
+      stockAfter: 4,
+    });
+  },
+);
+
+await expectReject(
+  'duplicate cancellation-return for the SAME (order, variant) — restore exactly once',
+  async (tx) => {
+    await tx.insert(inventoryMovements).values({
+      variantId: probeVariant.id,
+      orderId: probeOrder.id,
+      movementType: 'cancellation_return',
+      quantityDelta: 1,
+      stockBefore: 4,
+      stockAfter: 5,
+    });
+    await tx.insert(inventoryMovements).values({
+      variantId: probeVariant.id,
+      orderId: probeOrder.id,
+      movementType: 'cancellation_return',
+      quantityDelta: 1,
+      stockBefore: 5,
+      stockAfter: 6,
+    });
+  },
+);
 
 await expectReject('inventory ledger identity (after = before + delta)', async (tx) => {
   await tx.insert(inventoryMovements).values({

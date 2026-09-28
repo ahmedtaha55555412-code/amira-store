@@ -18,6 +18,7 @@ import { CategoryServiceError } from '@/lib/catalog/categories';
 import { PricingValidationError } from '@/lib/catalog/pricing';
 import { ProductServiceError } from '@/lib/catalog/products';
 import { ImageValidationError } from '@/lib/media/validation';
+import { OrderServiceError } from '@/lib/admin/orders';
 
 /** JSON body gate: same-origin + application/json. Returns a 403 response when rejected. */
 export function guardJsonMutation(request: Request): NextResponse | null {
@@ -54,6 +55,7 @@ export function errorResponse(error: unknown): NextResponse {
     ProductServiceError,
     PricingValidationError,
     ImageValidationError,
+    OrderServiceError,
   ];
   for (const kind of known) {
     if (error instanceof kind) {

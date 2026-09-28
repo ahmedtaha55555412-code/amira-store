@@ -1,0 +1,2 @@
+DROP INDEX "inventory_movements_order_cancel_return_key";--> statement-breakpoint
+CREATE UNIQUE INDEX "inventory_movements_order_cancel_return_key" ON "inventory_movements" USING btree ("order_id","variant_id") WHERE movement_type = 'cancellation_return';

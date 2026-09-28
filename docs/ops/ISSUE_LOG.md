@@ -15,6 +15,20 @@
 
 ---
 
+### ISSUE-2026-09-28-047
+- Phase: PHASE_08 (schema change for the order domain, 2026-09-28) — environment/tooling
+- Severity: MEDIUM (migration tooling false-positive; caught by db:verify before any harm; Production untouched)
+- Status: FIXED
+- Symptom: `bun run db:migrate` reported "migrations applied successfully!" while applying NOTHING — the new migration 0002 was not executed on the Neon development branch (`__drizzle_migrations` stayed at 2 rows; the old index definition remained), yet `db:verify` then failed with `applied=2 repository=3`.
+- Reproduction: `set -a; . ./.env.local; set +a; bun run db:migrate` → success message; index unchanged on the target DB.
+- Root cause: `drizzle/meta/_journal.json` entry for 0002 was generated with `when=1790616645445`, which is OLDER than entry 0001's hand-set recovery stamp `when=1790700000000` (set during the ISSUE-2026-09-27-037 snapshot-recovery reconciliation). drizzle-kit's migrate treats out-of-order journal timestamps as already-applied and silently no-ops.
+- Minimal fix: corrected the 0002 journal `when` to `1790700000001` (immediately after 0001, before the migration was ever applied anywhere) and re-ran `db:migrate` — migration 0002 then applied for real (3 rows; refined index live).
+- Verification: `db:verify` 29/29 (migrations current 3/3 + both refined cancellation-return probes pass); direct `pg_indexes` probe shows the `(order_id, variant_id)` partial unique index on the Neon development branch.
+- Related files: `drizzle/meta/_journal.json`, `drizzle/0002_cute_frightful_four.sql`, `scripts/verify-migrations.ts`
+- Notes: (1) a secondary latent bug was fixed in the same pass — the newly added `expectAccept` helper in verify-migrations.ts originally returned silently on success, under-reporting the pass count; now records the pass (29/29). (2) Lesson recorded: after ANY migration generation, `db:verify`'s "migrations current" check is the authoritative confirmation — a bare migrate success message is not.
+
+---
+
 ### ISSUE-2026-09-28-044
 - Phase: FULL-SYSTEM AUDIT (pre-PHASE-08 final gate, 2026-09-28) — sandbox environment
 - Severity: HIGH-in-effect, ENVIRONMENT-ONLY (blocked the live admin login path in the recycled sandbox; zero application defect; Production unaffected)

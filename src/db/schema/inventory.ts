@@ -9,8 +9,11 @@
  *   stock_after = stock_before + quantity_delta, with both quantities
  *   nonnegative (no negative stock can ever be recorded or reached);
  * - "restore stock exactly once" on cancellation is DB-enforced by the partial
- *   unique index: at most ONE cancellation_return movement can ever reference
- *   a given order (documented dictionary decision);
+ *   unique index: at most ONE cancellation_return movement per (order, variant)
+ *   pair can ever exist (PHASE-08 refinement of the dictionary decision —
+ *   multi-line orders restore each variant exactly once with its own
+ *   before/after ledger row; a duplicate restoration for the SAME variant of
+ *   the SAME order remains structurally impossible);
  * - every inventory-affecting change later records exactly one row, inside the
  *   same transaction as the stock update (application contract, PHASE-07/08).
  */
@@ -63,9 +66,12 @@ export const inventoryMovements = pgTable(
     index('idx_inventory_movements_order').on(t.orderId),
     index('idx_inventory_movements_admin').on(t.adminUserId),
 
-    // At most ONE cancellation-return per order → stock restored exactly once.
+    // At most ONE cancellation-return per (order, variant) → each ordered
+    // variant's stock is restored exactly once (PHASE-08; original PHASE-02
+    // decision refined from order_id alone so multi-line orders can carry one
+    // auditable before/after ledger row per restored variant).
     uniqueIndex('inventory_movements_order_cancel_return_key')
-      .on(t.orderId)
+      .on(t.orderId, t.variantId)
       .where(sql`movement_type = 'cancellation_return'`),
 
     check(

@@ -1,20 +1,18 @@
-import { ArrowLeftCircle, ClipboardList, Boxes, Star, Settings, KeyRound, ShieldCheck } from 'lucide-react';
+import { ArrowLeftCircle, ClipboardList, Boxes, Star, Settings, KeyRound, ShieldCheck, Warehouse } from 'lucide-react';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireAdminPage } from '@/lib/auth/guard';
 
 /**
- * Admin dashboard (PHASE-03 boundary + PHASE-04 catalog entries).
- * Catalog management is now live; remaining modules stay honest "قريبًا"
- * placeholders until their own phases (never presented as working).
+ * Admin dashboard (PHASE-03 boundary + PHASE-04/08 module entries).
+ * Catalog + orders + inventory are live; remaining modules stay honest
+ * "قريبًا" placeholders until their own phases (never presented as working).
  */
 
 export const dynamic = 'force-dynamic';
 
 const upcomingModules = [
-  { title: 'الطلبات', icon: ClipboardList, phase: 'المرحلة ٧–٨' },
-  { title: 'المخزون', icon: Boxes, phase: 'المرحلة ٨' },
   { title: 'التقييمات وواتساب', icon: Star, phase: 'المرحلة ٩' },
   { title: 'إعدادات المتجر', icon: Settings, phase: 'المرحلة ١٢' },
 ] as const;
@@ -22,6 +20,8 @@ const upcomingModules = [
 const liveModules = [
   { title: 'المنتجات والمتغيرات', href: '/admin/products', icon: Boxes, phase: 'متاح الآن' },
   { title: 'الأصناف', href: '/admin/categories', icon: Boxes, phase: 'متاح الآن' },
+  { title: 'الطلبات', href: '/admin/orders', icon: ClipboardList, phase: 'متاح الآن' },
+  { title: 'المخزون وسجل الحركات', href: '/admin/inventory', icon: Warehouse, phase: 'متاح الآن' },
   { title: 'مكتبة الوسائط', href: '/admin/media', icon: Boxes, phase: 'متاح الآن' },
 ] as const;
 
