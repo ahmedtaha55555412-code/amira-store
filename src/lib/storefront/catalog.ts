@@ -27,6 +27,7 @@
 import { and, asc, desc, eq, inArray, like, or, sql, type SQL } from 'drizzle-orm';
 
 import { db } from '@/db/client';
+import { publicDeliveryUrlSql } from '@/lib/media/service';
 import {
   attributeValues,
   attributes,
@@ -734,7 +735,7 @@ export async function getStorefrontProductDetail(
       isVerifiedPurchase: reviews.isVerifiedPurchase,
       createdAt: reviews.createdAt,
       imageUrl: sql<string | null>`(
-        select mi.url from review_images ri
+        select ${publicDeliveryUrlSql(sql`mi.id`, sql`mi.pathname`, sql`mi.url`)} from review_images ri
         join media_assets mi on mi.id = ri.media_asset_id
         where ri.review_id = "reviews"."id" and mi.access_mode = 'public'
         order by ri.sort_order asc

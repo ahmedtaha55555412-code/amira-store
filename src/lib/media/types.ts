@@ -13,12 +13,21 @@ export type PutObjectInput = {
   /** Validated image bytes. */
   body: Buffer;
   contentType: string;
-  /** Public catalog imagery vs. admin-only originals (MASTER_PLAN §20). */
+  /**
+   * Public catalog imagery (PUBLIC store) vs. private originals (PRIVATE
+   * store — storage-level privacy, ISSUE-048 final model). The pathname
+   * namespace routes to the store: see vercel-blob.isPrivateStorePathname.
+   */
   accessMode: 'public' | 'private';
 };
 
 export type PutObjectResult = {
-  /** Public (or signed) URL to store in the media registry. */
+  /**
+   * Provider-truth URL for the media registry. For private-store objects
+   * this URL is NOT publicly readable (unauthenticated access rejected at
+   * the CDN); public delivery of approved content flows through the app's
+   * controlled delivery route instead.
+   */
   url: string;
   /** Provider-confirmed pathname (may differ in casing — use this value). */
   pathname: string;
@@ -46,7 +55,7 @@ export class MediaStorageUnavailableError extends Error {
   readonly status = 503;
   constructor() {
     super(
-      'media storage is not configured (no Blob credentials: BLOB_READ_WRITE_TOKEN, or BLOB_STORE_ID + VERCEL_OIDC_TOKEN inside the Vercel runtime)',
+      'media storage is not configured (public store: BLOB_READ_WRITE_TOKEN, or BLOB_STORE_ID + VERCEL_OIDC_TOKEN inside the Vercel runtime; private store: BLOB_PRIVATE_READ_WRITE_TOKEN)',
     );
     this.name = 'MediaStorageUnavailableError';
   }

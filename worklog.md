@@ -938,3 +938,50 @@ Work Log:
 
 Stage Summary:
 - PHASE-09 COMPLETE: both systems functional, moderated, accurately labeled, no customer accounts. verify:reviews 68/68; full battery 578/578; browser E2E + visual QA PASS; zero QA residue; PHASE-10 untouched (LOCKED). Awaiting owner directive.
+
+---
+Task ID: PHASE-09-CLOSURE (ITEM 1 pre-implementation map + ITEM 2)
+Agent: Z.ai Code (main)
+Task: FINAL PHASE-09 CLOSURE — ISSUE-048 real private media storage + exact production deployment SHA verification
+
+Work Log:
+- ITEM 2 FIRST (read-only): Vercel API access re-established via documented OAuth refresh_token grant (HTTP 200; tokens stored mode-600 in .auth/vercel/auth.json, values never printed; verify /v2/user -> 200). Three-way SHA chain DIRECTLY VERIFIED: origin/main HEAD = 5b5cb7421541cfc02c5f940b706771f43c13ef1d (git ls-remote) == CI-green (check-run "verify" success, Actions run 36476870589) == Vercel Production deployment dpl_7Jn4qDtFbRewgtFcxMZ8NCp32spi (READY, target=production, created 2026-09-28T20:06:41Z). No redeploy needed for ITEM 2.
+- ISSUE-048 re-study: previous session's app-level-only model (public-mode store refused put-private) is NOT acceptable per owner directive; real private storage required.
+- SDK 2.8.0 capability study: per-call `token` wins resolution; `access` is per-store property; private-store URLs (<store>.private.blob.vercel-storage.com) are never publicly readable; Vercel-documented delivery pattern = authenticated app route streaming via get() ("controlled app delivery").
+- INFRASTRUCTURE (Vercel REST API, documented endpoints):
+  * Created real PRIVATE Blob store: POST /v1/storage/stores/blob {name:"amira-testimonials-private", access:"private"} -> store_VAQxupBfERVrTG8s (access:"private", region iad1, status available).
+  * Connected to project amira-store: POST /v1/storage/stores/store_VAQxupBfERVrTG8s/connections {projectId, envVarPrefix:"BLOB_PRIVATE"} -> connection spc_rW7BinBLCjZl05pP; Vercel injected BLOB_PRIVATE_READ_WRITE_TOKEN (encrypted) — initially production+preview, PATCH /v9/projects/.../env/<id> extended target to production+preview+development.
+  * Existing public store (store_bP1wi1NtS4fRkbRh "amira-store-media", access:"public", OIDC model) UNTOUCHED — BLOB_STORE_ID/BLOB_WEBHOOK_PUBLIC_KEY unchanged; product imagery path preserved.
+  * Token value fetched via env API (mode-600 /tmp copy, appended to git-ignored .env.local); never printed.
+- DB baseline checks: dev DB (Neon development) has 8 demo_seed public media rows, ZERO private rows; production DB has ZERO media_assets/testimonials/reviews rows -> no legacy migration burden.
+
+Stage Summary (PRE-IMPLEMENTATION MAP — ISSUE-048):
+- Precise targets: private-store routing in the media provider; controlled app delivery route for approved content; feed URL mapping; suite + docs evidence.
+- DoD: (a) real private-store put/get/delete works; (b) direct unauthenticated GET of private original REJECTED; (c) authorized server read works (admin content route + provider); (d) pending/draft/hidden never publicly delivered; (e) publish only after privacy confirmation (existing gate unchanged); (f) approved content delivered via /api/media/<id> (controlled app delivery); (g) hide/re-publish lifecycle gates delivery; (h) test objects deleted, zero residue; (i) full regression + browser E2E + visual QA 375/768/1440; (j) ISSUE-048 closed with exact evidence.
+- Files: src/lib/media/vercel-blob.ts (two-store routing), types.ts (error copy), service.ts (read gate + shared SQL url-mapping helper), admin content route (stream private-store pathnames at any accessMode), NEW /api/media/[id] route (public controlled delivery, registry+owner-status gated), storefront/reviews.ts (3 mappings), storefront/catalog.ts (1 mapping), scripts/verify-reviews.ts (storage-level probes), docs.
+- DB changes: NONE. API changes: +1 public GET route; admin content route gate refinement. UI changes: NONE (feeds emit app URLs; components unchanged).
+- Security: delivery gated on asset access_mode AND owner status (published testimonial / approved review); no-store cache; private originals structurally non-public; public store path untouched.
+- Out of scope: PHASE-10 anything; unrelated media refactors; product imagery migration; signed URLs (mechanism decision: controlled app delivery per Vercel docs); no schema migration.
+- Risks: production must be REDEPLOYED to receive BLOB_PRIVATE_READ_WRITE_TOKEN (connection postdates current deployment) — final deploy covers; feed mapping must match route uuid format; dev server restart needed for new env.
+- Verification plan: verify:reviews (extended) -> affected suites -> full battery (8 suites + typecheck + lint + build) -> browser E2E + visual QA 375/768/1440 -> storage probes -> production deploy -> production smoke -> 3-way SHA.
+
+Work Log (execution, 2026-09-28):
+- ITEM 1 implementation (minimal surface, no business-logic duplication):
+  * src/lib/media/vercel-blob.ts — two-store provider: private-accessMode puts + private-namespace get/delete route to the REAL PRIVATE store via the per-call store token; public path unchanged (OIDC); isPrivateStorePathname() single discriminator; isPrivateBlobConfigured() honest config surface.
+  * src/lib/media/types.ts — doc updates (provider-truth URL semantics, two-store error copy).
+  * src/lib/media/service.ts — readPrivateMedia gated by storage namespace (streams private-store objects at any registry access_mode); publicDeliveryUrl + publicDeliveryUrlSql single-source mapping helpers.
+  * src/app/api/media/[id]/route.ts — NEW public controlled delivery (registry access_mode gate + owning-entity status gate: published testimonial / approved review; no-store; nosniff; private-store streaming; public-store 302).
+  * src/app/api/admin/media/[id]/content/route.ts — streams private-store pathnames at ANY access_mode (admin preview across the whole lifecycle); public-store/demo objects keep the 302 contract.
+  * src/lib/storefront/reviews.ts + catalog.ts — feed imageUrl mapping via the shared SQL helper (4 sites: homepage reviews subquery, PDP reviews subquery, published testimonials, product testimonials).
+  * scripts/verify-reviews.ts — suite REFUSES to run without the private credential; sections 8/9 extended with: private-store namespace proof, .private.blob host proof, direct unauthenticated GET rejection (403), byte-identical server read, delivery-route state matrix (draft/pending 404, published/approved 200, hidden 404, re-published 200), storage-level zero-residue list check after cleanup.
+- Verification: verify:reviews 84/84; affected suites first (storefront 101/101, catalog 43/43), then full battery db:verify 29/29 + auth 44/44 + cart 59/59 + checkout 134/134 + orders 100/100 + typecheck + lint + build (route table carries /api/media/[id]).
+- Probes: direct private-URL GET/HEAD → 403; invalid id → 400; unknown uuid → 404; POST/PUT/DELETE → 405; traversal + SQL-ish → 400; admin content route unauth → 401.
+- Browser E2E (agent-browser): real admin login; admin testimonials previews stream (published + hidden); admin reviews approved-tab private image preview; UI hide → delivery 404; UI re-publish → two-step privacy confirmation → 200; /review real lookup flow (honest already-reviewed message); homepage/PDP media images render via /api/media/<id> at 375/768/1440 (all loaded, RTL correct, no console errors).
+- Visual QA 375/768/1440 personally inspected: home social proof, PDP reviews + product testimonials, /review, admin reviews, admin testimonials — spacing/typography/hierarchy/density/touch targets/sticky footer/RTL alignment all consistent with DESIGN_SYSTEM; no overflow/clipping; long Arabic text wraps.
+- QA hygiene: probe admin + fixtures (product/variant/order/review/testimonials/media) created through the REAL service layer and removed LIFO; orphan scan 14/14 CLEAN (two stale tool probes refreshed: homepage_sections jsonb config + testimonial-domain media references); private store list-verified EMPTY after cleanup; zero residue everywhere; sensitive files remain git-ignored; no token values ever printed.
+- Docs: ISSUE_LOG (ISSUE-048 FINAL RESOLUTION, history preserved), DATA_DICTIONARY decision #16 (two-store model), TRACEABILITY rows (reviews/testimonials), EXECUTION_STATUS (closure record), worklog (this record).
+
+Stage Summary:
+- ISSUE-048 = RESOLVED with REAL PRIVATE STORAGE proof (residual of the interim app-level model ELIMINATED). Public catalog imagery untouched (public store + OIDC). Delivery mechanism DECISION: controlled app delivery (Vercel-documented pattern) — chosen over signed URLs and public derivatives; the original never leaves the private store.
+- Production deployment SHA DIRECTLY VERIFIED pre-deploy: origin/main == CI-green == Production == 5b5cb74 (dpl_7Jn4qDtFbRewgtFcxMZ8NCp32spi READY). The closure commit deploys next and will be verified the same way.
+- PHASE-10 remains LOCKED.

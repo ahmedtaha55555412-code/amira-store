@@ -2,11 +2,16 @@
  * Amira Store — admin media content route (PHASE-09).
  *
  * GET /api/admin/media/[id]/content — authenticated preview stream for
- * PRIVATE media (pending review images, draft testimonial screenshots).
- * This is the ONLY path through which a private object's bytes are readable,
- * and it is admin-session-gated end to end:
+ * PRIVATE-STORE media (pending review images, draft WhatsApp testimonial
+ * screenshots — and any private-store object whose registry access_mode was
+ * already flipped public at disclosure, since its provider URL is never
+ * publicly readable and this route is the admin's only preview path).
+ * This is the ONLY path through which a not-yet-disclosed private object's
+ * bytes are readable, and it is admin-session-gated end to end:
  * - requireAdminMutation() re-validates the session against the database;
- * - public assets are NOT streamed here (302 → CDN URL; no double-serving);
+ * - public-STORE objects are NOT streamed here (302 → CDN URL; no
+ *   double-serving) — routing is by pathname namespace (ISSUE-048 final
+ *   two-store model);
  * - responses are no-store; the URL of a private object is never included in
  *   any response body.
  *
@@ -24,6 +29,7 @@ import { errorResponse } from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { readPrivateMedia } from '@/lib/media/service';
 import { MediaStorageUnavailableError } from '@/lib/media/types';
+import { isPrivateStorePathname } from '@/lib/media/vercel-blob';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,11 +55,14 @@ export async function GET(
       return NextResponse.json({ error: 'الوسائط غير موجودة.' }, { status: 404 });
     }
 
-    if (asset.accessMode === 'public') {
-      // Public objects are served by the CDN directly — never proxied here.
-      // Registry URLs may be provider-absolute (Blob) or seed-relative
-      // (local demo placeholders) — resolve BOTH against the request origin
-      // (NextResponse.redirect throws on non-absolute targets).
+    // Private-STORE objects stream through here at ANY registry access_mode
+    // (their provider URL is never publicly readable — the admin browser
+    // cannot fetch it directly, so a 302 would be a dead preview).
+    // Public-store objects are served by the CDN directly — never proxied.
+    // Registry URLs may be provider-absolute (Blob) or seed-relative (local
+    // demo placeholders) — resolve BOTH against the request origin
+    // (NextResponse.redirect throws on non-absolute targets).
+    if (!isPrivateStorePathname(asset.pathname)) {
       const origin = new URL(_request.url).origin;
       const target = new URL(asset.url, origin);
       return NextResponse.redirect(target, { status: 302 });

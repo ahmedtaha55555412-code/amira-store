@@ -22,9 +22,16 @@
  *      confirmation refused → publish WITH confirmation → published → update
  *      fields/sort/product → hide withdraws from surfaces → re-publish
  *      requires confirmation again
- *   9. MEDIA (live, when Blob is configured): review image registers PRIVATE;
- *      approval materializes it PUBLIC (registry access_mode flips; public
- *      feed carries the public URL) — unapproved media never publicly exposed
+ *   9. MEDIA (live, when both stores are configured — the suite REFUSES to
+ *      run without the private-store credential): review image registers
+ *      PRIVATE in the REAL PRIVATE blob store; direct unauthenticated GET of
+ *      the private original is REJECTED at the CDN; authorized server-side
+ *      read is byte-identical; approval flips the registry access_mode and
+ *      approved delivery flows through the CONTROLLED DELIVERY ROUTE
+ *      (/api/media/[id]) — the original never leaves the private store;
+ *      draft/pending/hidden media is never delivered (404); publish/hide/
+ *      re-publish lifecycle gates delivery; cleanup leaves ZERO private-store
+ *      objects (storage-level zero residue)
  *  10. ROLLBACK: duplicate submission with an image leaves ZERO media residue
  *
  * Safety: REFUSES NODE_ENV=production; fixtures cleaned LIFO in finally with
@@ -84,10 +91,21 @@ import {
   publishTestimonial,
   updateTestimonial,
 } from '../src/lib/admin/testimonials';
-import { isMediaUploadConfigured } from '../src/lib/media/service';
+import { isMediaUploadConfigured, getMediaStorageProvider } from '../src/lib/media/service';
+import {
+  isPrivateBlobConfigured,
+  isPrivateStorePathname,
+} from '../src/lib/media/vercel-blob';
 
 if (process.env.NODE_ENV === 'production') {
   console.error('[verify-reviews] REFUSED: never run review probes against production.');
+  process.exit(1);
+}
+
+if (!isPrivateBlobConfigured()) {
+  console.error(
+    '[verify-reviews] REFUSED: BLOB_PRIVATE_READ_WRITE_TOKEN is missing — the ISSUE-048 final model is storage-level privacy; the private-store behavior cannot be verified without it.',
+  );
   process.exit(1);
 }
 
@@ -254,6 +272,37 @@ async function probeImageBytes(color: string): Promise<Buffer> {
   return sharp({ create: { width: 220, height: 180, channels: 3, background: color } })
     .png()
     .toBuffer();
+}
+
+/** Drain a provider read stream into a Buffer (byte-identity probes). */
+async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  const reader = stream.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
+ * HTTP probe of the controlled delivery route (/api/media/[id]) against the
+ * dev server. Returns the status, or null when no server is reachable (the
+ * caller then records an HONEST SKIP — route-level behavior is additionally
+ * covered by the browser E2E pass).
+ */
+const BASE_URL = process.env.VERIFY_BASE_URL ?? 'http://127.0.0.1:3000';
+async function deliveryStatus(mediaId: string): Promise<number | null> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/media/${mediaId}`, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(15_000),
+    });
+    return res.status;
+  } catch {
+    return null;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -533,8 +582,9 @@ async function main(): Promise<void> {
   let draftMediaId = '';
   let secondId = '';
   {
+    const draftBytes = await probeImageBytes('#882244');
     const created = await createTestimonial({
-      image: { bytes: await probeImageBytes('#882244'), declaredContentType: 'image/png' },
+      image: { bytes: draftBytes, declaredContentType: 'image/png' },
       altText: 'لقطة اختبار واتساب',
       displayName: 'أ. اختبار',
       city: 'القاهرة',
@@ -556,6 +606,38 @@ async function main(): Promise<void> {
     assert('draft testimonial media registered PRIVATE (not publicly exposed)',
       draftAsset.accessMode === 'private');
 
+    // ISSUE-048 FINAL MODEL — real storage-level privacy:
+    assert('draft original lives in the PRIVATE blob store (namespace routing)',
+      isPrivateStorePathname(draftAsset.pathname), draftAsset.pathname.slice(0, 30));
+    assert('registry URL is the never-public .private.blob host',
+      /\.private\.blob\.vercel-storage\.com\//.test(draftAsset.url));
+
+    // Requirement: direct UNAUTHENTICATED access to the private original is
+    // rejected at the CDN (no app involved).
+    const direct = await fetch(draftAsset.url, { signal: AbortSignal.timeout(20_000) })
+      .then((r) => r.status)
+      .catch((e: Error) => {
+        console.error('  ! direct-fetch network failure (probe inconclusive):', e.name);
+        return -1;
+      });
+    assert('direct unauthenticated GET of the private original is REJECTED',
+      direct === 401 || direct === 403 || direct === 404, `status=${direct}`);
+
+    // Requirement: authorized SERVER-side access works and returns the exact bytes.
+    const serverRead = await getMediaStorageProvider()?.getPrivate?.(draftAsset.pathname);
+    assert('authorized server-side read of the private original works', serverRead !== null && serverRead !== undefined);
+    if (serverRead) {
+      const roundTrip = await streamToBuffer(serverRead.stream);
+      assert('server read is byte-identical to the uploaded original',
+        roundTrip.equals(draftBytes), `${roundTrip.byteLength}B vs ${draftBytes.byteLength}B`);
+    }
+
+    // Delivery route: a DRAFT original is never delivered (404 — same as missing).
+    const draftDelivery = await deliveryStatus(draftMediaId);
+    assert('delivery route: DRAFT original not publicly delivered (404)',
+      draftDelivery === 404,
+      draftDelivery === null ? `dev server unreachable at ${BASE_URL} — route covered by browser E2E` : `status=${draftDelivery}`);
+
     await expectReject(
       'publish WITHOUT privacy confirmation → 422 (data contract)',
       TestimonialServiceError,
@@ -576,6 +658,17 @@ async function main(): Promise<void> {
       testimonialId: draftId, privacyConfirmed: true, adminUserId: probeAdminId,
     });
     assert('publish WITH confirmation → published', published.status === 'published');
+
+    // ISSUE-048 final model: publish flips the REGISTRY; the object stays in
+    // the private store and approved delivery flows through the app route.
+    const publishedFeed = await getPublishedTestimonials(20);
+    const publishedRow = publishedFeed.find((t) => t.id === draftId);
+    assert('published feed carries the CONTROLLED DELIVERY URL (/api/media/<id>)',
+      publishedRow?.imageUrl === `/api/media/${draftMediaId}`);
+    const publishedDelivery = await deliveryStatus(draftMediaId);
+    assert('delivery route: published testimonial media streams (200)',
+      publishedDelivery === 200,
+      publishedDelivery === null ? `dev server unreachable at ${BASE_URL}` : `status=${publishedDelivery}`);
 
     await updateTestimonial({
       testimonialId: draftId,
@@ -624,6 +717,10 @@ async function main(): Promise<void> {
     const afterHide = await getPublishedTestimonials(20);
     assert('hidden testimonial excluded from the public feed',
       !afterHide.some((t) => t.id === secondId));
+    const hiddenDelivery = await deliveryStatus(secondRow.mediaAssetId);
+    assert('delivery route: HIDDEN testimonial media withdrawn (404)',
+      hiddenDelivery === 404,
+      hiddenDelivery === null ? `dev server unreachable at ${BASE_URL}` : `status=${hiddenDelivery}`);
 
     // Re-publish requires confirmation again (spec: confirm BEFORE publishing).
     await expectReject(
@@ -634,6 +731,17 @@ async function main(): Promise<void> {
       }),
       422,
     );
+
+    // Lifecycle close: confirmed RE-PUBLISH restores delivery (200 again).
+    const republished = await publishTestimonial({
+      testimonialId: secondId, privacyConfirmed: true, adminUserId: probeAdminId,
+    });
+    assert('confirmed re-publish of hidden → published (lifecycle closes)',
+      republished.status === 'published');
+    const republishedDelivery = await deliveryStatus(secondRow.mediaAssetId);
+    assert('delivery route: re-published testimonial media streams again (200)',
+      republishedDelivery === 200,
+      republishedDelivery === null ? `dev server unreachable at ${BASE_URL}` : `status=${republishedDelivery}`);
 
     // Invalid product association.
     await expectReject(
@@ -695,6 +803,18 @@ async function main(): Promise<void> {
       .from(mediaAssets)
       .where(eq(mediaAssets.id, imageLink.mediaAssetId));
     assert('review image registered PRIVATE while pending', privateAsset.accessMode === 'private');
+    assert('review image lives in the PRIVATE blob store (namespace routing)',
+      isPrivateStorePathname(privateAsset.pathname), privateAsset.pathname.slice(0, 30));
+    // Storage-level: the pending review image's CDN URL must be unusable.
+    const reviewDirect = await fetch(privateAsset.url, { signal: AbortSignal.timeout(20_000) })
+      .then((r) => r.status)
+      .catch(() => -1);
+    assert('direct unauthenticated GET of the pending review image is REJECTED',
+      reviewDirect === 401 || reviewDirect === 403 || reviewDirect === 404, `status=${reviewDirect}`);
+    const pendingDelivery = await deliveryStatus(imageLink.mediaAssetId);
+    assert('delivery route: PENDING review image not delivered (404)',
+      pendingDelivery === 404,
+      pendingDelivery === null ? `dev server unreachable at ${BASE_URL}` : `status=${pendingDelivery}`);
     probePathnames.push(privateAsset.pathname);
 
     const pendingFeed = await getHomepageReviews(20);
@@ -706,15 +826,19 @@ async function main(): Promise<void> {
       .select()
       .from(mediaAssets)
       .where(eq(mediaAssets.id, imageLink.mediaAssetId));
-    assert('approval FLIPPED the asset public (app-level disclosure gate)',
+    assert('approval FLIPPED the asset public (registry disclosure gate)',
       publicAsset.accessMode === 'public');
-    assert('registry URL is unchanged (capability URL; disclosure is app-level)',
+    assert('registry URL/pathname unchanged (object stays in the private store)',
       publicAsset.url === privateAsset.url && publicAsset.pathname === privateAsset.pathname);
 
     const approvedFeed = await getHomepageReviews(20);
     const approvedRow = approvedFeed.find((r) => r.id === reviewWithImageId);
-    assert('approved review feed carries the PUBLIC image URL',
-      approvedRow?.imageUrl === publicAsset.url);
+    assert('approved review feed carries the CONTROLLED DELIVERY URL (original stays private)',
+      approvedRow?.imageUrl === `/api/media/${publicAsset.id}`);
+    const approvedDelivery = await deliveryStatus(publicAsset.id);
+    assert('delivery route: APPROVED review image streams from the private store (200)',
+      approvedDelivery === 200,
+      approvedDelivery === null ? `dev server unreachable at ${BASE_URL}` : `status=${approvedDelivery}`);
   } else {
     pass('media lifecycle skipped honestly (no Blob credentials in this environment)');
   }
@@ -888,6 +1012,27 @@ async function residueChecks(): Promise<void> {
     .from(adminUsers)
     .where(like(adminUsers.username, 'zz-rev-admin-%'));
   assert('cleanup: zero probe admins remain', Number(adminResidue?.n ?? 0) === 0);
+
+  // ISSUE-048 final model: zero residue IN THE PRIVATE STORE itself (not
+  // just the registry). Deleted objects may take a moment to vanish from
+  // listing — bounded retry, then decisive.
+  try {
+    const { list } = await import('@vercel/blob');
+    const token = process.env.BLOB_PRIVATE_READ_WRITE_TOKEN ?? '';
+    let leftovers = -1;
+    for (let attempt = 0; attempt < 4 && leftovers !== 0; attempt += 1) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1_500));
+      const [inReviews, inTestimonials] = await Promise.all([
+        list({ prefix: 'reviews/', token, limit: 100 }),
+        list({ prefix: 'testimonials/', token, limit: 100 }),
+      ]);
+      leftovers = inReviews.blobs.length + inTestimonials.blobs.length;
+    }
+    assert('cleanup: zero private-store objects remain (storage-level zero residue)',
+      leftovers === 0, `leftovers=${leftovers}`);
+  } catch (storageListError) {
+    fail('cleanup: private-store listing failed', (storageListError as Error).message);
+  }
 }
 
 /* -------------------------------------------------------------------------- */

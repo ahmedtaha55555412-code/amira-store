@@ -336,15 +336,17 @@ verified by `scripts/verify-migrations.ts` (see `docs/ops/DATABASE.md`):
     (`inventory_movements(variant_id, created_at DESC)`), review/product lookup,
     `products(created_at DESC)` for New Arrivals, and a partial offers index
     `product_variants(product_id, current_price) WHERE is_active AND current_price < original_price`.
-16. **`media_assets.access_mode` is the APPLICATION-level disclosure gate (PHASE-09,
-    ISSUE-2026-09-28-048)** — the connected Blob store is PUBLIC-mode and Vercel Blob
-    refuses `put(access:'private')` on it, so storage-level per-object privacy is
-    unavailable. Semantics since PHASE-09: `private` assets live under unguessable
-    capability pathnames, are rendered by NO public surface, returned by NO public API
-    (admin lists null out private URLs), and preview ONLY via the admin-session-gated
+16. **`media_assets.access_mode` is the disclosure gate over a TWO-STORE Blob architecture
+    (PHASE-09, ISSUE-2026-09-28-048 FINAL resolution)** — PRIVATE originals (pending review
+    images, draft WhatsApp testimonial screenshots) live in a REAL PRIVATE Blob store
+    (`amira-testimonials-private`, storage-level privacy: unauthenticated CDN reads rejected);
+    public catalog imagery stays in the PUBLIC store (OIDC model, unchanged). The pathname
+    namespace (`reviews/`, `testimonials/`) routes provider operations to the private store.
+    Semantics: `private` assets are rendered by NO public surface, returned by NO public API
+    (admin lists null out private URLs), preview ONLY via the admin-session-gated
     `/api/admin/media/[id]/content` route; approval (reviews) / publication (testimonials)
-    flips the registry row to `public` — the deliberate disclosure decision. Residual:
-    a learned URL is CDN-readable (owner hardening decision, PHASE-14 candidate).
-    Reviewer-display note: site reviews intentionally carry NO author-name column —
-    public review cards show «عميل أميرة استور» + verified badge only (privacy-first,
-    schema unchanged).
+    flips the registry row to `public` — the deliberate disclosure decision — and approved
+    delivery flows EXCLUSIVELY through the controlled app route `/api/media/[id]` (gated on
+    registry access_mode AND owning-entity status; the original never leaves the private
+    store). Public review-card author note unchanged: site reviews intentionally carry NO
+    author-name column — public cards show «عميل أميرة استور» + verified badge only.

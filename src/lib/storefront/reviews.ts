@@ -41,7 +41,7 @@ import {
   whatsappTestimonials,
   type MediaAsset,
 } from '@/db/schema';
-import { uploadImage } from '@/lib/media/service';
+import { uploadImage, publicDeliveryUrlSql } from '@/lib/media/service';
 
 import { normalizeEgyptianPhone } from './whatsapp';
 
@@ -400,8 +400,11 @@ export async function getHomepageReviews(limit = 6): Promise<PublicReviewCard[]>
       productName: products.name,
       productSlug: products.slug,
       // Fully-qualified static correlated reference (see catalog.ts note).
+      // ISSUE-048 final model: private-store originals deliver via the app
+      // route (single mapping definition in the media service) — the CDN
+      // URL of a private-store object is never publicly readable.
       imageUrl: sql<string | null>`(
-        select mi.url from review_images ri
+        select ${publicDeliveryUrlSql(sql`mi.id`, sql`mi.pathname`, sql`mi.url`)} from review_images ri
         join media_assets mi on mi.id = ri.media_asset_id
         where ri.review_id = "reviews"."id" and mi.access_mode = 'public'
         order by ri.sort_order asc
@@ -428,7 +431,9 @@ export async function getPublishedTestimonials(limit = 6): Promise<PublicTestimo
       displayName: whatsappTestimonials.displayName,
       city: whatsappTestimonials.city,
       caption: whatsappTestimonials.caption,
-      imageUrl: mediaAssets.url,
+      // ISSUE-048 final model: private-store originals deliver via the
+      // app route; public-store assets keep their CDN URL.
+      imageUrl: publicDeliveryUrlSql(mediaAssets.id, mediaAssets.pathname, mediaAssets.url),
       imageAlt: mediaAssets.altText,
       imageWidth: mediaAssets.width,
       imageHeight: mediaAssets.height,
@@ -455,7 +460,9 @@ export async function getProductTestimonials(
       displayName: whatsappTestimonials.displayName,
       city: whatsappTestimonials.city,
       caption: whatsappTestimonials.caption,
-      imageUrl: mediaAssets.url,
+      // ISSUE-048 final model: private-store originals deliver via the
+      // app route; public-store assets keep their CDN URL.
+      imageUrl: publicDeliveryUrlSql(mediaAssets.id, mediaAssets.pathname, mediaAssets.url),
       imageAlt: mediaAssets.altText,
       imageWidth: mediaAssets.width,
       imageHeight: mediaAssets.height,

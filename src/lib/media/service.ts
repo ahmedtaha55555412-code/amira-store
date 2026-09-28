@@ -12,7 +12,8 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { eq } from 'drizzle-orm';
+import { eq, sql, type SQL } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 import { db } from '@/db/client';
 import { mediaAssets, type MediaAsset } from '@/db/schema';
@@ -26,6 +27,7 @@ import {
   type MediaStorageProvider,
 } from './types';
 import {
+  isPrivateStorePathname,
   isVercelBlobConfigured,
   vercelBlobProvider,
 } from './vercel-blob';
@@ -66,10 +68,13 @@ export type UploadImageResult = MediaAsset;
  * Validate + persist + register one image upload.
  * Throws ImageValidationError (422) or MediaStorageUnavailableError (503).
  *
- * PHASE-09 access contract (MASTER_PLAN §20): `accessMode: 'private'` marks
- * media that is NOT publicly exposed until its owning domain publishes it
- * (pending review images, draft WhatsApp testimonial screenshots). Private
- * objects are readable server-side ONLY via admin-authenticated routes.
+ * PHASE-09 access contract (MASTER_PLAN §20, ISSUE-048 final model):
+ * `accessMode: 'private'` uploads land in the REAL PRIVATE Blob store —
+ * storage-level privacy (unauthenticated CDN reads rejected) — while
+ * `accessMode: 'public'` uploads land in the public store exactly as before.
+ * Private originals become publicly deliverable ONLY through the app's
+ * controlled delivery route (/api/media/[id]) after the owning domain's
+ * deliberate disclosure (moderation approval / privacy-confirmed publish).
  */
 export async function uploadImage(input: {
   bytes: Buffer;
@@ -131,10 +136,11 @@ export async function uploadImage(input: {
 
 /**
  * Flip a private asset's REGISTRY access_mode to public — the application's
- * deliberate disclosure decision at moderation/publish time (ISSUE-048:
- * storage-level per-object privacy is unavailable on the public-mode Blob
- * store, so the gate lives here). Idempotent; no provider operation is
- * needed (and none could add privacy retroactively).
+ * deliberate disclosure decision at moderation/publish time (ISSUE-048
+ * final model). The object itself NEVER moves between stores: a private-store
+ * original stays in the private store forever; the flip merely opens the
+ * app's controlled delivery route (/api/media/[id]) for the owning entity.
+ * Idempotent; no provider operation is needed.
  */
 export async function materializeMediaPublic(asset: MediaAsset): Promise<MediaAsset> {
   if (asset.accessMode === 'public') return asset;
@@ -149,17 +155,49 @@ export async function materializeMediaPublic(asset: MediaAsset): Promise<MediaAs
 }
 
 /**
- * Server-side read stream for a PRIVATE asset (admin-authenticated preview
- * routes only). Public assets are NOT served through here — callers redirect
- * to the CDN URL. Returns null when the object no longer exists.
+ * Server-side read stream for a PRIVATE-STORE asset (authenticated app
+ * routes only: admin preview + controlled public delivery). Routing is by
+ * the pathname NAMESPACE (storage truth), not the registry access_mode —
+ * a private-store object must stream even after its registry access_mode
+ * was flipped public at disclosure, because its provider URL is never
+ * publicly readable. Public-store assets are NOT served through here —
+ * callers redirect to the CDN URL. Returns null when the object no longer
+ * exists.
  */
 export async function readPrivateMedia(
   asset: MediaAsset,
 ): Promise<{ stream: ReadableStream<Uint8Array>; contentType: string } | null> {
-  if (asset.accessMode !== 'private') return null;
+  if (!isPrivateStorePathname(asset.pathname)) return null;
   const provider = getMediaStorageProvider();
   if (!provider?.getPrivate) throw new MediaStorageUnavailableError();
   return provider.getPrivate(asset.pathname);
+}
+
+/**
+ * Canonical PUBLIC delivery URL for an approved asset row (TS side).
+ * Private-store originals are delivered through the controlled app route;
+ * public-store assets keep their CDN URL. The SQL twin below is used inside
+ * feed queries — keep both in sync (single source: this module).
+ */
+export function publicDeliveryUrl(asset: Pick<MediaAsset, 'id' | 'pathname' | 'url'>): string {
+  return isPrivateStorePathname(asset.pathname) ? `/api/media/${asset.id}` : asset.url;
+}
+
+/**
+ * SQL expression twin of {@link publicDeliveryUrl} for feed queries that
+ * must map the delivery URL INSIDE the database round-trip (subqueries over
+ * review_images / media_assets). One definition — imported by every feed.
+ */
+export function publicDeliveryUrlSql(
+  assetId: SQL | AnyPgColumn,
+  pathname: SQL | AnyPgColumn,
+  url: SQL | AnyPgColumn,
+): SQL<string> {
+  return sql<string>`case
+    when ${pathname} like 'reviews/%' or ${pathname} like 'testimonials/%'
+      then '/api/media/' || ${assetId}::text
+    else ${url}
+  end`;
 }
 
 export { ImageValidationError, MediaStorageUnavailableError };
