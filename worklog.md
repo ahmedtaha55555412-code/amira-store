@@ -807,3 +807,23 @@ Stage Summary:
 - ISSUE-046 = RESOLVED (deterministic cleanup executed; keep-by-design set documented).
 - Neon Development = VERIFIED (409/409 on the real branch; ISSUE-019 mapping defect precisely evidenced for the owner).
 - Next: full post-hardening regression (build + suites on rehearsal + security probes), browser E2E on dev branch, visual QA, docs, commit/push.
+
+---
+Task ID: HARDEN-FINAL (pre-PHASE-08 hardening — completion record)
+Agent: Z.ai Code (main agent)
+Task: close out the hardening round — regression totals, production safety, commit/push/CI, final dispositions.
+
+Work Log:
+- STEP 5 regression totals: typecheck ✅ lint ✅ production build ✅ (static = icons only, correct route table); full battery 409/409 on REHEARSAL and 409/409 on the REAL Neon dev branch (db:verify 28 + verify:auth 44 + verify:catalog 43 + verify:storefront 101 + verify:cart 59 + verify:checkout 134).
+- Fresh security probes: unauth mutations 401 (products/categories/media; settings path 404=nonexistent endpoint correct; products[id] DELETE 405 = PUT-only by design, archive lifecycle); cross-origin/no-origin/text-plain 403; malformed JSON 400; state-changing GET 405; login throttle 5×401→429 (DB-backed via auth.login.failed rows — window proven); session lifecycle login 200 → authed page 200 → logout 200 → reuse-after-logout 401; /admin 307 + no-store.
+- Cross-phase business truth: browser E2E on the REAL dev branch — order AMR-8F2MBY: PDP variant price 219.00 → cart server-truth → checkout charge 219.00 → order snapshot 219.00 exact; ledger sale −1 (12→11); customer phone +20-normalized; WhatsApp section from committed data. وصل حديثًا + العروض DB order == rendered order (strongest-discount-first). Price-flow "290" suspicion investigated to ground truth: RSC chunk metadata, not prices — no discrepancy.
+- Deep visual QA: 19 captures at 375/768/1440 (home, category, PDP+drawer, cart, checkout, success, 404 ×2, admin login) personally inspected; no horizontal overflow (eval-proven at 375); sticky footer; price hierarchy + honest states correct. Pre-existing observations noted (gallery counter + order-chip bidi), no regressions.
+- E2E fixtures on the dev branch FULLY CLEANED (order/items/customer/movement deleted, stock restored 12) + orphan scan all-zero + baseline byte-identical (13/7/18/8/1/0/1).
+- STEP 9 production safety: runtime smoke 12 routes all 200 + unauth media upload 401; production DB read-only probe — 5 categories / 0 business rows / 1 settings / 2 migrations / 23t 9e EXACTLY the documented bring-up baseline; zero test media ever written; env contract pure-OIDC blob + DATABASE_URL fingerprint byte-unchanged; dev≠prod isolation proven.
+- Commit f725719 pushed; local == origin/main; CI check-run "verify" = success on f725719; production deployment dpl_7NYiL1f2rHTxoXRm READY built from f7257198.
+- LIVE production post-deploy verification: /product/__missing__ = 404 (fix LIVE), /category/__missing__ = 404, root 404, storefront 200s, noindex present on production 404 bodies.
+
+Stage Summary:
+- FINAL DISPOSITIONS: ISSUE-023 = RESOLVED · ISSUE-045 = RESOLVED · ISSUE-046 = RESOLVED · Neon Development = VERIFIED.
+- Remaining OPEN items (owner-paced, documented): ISSUE-010 (orphan Neon store decision), ISSUE-019 (Vercel development→production branch mapping — owner action in Neon console; compensating control active and re-verified). ZERO unresolved pre-PHASE-08 engineering issues.
+- PHASE-08 remains LOCKED. This round performed ZERO PHASE-08 feature work. Awaiting explicit owner instruction.
