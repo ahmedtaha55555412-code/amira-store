@@ -633,3 +633,18 @@ Stage Summary:
 - PHASE-06 fully re-proven on the authorized isolated development branch: 55+28+44+43+101 suites, typecheck/lint/build, fresh E2E, security matrix, personally-inspected visual QA; two defects (041/042) found and fixed with minimal scope.
 - Push/CI/new-deployment verification executes immediately after this entry (fast-forward; then the NEW deployment commit + live URL re-test).
 - PHASE-06 completion decision and production bring-up remain owner-gated. No PHASE-07 work.
+
+---
+Task ID: 18-completion (push + CI + deployment verification, 2026-09-28)
+Agent: Z.ai Code (main)
+
+Work Log:
+- Pushed `70dd015` as a plain fast-forward (`a7eaa03..70dd015`); verified local main == origin/main (hash equality `70dd0152ecb…`).
+- CI run 36387648285 GREEN (verify 1m11s; only pre-existing runner-deprecation annotations).
+- NEW Vercel deployment `dpl_FSR9p4A54Gs6` READY, built from the NEW commit `70dd015` (build succeeded with /cart dynamic — ISSUE-041 fix proven in the platform build).
+- Live Production URL re-tested: robots 200; DB-backed routes 500 with the SAME confirmed 42P01 class (new digests 2952930224/1670590651/2330091787 found in the new deployment's runtime logs — same root cause, new build). Runtime issue NOT marked resolved: production bring-up remains owner-gated (DEPLOYMENT_RUNBOOK).
+- Cleanup: backup branch removed; browser sessions closed.
+
+Stage Summary:
+- Round gates ALL satisfied: prerequisites 1-3 ✅, PHASE-06 suites/E2E/integration/visual QA ✅, GitHub synced + CI green ✅, NEW deployment verified from NEW commit ✅, live URL re-tested ✅.
+- Remaining owner-gated items: production database bring-up (digest root cause) and the PHASE-06 completion-gate review. No PHASE-07 work.
