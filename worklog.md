@@ -884,3 +884,21 @@ Work Log:
 
 Stage Summary:
 - PHASE-08 shipped and verified END-TO-END. No PHASE-09 work. Awaiting owner directive.
+
+---
+Task ID: FINAL-RECON (PHASE-08 final reconciliation check — owner directive, read-only, 2026-09-28)
+Agent: Z.ai Code (main agent)
+Task: FINAL RECONCILIATION CHECK — prove origin/main HEAD == latest CI-green == latest Vercel Production deployment; confirm migration 0002 applied in production, production DB baseline unchanged, 510/510 regression green, PHASE-09 not started. DO NOT MODIFY CODE. STOP after this check.
+
+Work Log:
+- Git: tree clean; local HEAD == origin/main == face21fe3f64681df513e0d8ea9686a2c4d7d9b2 (docs-only ship record; git diff vs 58b2a45 = worklog.md +16 lines, 0 non-docs files).
+- CI (GitHub API, vault token): run on face21fe completed/SUCCESS (18:26:02Z, check-run "verify" = success, combined status = success); 58b2a45 also SUCCESS (18:20:33Z).
+- Vercel (REST API, vault token): latest production deployment dpl_12iDJB8pFgmrGaEaTHEreiRejfxG = READY, target=production, built from face21fe (auto-deployed docs-only push via active git connect) — three-way equality EXACT, no redeploy created.
+- Production DB (read-only probe via sanctioned env pull, values never printed, /tmp env shredded after): fingerprint endpoint ep-cool-art-b1snfj5i-pooler (invariant); 23t/9e/89idx/34fk/34chk/6 trgm GIN/{pg_trgm,plpgsql}; 3 migration rows (0000 a2a86f8b…, 0001 bb29d309…, 0002 ae7e70ec… — local 0002 file hash byte-matches); signature index inventory_movements_order_cancel_return_key UNIQUE (order_id, variant_id) WHERE cancellation_return LIVE; 1 settings row, exactly 5 bootstrap categories, ALL business counts = 0, neon_auth 9 tables — baseline byte-unchanged.
+- Production read-only smoke on the READY deployment: / 200 · robots 200 · /category/women 200 · missing PDP + missing category REAL 404s · /cart 200 · /admin 307 · zero 5xx.
+- 510/510 regression: green at 58b2a45 (verify:orders 100/100 + full battery + typecheck/lint/build, recorded in 22/22-ship sections); face21fe code tree byte-identical (docs-only); CI verify re-ran green on face21fe itself.
+- PHASE-09: NOT started — zero phase-09 commits on any branch; 3 code matches are forward-reference comments only ("placeholder until PHASE-09", "submission arrives with PHASE-09"); PHASE-09.md exists as planning doc per master plan.
+
+Stage Summary:
+- THREE-WAY EQUALITY: origin/main HEAD == CI-green == Production deployment == face21fe3f64681df513e0d8ea9686a2c4d7d9b2 → PASS — PHASE-08 FINAL CLOSED.
+- Migration 0002 applied + baseline unchanged + regression green + PHASE-09 untouched. This record appended locally (uncommitted) to avoid triggering another docs-only deploy cycle; owner may fold it into the next docs commit.
