@@ -43,7 +43,14 @@ export function CartDrawer() {
   const count = useCartCount();
 
   useEffect(() => {
-    const handleOpen = () => setOpen(true);
+    const handleOpen = () => {
+      setOpen(true);
+      // The auto-open path (add-to-cart event) must refresh stale availability
+      // exactly like the manual open path — otherwise entries whose validation
+      // is missing after a fresh page load are provisionally counted in the
+      // subtotal until the next manual open (ISSUE-042).
+      cartStore.scheduleRevalidation();
+    };
     window.addEventListener(CART_DRAWER_OPEN_EVENT, handleOpen);
     return () => window.removeEventListener(CART_DRAWER_OPEN_EVENT, handleOpen);
   }, []);

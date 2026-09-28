@@ -12,6 +12,14 @@ export const metadata: Metadata = {
 };
 
 /**
+ * The (store) chrome (header category nav) reads live catalog data, so this
+ * route renders per request like every other storefront page — never at build
+ * time (ISSUE-041: a static classification would freeze nav data and make the
+ * build depend on a reachable database). loading.tsx streams the shell.
+ */
+export const dynamic = "force-dynamic";
+
+/**
  * Full cart page (PHASE-06 task 4). Shell renders inside the (store) group so
  * announcement/header/footer/FAB wrap it like every storefront route; the
  * content is the persisted client cart.

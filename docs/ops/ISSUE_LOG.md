@@ -16,9 +16,9 @@
 ---
 
 ### ISSUE-2026-09-28-038
-- Phase: Reconciliation round (owner CRITICAL RECONCILIATION directive, 2026-09-28) — OPEN (blocked on owner credential re-issues; local work complete)
+- Phase: Reconciliation round (owner CRITICAL RECONCILIATION directive, 2026-09-28) — RESOLVED (2026-09-28: all three credential paths re-issued by the owner; runtime digest CONFIRMED via live Production runtime logs; see confirmation block below)
 - Severity: HIGH (blocks push/CI/production-runtime-log inspection/live-branch verification)
-- Status: OPEN
+- Status: RESOLVED
 - Symptom: TASK A of the reconciliation directive could not be executed against the ACTUAL Vercel runtime logs — deployment a7eaa03's runtime log inspection requires Vercel auth that no longer exists in the recycled sandbox (no `vercel` CLI auth file, no `VERCEL_*` env, `~/.local/share/com.vercel.cli/auth.json` missing). GitHub auth is equally gone (`gh` binary missing, credential helper `.auth/bin/gh-cred` missing → `git ls-remote` cannot authenticate; repo is private). TASK C: `.env.local` is MISSING (snapshot machinery excludes secret files; verified the `/tmp` PolarFS snapshot carries no `.env.local` either).
 - Reproduction: `gh auth status` → command not found; `git ls-remote origin main` → could not read Username; `vercel` → not installed; `test -f .env.local` → missing.
 - Root cause: ISSUE-2026-09-27-037 fallout — the sandbox recycle wiped every external credential (GitHub token, Vercel token, `.auth/` vault including the just-created `.auth/verify-cart.ts`, `.env.local`).
@@ -27,6 +27,31 @@
 - Verification (what the sandbox DID prove without credentials, 2026-09-28): Next 16.1.3 digest algorithm read from node_modules — user-land errors get `digest = stringHash(err.message + err.stack).toString()` (numeric, no code suffix for non-Next errors) → byte-correlation from a local repro is impossible in principle (stack paths differ per environment). Failure-class characterization on a local production standalone build: control (schema present) → 200; empty-schema DB → 500 with `Failed query: select … from "categories"` + `[cause]: error: relation "categories" does not exist` (42P01) and numeric digests (e.g. 882317259); unreachable endpoint → 500 `connect ECONNREFUSED`; DATABASE_URL unset → 500 `DATABASE_URL is not set…`. Served 500 shell is `<html id="__next_error__">` (no `global-error.tsx` in the tree) → hydrates into exactly the owner-observed English "Application error: a server-side exception has occurred" page. By documented design the Neon production branch was NEVER migrated/touched, making the 42P01 class the most probable root cause (production bring-up = DEPLOYMENT_RUNBOOK release procedure: migrations + production-safe bootstrap, NO dev seed); the log line grep for `digest: '2975296465` after Vercel re-auth is the final discriminator.
 - Related files: `docs/ops/DATABASE.md` (§9.1 fingerprints, §12), `docs/ops/DEPLOYMENT_RUNBOOK.md`
 - Notes: explicitly NOT marked resolved — runtime evidence is owner-gated. Nothing was inferred from build logs.
+- **RESOLUTION (2026-09-28, owner-authorized round):** (1) GitHub re-issued via one-shot device flow (scopes `repo, workflow, read:org`); (2) Vercel re-issued via manual OAuth device flow (endpoints from the CLI's own OIDC discovery; credentials persisted to the git-ignored `.auth/vercel/auth.json`, chmod 600, never printed); (3) `.env.local` restored with the owner-pasted Neon development POOLED string — `sha256 = e5d2abaf3816965f…` EXACTLY matches the recorded development fingerprint (≠ production `a77fc2af…`), host carries `-pooler`, project `tiny-mud-82763154`, live proof 13 categories / 7 products / 18 variants = migrated isolated development branch. **Runtime digest 2975296465 CONFIRMED** (live `vercel logs` on dpl_Gp3naCP4FsWBMzEcse84wXgWtRZ9, built from a7eaa03): `GET /` → `Error: Failed query: select … from "categories" …` with `[cause]: error: relation "categories" does not exist`, PG `42P01` (parserOpenTable); companion digests 2239130387 / 120622555 / 875850714 = the same 42P01 class on the header-categories and product-count queries; digest reproduced byte-exact in 4/4 fresh live hits (deterministic `stringHash(message+stack)` per this deployment). **CONFIRMED ROOT CAUSE: the Neon Production (main) branch has never been migrated — deployment-configuration/database bring-up, NOT an application defect.** Production bring-up stays OWNER-GATED per DEPLOYMENT_RUNBOOK (committed migrations + production-safe bootstrap, NO dev seed); no Production database touch occurred.
+
+### ISSUE-2026-09-28-041
+- Phase: PHASE-06 deep visual QA + production-build verification round (2026-09-28) — FIXED
+- Severity: MEDIUM (would fail the next Vercel production build at prerender time; also freezes storefront nav data)
+- Status: FIXED
+- Symptom: production build prerenders `/cart` as static (○) and executes the store layout's categories query AT BUILD TIME — failed locally with an unreachable DB (`Export encountered an error on /(store)/cart/page`), and would fail identically on Vercel against the not-yet-migrated production branch; even with a reachable DB the category navigation on `/cart` would be frozen at build time (stale after admin category edits), contradicting the page's own `loading.tsx` streaming design and the all-dynamic storefront (`, /`, `/category/[slug]`, `/product/[slug]`, `/search` are all ƒ).
+- Reproduction: run `next build` without a reachable `DATABASE_URL` → prerender of `/cart` fails with the categories query; route table shows `○ /cart`.
+- Root cause: default static classification of a chrome-driven client page — the (store) layout header reads live catalog data server-side, so a static `/cart` couples the BUILD to a reachable, migrated database.
+- Minimal fix: `export const dynamic = "force-dynamic"` on `src/app/(store)/cart/page.tsx` (one export + comment; matches every other storefront route and the existing loading.tsx intent).
+- Verification: rebuild → `ƒ /cart` in the route table, static pages drop to 6 (icons only), build green with TypeScript validation ON; dev server + production standalone both serve `/cart` 200; verify:cart 55/55, typecheck ✅, lint ✅ after the change.
+- Related files: `src/app/(store)/cart/page.tsx`
+- Notes: this also de-risks the PHASE-06 push: the new Vercel deployment builds successfully BEFORE the owner-gated production migration (the build no longer queries any database).
+
+### ISSUE-2026-09-28-042
+- Phase: PHASE-06 deep visual QA round (2026-09-28, drawer subtotal inconsistency) — FIXED
+- Severity: MEDIUM (user-visible money inconsistency between cart surfaces)
+- Status: FIXED
+- Symptom: after a fresh page load, adding an item auto-opens the cart drawer whose subtotal PROVISIONALLY INCLUDES entries whose availability is not yet validated (capture: unavailable line 349 + new line 125 → drawer showed 474 ج.م.) while the /cart page correctly excludes unavailable lines (125 ج.م.). The drawer line even shows the server-truth chip while the total still counts it.
+- Reproduction: cart holding an unavailable (stale-variant) entry → full page load (validation map resets on hydrate) → add any item on a PDP → drawer auto-opens → subtotal includes the unavailable line until a MANUAL open triggers revalidation.
+- Root cause: the drawer's manual-open path (`onOpenChange`) calls `cartStore.scheduleRevalidation()`, but the AUTO-OPEN path (`CART_DRAWER_OPEN_EVENT` listener) only `setOpen(true)` — it never schedules revalidation, so post-add drawers render with a stale/empty validation map.
+- Minimal fix: the auto-open event handler also calls `cartStore.scheduleRevalidation()` (one statement + comment) in `src/components/store/cart/cart-drawer.tsx`.
+- Verification: fresh load → add → auto-opened drawer now revalidates: unavailable chip shown AND subtotal excludes it (250 ج.م. = 2×125 with the 349 unavailable line out; storage snapshot `00000000…:1 | 79840820…:2` confirms exact math); manual-open path unchanged; verify:cart 55/55 (subtotal math + status exclusion sections) green after the change.
+- Related files: `src/components/store/cart/cart-drawer.tsx`
+- Notes: found during personally-inspected deep visual QA (375px drawer capture) — exactly the class of minor issue the QA gate exists to catch.
 
 ### ISSUE-2026-09-28-039
 - Phase: Reconciliation round (PHASE-06 regression gate, 2026-09-28) — FIXED
