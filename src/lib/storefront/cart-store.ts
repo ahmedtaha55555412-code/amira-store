@@ -28,6 +28,7 @@ import {
   removeCartEntry,
   saveCartDocument,
   updateCartEntryQuantity,
+  CART_STORAGE_KEY,
   type CartDocument,
   type CartEntry,
   type CartEntryStatus,
@@ -93,7 +94,7 @@ class CartStore {
       this.hydrate();
       if (typeof window.addEventListener === 'function') {
         window.addEventListener('storage', (event) => {
-          if (event.key === null || event.key === 'amira.cart.v1') this.hydrate();
+          if (event.key === null || event.key === CART_STORAGE_KEY) this.hydrate();
         });
       }
     }

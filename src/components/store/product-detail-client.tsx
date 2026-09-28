@@ -20,6 +20,8 @@ import { openCartDrawer } from "@/components/store/cart/cart-drawer";
 import { WishlistButton } from "@/components/store/wishlist-button";
 import { cn } from "@/lib/utils";
 import { discountPercent, formatPrice } from "@/lib/storefront/format";
+import { moneyToCents } from "@/lib/storefront/whatsapp";
+import { centsToPriceString } from "@/lib/storefront/cart";
 import { buildCartEntryDraft, type CartEntryDraft } from "@/lib/storefront/metadata";
 import { cartStore } from "@/lib/storefront/cart-store";
 
@@ -233,7 +235,8 @@ export function ProductDetailClient({
         description: `الكمية المتاحة من هذا الاختيار هي ${result.quantity} — أُضيفت السلة بهذه الكمية.`,
       });
     } else {
-      const estimated = (Number(draft.unitPrice) * result.quantity).toFixed(2);
+      // Integer-piasters math (canonical money rule) — never float arithmetic.
+      const estimated = centsToPriceString(moneyToCents(draft.unitPrice) * result.quantity);
       toast({
         title: result.merged ? "تحديث سلتك ✓" : "أُضيف إلى سلتك ✓",
         description: `${draft.variantLabel} × ${result.quantity} — ${formatPrice(estimated)}.`,

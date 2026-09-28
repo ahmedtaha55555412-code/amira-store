@@ -2,7 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  /* config options here */
   // TypeScript is validated on EVERY build — including the Vercel production
   // deploy (the scaffold default `ignoreBuildErrors: true` was removed
   // 2026-09-27: a deploy must never ship type-broken code; CI `typecheck`

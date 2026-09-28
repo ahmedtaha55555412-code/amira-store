@@ -66,7 +66,6 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export {
   normalizeEgyptianPhone,
   moneyToCents,
-  centsToMoney,
   moneyForMessage,
   buildWhatsAppMessage,
   buildWhatsAppUrl,
@@ -81,10 +80,10 @@ import {
   DEFAULT_WHATSAPP_TEMPLATE_FALLBACK,
   buildWhatsAppMessage,
   buildWhatsAppUrl,
-  centsToMoney,
   moneyToCents,
   normalizeEgyptianPhone,
 } from './whatsapp';
+import { centsToPriceString } from './cart';
 
 /* -------------------------------------------------------------------------- */
 /* Request schema                                                              */
@@ -530,7 +529,7 @@ async function attemptOrderTransaction(
       return { item, row, lineTotalCents: unitCents * item.quantity };
     });
     const productsTotalCents = lineCents.reduce((sum, line) => sum + line.lineTotalCents, 0);
-    const productsTotal = centsToMoney(productsTotalCents);
+    const productsTotal = centsToPriceString(productsTotalCents);
 
     /* --- 7. Order row (snapshots; shipping stays NULL per MASTER_PLAN §11) - */
     const orderNumber = generateOrderNumber();
@@ -584,7 +583,7 @@ async function attemptOrderTransaction(
         currentUnitPriceSnapshot: row.currentPrice,
         unitPrice: row.currentPrice,
         quantity: item.quantity,
-        subtotal: centsToMoney(lineTotalCents),
+        subtotal: centsToPriceString(lineTotalCents),
       })),
     );
 
@@ -634,7 +633,7 @@ async function attemptOrderTransaction(
         variantAttributesSnapshot: attributesByVariantId.get(row.variantId) ?? [],
         quantity: item.quantity,
         unitPrice: row.currentPrice,
-        subtotal: centsToMoney(lineTotalCents),
+        subtotal: centsToPriceString(lineTotalCents),
       })),
       settings.storeName,
       settings.template,

@@ -762,15 +762,48 @@ export async function getStorefrontProductDetail(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Arabic-aware search (tasks 5–8)                                             */
+/* Indexed existence probes (ISSUE-045)                                        */
 /* -------------------------------------------------------------------------- */
 
-export class StorefrontSearchError extends Error {
-  constructor(message = 'تعذر تنفيذ البحث حاليًا.') {
-    super(message);
-    this.name = 'StorefrontSearchError';
-  }
+/**
+ * Cheap indexed existence probe for the product detail route. Awaited by the
+ * page BEFORE any JSX is returned so `notFound()` can still commit a real
+ * HTTP 404 — with the route-level `loading.tsx` removed, the streaming shell
+ * does not flush until this resolves, while a mid-stream `notFound()` after a
+ * Suspense flush would be locked into a soft-404 (200). Mirrors the cheap
+ * null-conditions of the aggregate loader (active product + active direct
+ * category, both slug/PK-indexed); deeper ancestor mutations remain guarded by
+ * the aggregate's own `notFound()` defense-in-depth.
+ */
+export async function hasStorefrontProductBySlug(slug: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: products.id })
+    .from(products)
+    .innerJoin(
+      categories,
+      and(eq(categories.id, products.categoryId), eq(categories.isActive, true)),
+    )
+    .where(and(eq(products.slug, slug), eq(products.status, 'active')))
+    .limit(1);
+  return row !== undefined;
 }
+
+/**
+ * Cheap indexed existence probe for the category listing route (see
+ * {@link hasStorefrontProductBySlug}) — active category by its unique slug.
+ */
+export async function hasStorefrontCategoryBySlug(slug: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(and(eq(categories.slug, slug), eq(categories.isActive, true)))
+    .limit(1);
+  return row !== undefined;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Arabic-aware search (tasks 5–8)                                             */
+/* -------------------------------------------------------------------------- */
 
 export type SearchMatchedCategory = { id: string; name: string; slug: string };
 

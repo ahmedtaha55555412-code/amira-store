@@ -79,24 +79,33 @@ export async function uploadImage(input: {
     accessMode: 'public',
   });
 
-  const [asset] = await db
-    .insert(mediaAssets)
-    .values({
-      provider: provider.id,
-      pathname: stored.pathname,
-      url: stored.url,
-      accessMode: 'public',
-      mimeType: validated.contentType,
-      sizeBytes: stored.sizeBytes,
-      width: validated.width,
-      height: validated.height,
-      altText: input.altText,
-      metadata: {
-        validatedBy: 'magic-bytes+sharp',
-      },
-      createdByAdminId: input.adminUserId,
-    })
-    .returning();
+  // Orphan prevention (pre-PHASE-08 hardening, ISSUE-023): if the registry
+  // insert fails AFTER the bytes reached the provider, best-effort delete the
+  // stored object so no unreachable blob outlives its database reference.
+  let asset: MediaAsset;
+  try {
+    [asset] = await db
+      .insert(mediaAssets)
+      .values({
+        provider: provider.id,
+        pathname: stored.pathname,
+        url: stored.url,
+        accessMode: 'public',
+        mimeType: validated.contentType,
+        sizeBytes: stored.sizeBytes,
+        width: validated.width,
+        height: validated.height,
+        altText: input.altText,
+        metadata: {
+          validatedBy: 'magic-bytes+sharp',
+        },
+        createdByAdminId: input.adminUserId,
+      })
+      .returning();
+  } catch (error) {
+    await provider.delete(pathname).catch(() => undefined);
+    throw error;
+  }
 
   return asset;
 }

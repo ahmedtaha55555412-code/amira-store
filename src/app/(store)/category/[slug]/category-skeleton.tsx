@@ -1,8 +1,13 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Container } from "@/components/store/container";
 
-/** Category listing loading state (PHASE-05 UX states) — skeleton mirrors the layout. */
-export default function CategoryLoading() {
+/**
+ * Category listing skeleton (PHASE-05 UX states) — the exact markup of the
+ * former route-level `loading.tsx`, now co-located and used as the in-page
+ * Suspense fallback (ISSUE-045): the page commits a real 404 for missing
+ * slugs pre-flush while valid resources keep the identical loading UX.
+ */
+export function CategorySkeleton() {
   return (
     <>
       <div className="border-b border-border/70 bg-surface-subtle/40">

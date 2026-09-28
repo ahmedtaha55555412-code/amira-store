@@ -281,7 +281,15 @@ function suitePersistence(): void {
 function suiteRouteAudit(): void {
   console.log('\n[9] route audit — NO customer-account endpoint anywhere');
   const apiDir = join(process.cwd(), 'src', 'app', 'api');
-  assert('api surface contains only admin/ + storefront/', existsSync(join(apiDir, 'admin')) && existsSync(join(apiDir, 'storefront')) && existsSync(join(apiDir, 'route.ts')));
+  // ISSUE-046 cleanup removed the scaffold hello-world `api/route.ts`; the
+  // api surface must contain ONLY the admin/ + storefront/ namespaces (its
+  // absence is now asserted so the scaffold cannot silently return).
+  assert(
+    'api surface contains only admin/ + storefront/',
+    existsSync(join(apiDir, 'admin')) &&
+      existsSync(join(apiDir, 'storefront')) &&
+      !existsSync(join(apiDir, 'route.ts')),
+  );
   const storefrontRoutes = existsSync(join(apiDir, 'storefront'))
     ? readFileSync(join(apiDir, 'storefront', 'cart-availability', 'route.ts'), 'utf8').length > 0 &&
       readFileSync(join(apiDir, 'storefront', 'search', 'suggestions', 'route.ts'), 'utf8').length > 0

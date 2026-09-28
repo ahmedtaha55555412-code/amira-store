@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useCartState, useCartSubtotal } from '@/hooks/use-cart';
 import { cartStore } from '@/lib/storefront/cart-store';
 import type { CartEntry, CartEntryValidation } from '@/lib/storefront/cart';
-import { centsToPriceString } from '@/lib/storefront/cart';
+import { MAX_LINE_QUANTITY, centsToPriceString } from '@/lib/storefront/cart';
 import { formatPrice } from '@/lib/storefront/format';
 import { cn } from '@/lib/utils';
 
@@ -22,8 +22,6 @@ import { cn } from '@/lib/utils';
  * - price change → the SERVER-truth price is displayed (the client never
  *   invents prices) with the add-time snapshot struck through.
  */
-
-const MAX_LINE_QUANTITY = 99;
 
 const STATUS_CHIP: Record<
   CartEntryValidation['status'],

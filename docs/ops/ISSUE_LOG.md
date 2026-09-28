@@ -30,7 +30,7 @@
 ### ISSUE-2026-09-28-045
 - Phase: FULL-SYSTEM AUDIT (pre-PHASE-08 final gate, 2026-09-28) — storefront SEO
 - Severity: LOW (SEO status-code-only; user-facing content and crawl hygiene correct)
-- Status: ACCEPTED (documented framework behavior; trade-off recorded — revisit only if monitoring requires it)
+- Status: RESOLVED (2026-09-28 pre-PHASE-08 hardening round, owner directive "actually remediate")
 - Symptom: `/product/<unknown-slug>` and `/category/<unknown-slug>` return HTTP **200** (soft-404) while rendering the correct Arabic not-found UI with `noindex` present; root-level unknown routes return a proper 404.
 - Reproduction: `curl -o /dev/null -w "%{http_code}" https://amira-store-opal.vercel.app/product/__no_such_product__` → 200 (both Production and local, current tree f965eb4).
 - Root cause: both dynamic segments ship `loading.tsx`. Next.js streams the 200 shell as soon as the loading boundary flushes; the later `notFound()` in the page (and even thrown from `generateMetadata`) cannot retroactively change the already-sent status. This is documented Next.js streaming behavior for `loading.js` + `notFound()`, verified live during the audit: an experimental `notFound()`-from-`generateMetadata` patch produced the SAME 200, so it was reverted (no dead changes kept).
@@ -39,11 +39,13 @@
 - Verification: `noindex` confirmed present in the streamed response (count 1–2 depending on boundary); root 404 path works; not-found UI renders correctly at all widths.
 - Related files: `src/app/(store)/product/[slug]/page.tsx`, `src/app/(store)/product/[slug]/loading.tsx`, `src/app/(store)/category/[slug]/page.tsx`, `src/app/(store)/category/[slug]/loading.tsx`, `src/app/not-found.tsx`
 - Notes: revisit option (PHASE-11/14): route-level `generateMetadata` with `blocking` metadata semantics if Next changes streaming behavior, or accept as permanent with the noindex mitigation.
+- **RESOLUTION (2026-09-28 hardening round):** the route was ARCHITECTED per the directive ("missing resources return a real 404 while preserving loading UX"): the route-level `loading.tsx` files were removed and each page now awaits a cheap indexed existence probe (`hasStorefrontProductBySlug` / `hasStorefrontCategoryBySlug`, additive in `src/lib/storefront/catalog.ts`) and calls `notFound()` BEFORE any JSX is returned — the status is committed while nothing has flushed. For EXISTING slugs the heavy aggregate streams inside the page via `<Suspense fallback={<ProductSkeleton/>}>` / `<CategorySkeleton/>` (the exact former loading.tsx markup extracted to co-located skeleton components — loading UX preserved, zero visual change). `generateMetadata` untouched (noindex intact on 404 bodies); defense-in-depth `notFound()` inside the aggregate for probe/aggregate races. VERIFIED: missing product 404, missing category 404, existing product/category 200 (both markers: skeleton fallback + streamed content in one body), root 404 unchanged, `/search` 200, browser refresh + direct navigation render correctly, personal inspection at 1440/375 of the rendered not-found UI. Residual (documented, accepted): a pathological admin state (active category whose ancestor deactivates between probe and aggregate) still yields the honest not-found UI with a 200 — unreachable in seed data, direct-URL-only.
+- Related files updated: `src/app/(store)/product/[slug]/{page.tsx,product-skeleton.tsx}`, `src/app/(store)/category/[slug]/{page.tsx,category-skeleton.tsx}`, `src/lib/storefront/catalog.ts`; route-level `loading.tsx` files DELETED.
 
 ### ISSUE-2026-09-28-046
 - Phase: FULL-SYSTEM AUDIT (pre-PHASE-08 final gate, 2026-09-28) — dead artifacts / hygiene sweep
 - Severity: LOW (no functional, security, or data impact; classified inventory to keep the tree honest)
-- Status: ACCEPTED (documented; scheduled for the PHASE-14 hardening/cleanup pass — several items are environment-harness files that the sandbox tooling may reference)
+- Status: RESOLVED (2026-09-28 pre-PHASE-08 hardening round — deterministic cleanup executed; keep-by-design set documented)
 - Symptom: mechanical repo-wide sweep found scaffold-era and minor drift artifacts. Inventory with classification:
   1. `.env` (git-ignored local) still carries the scaffold SQLite URL `file:.../db/custom.db`; `db/custom.db` no longer exists and no code references it. Local hygiene only.
   2. `bun.lock` + `node_modules` retain Prisma packages with NO requiring package (code is 100% Drizzle/`pg`); `@neondatabase/serverless` is declared but never imported (isolated driver decision, documented in `src/db/client.ts`).
@@ -56,6 +58,15 @@
 - Root cause: PHASE-00 scaffold artifacts never in application code paths + incremental constant drift.
 - Impact: none functional; duplicates are display-only and all money MATH is the canonical integer-piaster helpers (DB CHECKs re-assert the identity — 28/28 db:verify incl. money identities).
 - Minimal fix: none applied during the audit (zero-risk rule for a closure gate; environment-harness files must not be removed unilaterally). Recommended: single PHASE-14 cleanup commit pruning items 2/4/5/7/8 + regenerating `PROJECT_STRUCTURE.md` from the real tree.
+- **RESOLUTION (2026-09-28 pre-PHASE-08 hardening round — cleanup EXECUTED, not deferred):**
+  * Item 1: `.env` scaffold SQLite URL replaced with a documented env-protocol comment (DATABASE.md §3 protocol referenced; no secrets in `.env`).
+  * Item 2: root-caused — prisma-in-bun.lock is bun's resolution of `drizzle-orm`'s own `optionalPeers` contract (zero tracked references; package-manager artifact, documented, not removable without violating drizzle's declared peers). `node_modules` pruned via `bun install` (43 packages removed).
+  * Items 3: `tests/` + `.zscripts/database-runtime-build.sh` KEPT-BY-DESIGN (platform deploy harness `.zscripts/build.sh` invokes them unconditionally; harness mismatch with removed `db:push` flagged for the owner, not unilaterally deleted).
+  * Item 4: dead code REMOVED — `src/db/index.ts` barrel, scaffold `src/app/api/route.ts`, `product-sections-placeholder.tsx`, dead exports `destroyAllAdminSessions` / `getMediaAsset` / `StorefrontSearchError`; 28 unused shadcn primitives deleted (20 used primitives remain).
+  * Item 5: consolidated — `centsToMoney` ≡ `centsToPriceString` unified on the canonical `centsToPriceString` (cart.ts); admin `formatEgp` replaced by canonical `formatPrice` (visual delta: price suffix normalized to "ج.م."); `MAX_LINE_QUANTITY` + `CART_STORAGE_KEY` + `WISHLIST_STORAGE_KEY` now imported from canonical sources (no re-hardcoded literals); PDP add-to-cart toast estimate moved to integer-piasters math.
+  * Item 6: `docs/ops/PROJECT_STRUCTURE.md` regenerated from the real tree.
+  * Items 7/8: unused npm deps pruned (package.json 58→25 runtime deps; Tier A + Tier B + dead radix singles + `tailwindcss-animate` + inert `tailwind.config.ts`); `z-ai-web-dev-sdk` and `@neondatabase/serverless` KEPT-BY-DESIGN (platform dependency / documented driver isolation); playground kept (documented QA aid, launch-gating decision).
+  * Regression after cleanup: typecheck ✅ · lint ✅ · production build ✅ (route table correct, static = icons only) · full battery 409/409 on rehearsal AND on the real Neon development branch · route smoke all green · browser E2E green. verify-cart's route-audit expectation updated to assert the scaffold `/api/route.ts` ABSENCE (locks in the cleanup).
 - Verification: sweep evidence recorded in worklog; every src/ import resolves (typecheck ✅); no TODO/FIXME markers anywhere in src/; no duplicate route pages; single DB client (src/db/client.ts) with all 13 src + 10 script consumers.
 - Related files: as itemized above
 - Notes: recorded per the audit rule that even small issues must be documented, never silently dropped.
@@ -565,7 +576,7 @@
 ### ISSUE-2026-09-27-023
 - Phase: PHASE_04 (2026-09-27; UPDATED by the PHASE-04 final integration/visual gate, same day)
 - Severity: MEDIUM (deployment-time configuration gap; does not block any PHASE-04 task's logic)
-- Status: OPEN — configuration pending (owner action at deployment; tracked for PHASE-14). The code side was narrowed by this audit: the media service now accepts BOTH current Vercel auth models.
+- Status: RESOLVED (2026-09-28 pre-PHASE-08 hardening round, owner directive "create/use a real Blob store and prove a real live flow") — see RESOLUTION block at the end of this entry.
 - Symptom: no Blob credential is present in the sandbox environment, so the Vercel Blob provider cannot be exercised live here; the admin media UI shows an honest "uploads not configured" banner and the upload endpoint answers 503 with the exact remediation.
 - Root cause: connecting a Vercel Blob store to the project is an owner-side dashboard action; nothing in the sandbox can mint credentials. Additionally (found by this gate): the provider's configured-state check recognized ONLY the legacy long-lived `BLOB_READ_WRITE_TOKEN` and would have reported "unconfigured" on a modern OIDC-connected store.
 - Impact: 13/14 PHASE-04 tasks fully implemented AND verified, including the entire media service abstraction (validation: magic-byte mime sniffing / 8 MB ceiling / sharp dimensions; registry; reference guards; attach/reorder/replace). Only the live "bytes → Blob" hop awaits credentials; the provider is isolated behind `src/lib/media/service.ts` per MASTER_PLAN §20.
@@ -577,6 +588,7 @@
 - Verification performed: verify-catalog new section [14] (6 checks — no creds → unconfigured; store id alone → unconfigured; store id + OIDC token → configured; legacy token → configured; blank token → unconfigured; env restored exactly), suite now 43/43; banner text visually confirmed in browser at 1440/768/375; upload endpoint still answers 503 honestly in the sandbox.
 - Related files: `src/lib/media/vercel-blob.ts`, `src/lib/media/types.ts`, `src/app/api/admin/media/upload/route.ts`, `src/app/admin/(protected)/media/media-manager.tsx`, `.env.example`, `scripts/verify-catalog.ts`
 - Notes: NOT a workaround — the media service abstraction with the honest unconfigured state is exactly the MASTER_PLAN §20 contract; at deployment the owner connects the store (OIDC default) and the existing code path activates with zero further changes; if the owner instead upgrades an existing store from its Projects tab, the same code path applies.
+- **RESOLUTION (2026-09-28 pre-PHASE-08 hardening round):** RESOLVED — see the full RESOLUTION block at the top of this entry (store created, OIDC model, live upload+delete proven under both credential models, orphan-prevention implemented and proven, production contract verified pure-OIDC with zero test media).
 
 ### ISSUE-2026-09-27-026 (final gate finding D-1)
 - Phase: PHASE_04 final integration/visual gate (2026-09-27)

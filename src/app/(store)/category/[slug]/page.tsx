@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,10 +15,12 @@ import { Container } from "@/components/store/container";
 import {
   getStorefrontCategoryPage,
   getStorefrontFacets,
+  hasStorefrontCategoryBySlug,
   listStorefrontProducts,
   parsePriceParam,
   type StorefrontSort,
 } from "@/lib/storefront/catalog";
+import { CategorySkeleton } from "./category-skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +28,8 @@ type CategoryPageProps = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+type CategoryFilterState = CategoryFilterParams & { sort: StorefrontSort; page: number };
 
 const SORT_OPTIONS: SortOption[] = ["newest", "price-asc", "price-desc", "name", "discount"];
 
@@ -49,7 +54,17 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   };
 }
 
-/** Category listing (PHASE-05 tasks 3, 9, 10): subtree products + filters + sort. */
+/**
+ * Category listing (PHASE-05 tasks 3, 9, 10): subtree products + filters + sort.
+ *
+ * ISSUE-045 architecture: the route-level `loading.tsx` was removed and the
+ * heavy aggregate moved behind an in-page Suspense boundary. The cheap indexed
+ * existence probe below is awaited BEFORE any JSX is returned, so — with no
+ * route-level loading boundary left — the streaming shell has not flushed yet
+ * and `notFound()` still commits a real HTTP 404 for missing slugs. Valid
+ * slugs stream the exact former skeleton as the fallback, preserving the
+ * loading UX (no blank-white regions, PHASE-01 contract).
+ */
 export default async function CategoryPage(props: CategoryPageProps) {
   const { slug } = await props.params;
   const query = await props.searchParams;
@@ -65,7 +80,7 @@ export default async function CategoryPage(props: CategoryPageProps) {
   const attrValues = query["attr"];
   const attr: string[] = Array.isArray(attrValues) ? attrValues : attrValues ? [attrValues] : [];
 
-  const filterParams: CategoryFilterParams & { sort: StorefrontSort; page: number } = {
+  const filterParams: CategoryFilterState = {
     attr,
     stock: first("stock") === "1",
     sale: first("sale") === "1",
@@ -75,7 +90,30 @@ export default async function CategoryPage(props: CategoryPageProps) {
     page: Math.max(1, Number(first("page") ?? "1") || 1),
   };
 
-  const data = await getStorefrontCategoryPage(safeDecode(slug));
+  const decoded = safeDecode(slug);
+
+  if (!(await hasStorefrontCategoryBySlug(decoded))) notFound();
+
+  return (
+    <Suspense fallback={<CategorySkeleton />}>
+      <CategoryListing slug={decoded} filterParams={filterParams} />
+    </Suspense>
+  );
+}
+
+/** Heavy aggregate + full UI — streamed inside the page's Suspense boundary. */
+async function CategoryListing({
+  slug,
+  filterParams,
+}: {
+  slug: string;
+  filterParams: CategoryFilterState;
+}) {
+  const data = await getStorefrontCategoryPage(slug);
+
+  // Defense-in-depth (ISSUE-045): the existence probe and this aggregate are
+  // separate queries — if the aggregate misses anyway (e.g. concurrent admin
+  // change or an unreachable ancestor branch), still render the honest 404.
   if (!data) notFound();
   const { category, ancestors, children, subtreeIds } = data;
 

@@ -106,12 +106,3 @@ export async function deleteMediaAsset(mediaAssetId: string): Promise<MediaRefer
 export async function listMediaAssets(limit = 120): Promise<MediaAsset[]> {
   return db.select().from(mediaAssets).limit(limit);
 }
-
-export async function getMediaAsset(id: string): Promise<MediaAsset | null> {
-  const [row] = await db
-    .select()
-    .from(mediaAssets)
-    .where(eq(mediaAssets.id, id))
-    .limit(1);
-  return row ?? null;
-}

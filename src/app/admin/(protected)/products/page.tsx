@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { requireAdminPage } from '@/lib/auth/guard';
 import { getCategoryTree } from '@/lib/catalog/categories';
 import { listProducts } from '@/lib/catalog/products';
+import { formatPrice } from '@/lib/storefront/format';
 
 import { ProductListControls } from './product-list-controls';
 
@@ -104,7 +105,7 @@ export default async function AdminProductsPage({
                       <span dir="ltr">/{product.slug}</span> · {product.variantCount} متغير ·
                       المخزون: {product.totalStock}
                       {product.minCurrentPrice
-                        ? ` · من ${formatEgp(product.minCurrentPrice)}`
+                        ? ` · من ${formatPrice(product.minCurrentPrice)}`
                         : ''}
                       {product.hasDiscount ? ' · عليه خصم' : ''}
                     </p>
@@ -122,13 +123,6 @@ export default async function AdminProductsPage({
       </div>
     </div>
   );
-}
-
-function formatEgp(value: string): string {
-  const numeric = Number(value);
-  return Number.isFinite(numeric)
-    ? `${numeric.toLocaleString('ar-EG', { numberingSystem: 'latn' })} ج.م`
-    : value;
 }
 
 type TreeCategory = {

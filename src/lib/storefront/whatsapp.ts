@@ -40,10 +40,8 @@ export function moneyToCents(value: string): number {
   return Math.round(Number(value) * 100);
 }
 
-/** Integer piasters → numeric(12,2)-shaped string. */
-export function centsToMoney(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
+// Integer piasters → numeric(12,2)-shaped string: the canonical implementation
+// is `centsToPriceString` in ./cart (single source of truth; ISSUE-046).
 
 /** "504.00" → "504" / "504.50" → "504.5" — message text only (never logic). */
 export function moneyForMessage(value: string): string {

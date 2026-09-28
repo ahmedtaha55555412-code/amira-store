@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductDetailClient } from "@/components/store/product-detail-client";
@@ -5,8 +6,12 @@ import { ProductReviews } from "@/components/store/product-reviews";
 import { SizeGuideView } from "@/components/store/size-guide-view";
 import { StoreBreadcrumb } from "@/components/store/breadcrumb";
 import { Container } from "@/components/store/container";
-import { getStorefrontProductDetail } from "@/lib/storefront/catalog";
+import {
+  getStorefrontProductDetail,
+  hasStorefrontProductBySlug,
+} from "@/lib/storefront/catalog";
 import { buildProductJsonLd } from "@/lib/storefront/metadata";
+import { ProductSkeleton } from "./product-skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -43,10 +48,37 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   };
 }
 
-/** Product detail (PHASE-05 task 11): gallery, variants, size guide, reviews. */
+/**
+ * Product detail (PHASE-05 task 11): gallery, variants, size guide, reviews.
+ *
+ * ISSUE-045 architecture: the route-level `loading.tsx` was removed and the
+ * heavy aggregate moved behind an in-page Suspense boundary. The cheap indexed
+ * existence probe below is awaited BEFORE any JSX is returned, so — with no
+ * route-level loading boundary left — the streaming shell has not flushed yet
+ * and `notFound()` still commits a real HTTP 404 for missing slugs. Valid
+ * slugs stream the exact former skeleton as the fallback, preserving the
+ * loading UX (no blank-white regions, PHASE-01 contract).
+ */
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const detail = await getStorefrontProductDetail(safeDecode(slug));
+  const decoded = safeDecode(slug);
+
+  if (!(await hasStorefrontProductBySlug(decoded))) notFound();
+
+  return (
+    <Suspense fallback={<ProductSkeleton />}>
+      <ProductDetail slug={decoded} />
+    </Suspense>
+  );
+}
+
+/** Heavy aggregate + full UI — streamed inside the page's Suspense boundary. */
+async function ProductDetail({ slug }: { slug: string }) {
+  const detail = await getStorefrontProductDetail(slug);
+
+  // Defense-in-depth (ISSUE-045): the existence probe and this aggregate are
+  // separate queries — if the aggregate misses anyway (e.g. concurrent admin
+  // change), still render the honest not-found UI.
   if (!detail) notFound();
 
   const { product, category, ancestors, attributes, variants, gallery, variantImages, sizeGuide, reviews } = detail;

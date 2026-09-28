@@ -13,7 +13,7 @@
  */
 
 import { createHash, createHmac, randomBytes } from 'node:crypto';
-import { and, eq, gt, lt, sql } from 'drizzle-orm';
+import { and, eq, gt, lt } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import { adminSessions, adminUsers, type AdminUser } from '@/db/schema';
@@ -140,25 +140,6 @@ export async function destroyAdminSession(
     .where(eq(adminSessions.sessionTokenHash, hashSessionToken(token)))
     .returning({ id: adminSessions.id });
   return deleted.length > 0;
-}
-
-/**
- * Revoke every session of an admin (password change / compromise response).
- * `exceptTokenHash` keeps the current device logged in when desired.
- */
-export async function destroyAllAdminSessions(
-  adminUserId: string,
-  options?: { exceptTokenHash?: string },
-): Promise<number> {
-  const conditions = [eq(adminSessions.adminUserId, adminUserId)];
-  if (options?.exceptTokenHash) {
-    conditions.push(sql`${adminSessions.sessionTokenHash} <> ${options.exceptTokenHash}`);
-  }
-  const deleted = await db
-    .delete(adminSessions)
-    .where(and(...conditions))
-    .returning({ id: adminSessions.id });
-  return deleted.length;
 }
 
 /** Delete expired session rows (called opportunistically on login). */

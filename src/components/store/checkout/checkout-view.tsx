@@ -28,8 +28,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCartState, useCartSubtotal } from '@/hooks/use-cart';
 import { cartStore } from '@/lib/storefront/cart-store';
 import type { CartEntry } from '@/lib/storefront/cart';
-import { normalizeEgyptianPhone } from '@/lib/storefront/whatsapp';
-import { centsToMoney, moneyToCents } from '@/lib/storefront/whatsapp';
+import { moneyToCents, normalizeEgyptianPhone } from '@/lib/storefront/whatsapp';
+import { centsToPriceString } from '@/lib/storefront/cart';
 import { saveSuccessPayload } from '@/lib/storefront/order-success';
 import { cn } from '@/lib/utils';
 
@@ -315,11 +315,11 @@ export function CheckoutView() {
                     <p className="truncate text-sm font-bold">{entry.productName}</p>
                     <p className="truncate text-[11px] text-muted-foreground">{entry.variantLabel}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      الكمية: {entry.quantity} · {centsToMoney(moneyToCents(entry.unitPrice))} ج.م. للقطعة
+                      الكمية: {entry.quantity} · {centsToPriceString(moneyToCents(entry.unitPrice))} ج.م. للقطعة
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-bold text-primary">
-                    {centsToMoney(lineCents)} ج.م.
+                    {centsToPriceString(lineCents)} ج.م.
                   </span>
                 </div>
                 {lineError ? (
@@ -335,7 +335,7 @@ export function CheckoutView() {
 
         <div className="flex items-center justify-between border-t border-border/70 pt-3">
           <span className="text-sm font-semibold">إجمالي المنتجات</span>
-          <span className="text-lg font-bold text-primary">{centsToMoney(totalCents)} ج.م.</span>
+          <span className="text-lg font-bold text-primary">{centsToPriceString(totalCents)} ج.م.</span>
         </div>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           تكلفة الشحن تُضاف بعد الاتفاق معك على واتساب.

@@ -15,6 +15,7 @@ import {
   toggleWishlistItem,
   wishlistHasItem,
   createEmptyWishlistDocument,
+  WISHLIST_STORAGE_KEY,
   type WishlistDocument,
   type WishlistItem,
   type WishlistStorage,
@@ -40,7 +41,7 @@ class WishlistStore {
       this.hydrate();
       if (typeof window.addEventListener === 'function') {
         window.addEventListener('storage', (event) => {
-          if (event.key === null || event.key === 'amira.wishlist.v1') this.hydrate();
+          if (event.key === null || event.key === WISHLIST_STORAGE_KEY) this.hydrate();
         });
       }
     }
