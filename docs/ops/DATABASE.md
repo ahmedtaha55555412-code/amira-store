@@ -325,6 +325,49 @@ development-branch toggle (if present, enabling it touches Development only per 
 (iii) `development` and `vercel-dev` would then be redundant — keep/delete is the owner's call
 (the branch is not production).
 
+### 9.6 Binding RESOLVED — per-environment override (2026-09-28, final pre-PHASE-08 closure)
+
+Owner directive: fix the Vercel Environment configuration (Production → Neon main,
+Development → Neon development, Preview → isolated per contract). The §9.5 "no supported
+binding" verdict described the integration-UI surface only; the owner's 2026-09-28 directive
+sanctioned control-plane **target surgery**, which was executed WITHOUT any value change and
+WITHOUT reinstall:
+
+1. Integration `DATABASE_URL` (`mnk1KV5UjdrPX9QK`, store `neon-cobalt-globe`) target narrowed
+   `[development, preview, production]` → `[preview, production]` via `PATCH …/env/{id}` with
+   NO `value` in the body (credential byte-unchanged). Production fingerprint re-pulled
+   immediately after: `a77fc2afd8ac2bd7…` UNCHANGED (fail-fast gate).
+2. Project-level `DATABASE_URL` (`lGK9GdoX5H9pBtcB`, type `encrypted`) created for target
+   `[development]` only, value = the development-branch POOLED string already sanctioned in
+   git-ignored `.env.local` (endpoint `ep-dark-boat-b1fejsk4`). Direct creation before step 1
+   was refused (`ENV_CONFLICT`) — evidence recorded, not bypassed.
+
+**Operative topology (hash-only fingerprints):**
+
+| Vercel environment | Resolves to | Endpoint | Fingerprint |
+|---|---|---|---|
+| production | integration var → Neon `main` | `ep-cool-art-b1snfj5i-pooler` | `a77fc2afd8ac2bd7…` (invariant) |
+| preview | integration var (static fallback; per-deployment isolated-branch injection unchanged) | `ep-cool-art-b1snfj5i-pooler` | `a77fc2afd8ac2bd7…` |
+| development | project var → Neon `development` | `ep-dark-boat-b1fejsk4-pooler` | `f5aa1006670416a5…` (≠ production) |
+
+**Verification protocol (repeat after ANY future change):**
+```bash
+vercel env pull /tmp/env.production --environment=production
+vercel env pull /tmp/env.development --environment=development
+# hash-only: sha256(DATABASE_URL.production) MUST equal a77fc2afd8ac2bd7…
+# sha256(DATABASE_URL.development) MUST differ + host MUST be ep-dark-boat-b1fejsk4-pooler.*
+# then a disposable create/insert/select/delete/drop probe and a production byte-baseline compare
+```
+2026-09-28 runtime proof: app started with the PULLED Development env served development data
+(production has 0 products — decisive discriminator); disposable write/read/delete 7/7 on
+`ep-dark-boat` with zero residue; production DB byte-identical to its pre-change baseline after
+all changes. Development-target variables do not affect deployments, so no redeploy was required.
+
+§9.4 guardrail update: the first bullet ("Vercel development environment is
+production-equivalent — write-prohibited") is **SUPERSEDED**: that environment now resolves to
+the disposable `development` branch. Neon `main` remains production and stays write-prohibited
+outside the documented release procedure (§13).
+
 ## 10. Development-branch bring-up for PHASE_03 (2026-09-27) — compensating control LIVE
 
 The owner authorized the `development` branch's POOLED connection string for the sandbox and
