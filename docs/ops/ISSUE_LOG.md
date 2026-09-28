@@ -15,6 +15,45 @@
 
 ---
 
+### ISSUE-2026-09-28-038
+- Phase: Reconciliation round (owner CRITICAL RECONCILIATION directive, 2026-09-28) — OPEN (blocked on owner credential re-issues; local work complete)
+- Severity: HIGH (blocks push/CI/production-runtime-log inspection/live-branch verification)
+- Status: OPEN
+- Symptom: TASK A of the reconciliation directive could not be executed against the ACTUAL Vercel runtime logs — deployment a7eaa03's runtime log inspection requires Vercel auth that no longer exists in the recycled sandbox (no `vercel` CLI auth file, no `VERCEL_*` env, `~/.local/share/com.vercel.cli/auth.json` missing). GitHub auth is equally gone (`gh` binary missing, credential helper `.auth/bin/gh-cred` missing → `git ls-remote` cannot authenticate; repo is private). TASK C: `.env.local` is MISSING (snapshot machinery excludes secret files; verified the `/tmp` PolarFS snapshot carries no `.env.local` either).
+- Reproduction: `gh auth status` → command not found; `git ls-remote origin main` → could not read Username; `vercel` → not installed; `test -f .env.local` → missing.
+- Root cause: ISSUE-2026-09-27-037 fallout — the sandbox recycle wiped every external credential (GitHub token, Vercel token, `.auth/` vault including the just-created `.auth/verify-cart.ts`, `.env.local`).
+- Impact: (1) digest `2975296465` cannot be byte-correlated to a specific runtime log line from the sandbox; (2) push/CI/new-Vercel-deployment verification cannot run; (3) live development-branch verification + fixture-residue cleanup cannot run. NO project defect is implied.
+- Minimal fix (owner actions, exact): (1) GitHub device-flow re-auth (one-shot, as in PHASE-00) → restores fetch/push/CI; (2) Vercel CLI login re-auth → restores `vercel logs` inspection of deployment a7eaa03; (3) re-provision the Neon `development` POOLED string into git-ignored `.env.local` (chmod 600) per DATABASE.md §9.3/§12 → restores live-branch runs.
+- Verification (what the sandbox DID prove without credentials, 2026-09-28): Next 16.1.3 digest algorithm read from node_modules — user-land errors get `digest = stringHash(err.message + err.stack).toString()` (numeric, no code suffix for non-Next errors) → byte-correlation from a local repro is impossible in principle (stack paths differ per environment). Failure-class characterization on a local production standalone build: control (schema present) → 200; empty-schema DB → 500 with `Failed query: select … from "categories"` + `[cause]: error: relation "categories" does not exist` (42P01) and numeric digests (e.g. 882317259); unreachable endpoint → 500 `connect ECONNREFUSED`; DATABASE_URL unset → 500 `DATABASE_URL is not set…`. Served 500 shell is `<html id="__next_error__">` (no `global-error.tsx` in the tree) → hydrates into exactly the owner-observed English "Application error: a server-side exception has occurred" page. By documented design the Neon production branch was NEVER migrated/touched, making the 42P01 class the most probable root cause (production bring-up = DEPLOYMENT_RUNBOOK release procedure: migrations + production-safe bootstrap, NO dev seed); the log line grep for `digest: '2975296465` after Vercel re-auth is the final discriminator.
+- Related files: `docs/ops/DATABASE.md` (§9.1 fingerprints, §12), `docs/ops/DEPLOYMENT_RUNBOOK.md`
+- Notes: explicitly NOT marked resolved — runtime evidence is owner-gated. Nothing was inferred from build logs.
+
+### ISSUE-2026-09-28-039
+- Phase: Reconciliation round (PHASE-06 regression gate, 2026-09-28) — FIXED
+- Severity: MEDIUM (broke the typecheck gate in a clean environment; zero runtime exposure)
+- Status: FIXED
+- Symptom: `bun run typecheck` failed: `src/lib/db.ts(1,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'`.
+- Reproduction: fresh `node_modules` (no generated `@prisma/client`) + `tsc --noEmit` over the recovered tree.
+- Root cause: snapshot-restore debris of the SAME class as the stale `src/app/page.tsx` removed in 4c6152d — the PHASE-01-era disk snapshot resurrected `src/lib/db.ts` + `prisma/schema.prisma` (tracked since platform commit 11cbf1e) although canonical history removed Prisma in PHASE_02. The CI workflow comment is the contract: "Data layer is Drizzle ORM + PostgreSQL/Neon since PHASE_02 (Prisma removed)… no client generation step needed", and CI runs `typecheck` — so canonical main cannot carry these files. The previous round's typecheck ✅ was environment-dependent (the pre-recycle `node_modules` still contained a generated Prisma client).
+- Impact: typecheck gate red in any clean checkout of the local lineage; the rebase onto canonical a7eaa03 would have removed the files anyway.
+- Minimal fix: `git rm src/lib/db.ts prisma/schema.prisma` (commit 8859c1c). The commit becomes empty and drops out automatically when local commits are rebased onto canonical a7eaa03 (files never existed there).
+- Verification: typecheck ✅ lint ✅ production build ✅; full suite re-run green (verify:cart 55/55, db:verify 28/28, verify:auth 44/44, verify:catalog 43/43, verify:storefront 101/101).
+- Related files: `src/lib/db.ts` (deleted), `prisma/schema.prisma` (deleted), `.github/workflows/ci.yml` (evidence)
+- Notes: also audited for other resurrected debris — `git ls-files` shows no other prisma/sqlite artifacts; `db/` has no tracked files.
+
+### ISSUE-2026-09-28-040
+- Phase: PHASE-06 deep visual QA round (2026-09-28) — FIXED
+- Severity: LOW (dev-mode console warning only; zero production impact)
+- Status: FIXED
+- Symptom: browser console prints `[warning] Detected 'scroll-behavior: smooth' on the '<html>' element. To disable smooth scrolling during route transitions, add 'data-scroll-behavior="smooth"' to your <html> element.` (Next.js 16 framework guidance).
+- Reproduction: any page load in dev with the PHASE-01 root layout.
+- Root cause: PHASE-01 design system sets `scroll-behavior: smooth` on `<html>` (smooth anchor scrolling) without the Next.js opt-out attribute, so framework route transitions can't bypass smooth scrolling.
+- Impact: potential scroll-animation interference during route transitions; console noise in dev.
+- Minimal fix: `<html lang="ar" dir="rtl" data-scroll-behavior="smooth" suppressHydrationWarning>` in `src/app/layout.tsx` (one attribute; smooth anchor behavior preserved, framework route transitions exempted).
+- Verification: fresh-session console after reload: 0 errors, 0 warnings (was 1 warning); hydration clean; suites/build green after the change.
+- Related files: `src/app/layout.tsx`
+- Notes: found during the deep visual QA console sweep (fresh-session standard: 0/0).
+
 ### ISSUE-2026-09-27-037
 - Phase: Environment event between PHASE-05 closure and PHASE-06 (discovered 2026-09-27 during the owner-paused disposition round) — RECOVERED (with two owner-side gaps pending)
 - Severity: HIGH (environment), mitigated to LOW for project data (zero project data loss proven)
