@@ -15,6 +15,52 @@
 
 ---
 
+### ISSUE-2026-09-28-044
+- Phase: FULL-SYSTEM AUDIT (pre-PHASE-08 final gate, 2026-09-28) — sandbox environment
+- Severity: HIGH-in-effect, ENVIRONMENT-ONLY (blocked the live admin login path in the recycled sandbox; zero application defect; Production unaffected)
+- Status: FIXED (environment fix; no code change)
+- Symptom: every `POST /api/admin/auth/login` request that reached the credential path returned 500 from the dev server; dev.log showed only `[auth/login] handler failure object Error`. CSRF gates still behaved correctly (cross-origin/no-origin/text/plain → 403), and storefront pages were healthy — only the credential path 500'd.
+- Reproduction: fresh dev server started from `.env.rehearsal` (which carried ONLY `DATABASE_URL` after the documented snapshot credential-wipe) → same-origin wrong-credentials login → 500 (repeated deterministically; earlier same-origin 401s in prior sessions ran against servers whose env still had the secret).
+- Root cause: the dev-server process env lacked `AUTH_SESSION_SECRET`. `hashIp()` → `requireSessionSecret()` fails closed with a clear error (`AUTH_SESSION_SECRET is not configured…`) by design — the login route calls `getClientIpHash()` before credential work, so the deliberate throw surfaces as a 500. The snapshot machinery that excludes secret files had stripped the secret from the rehearsal env (ISSUE-2026-09-27-037 class); the file was never corrupted and the code is correct.
+- Minimal fix: generated a strong random secret (`openssl rand -hex 32`), appended `AUTH_SESSION_SECRET` to git-ignored `.env.rehearsal` only, restarted the dev server with the documented env-sourced protocol (ISSUE-2026-09-27-025 protocol). Zero code changes.
+- Verification: full battery re-run after restart — throttle 5×401 → 429 (with per-username/IP identity), successful login 200 + `HttpOnly; SameSite=lax; Path=/` host-only cookie + no-store, cross-site logout 403 with session surviving, same-origin logout 200 revoking the session, password change 200 revoking ALL sessions, old password 401 / new 200. Production env audit via the Vercel API: `AUTH_SESSION_SECRET` present in ALL THREE environments (development/preview/production) — the gap was sandbox-only. typecheck ✅ lint ✅.
+- Related files: none (environment protocol; `.env.rehearsal` is git-ignored)
+- Notes: recorded per ERROR_PROTOCOL because the 500 was a live system failure during the audit; the fail-closed design is CORRECT (a missing secret must never silently weaken IP hashing).
+
+### ISSUE-2026-09-28-045
+- Phase: FULL-SYSTEM AUDIT (pre-PHASE-08 final gate, 2026-09-28) — storefront SEO
+- Severity: LOW (SEO status-code-only; user-facing content and crawl hygiene correct)
+- Status: ACCEPTED (documented framework behavior; trade-off recorded — revisit only if monitoring requires it)
+- Symptom: `/product/<unknown-slug>` and `/category/<unknown-slug>` return HTTP **200** (soft-404) while rendering the correct Arabic not-found UI with `noindex` present; root-level unknown routes return a proper 404.
+- Reproduction: `curl -o /dev/null -w "%{http_code}" https://amira-store-opal.vercel.app/product/__no_such_product__` → 200 (both Production and local, current tree f965eb4).
+- Root cause: both dynamic segments ship `loading.tsx`. Next.js streams the 200 shell as soon as the loading boundary flushes; the later `notFound()` in the page (and even thrown from `generateMetadata`) cannot retroactively change the already-sent status. This is documented Next.js streaming behavior for `loading.js` + `notFound()`, verified live during the audit: an experimental `notFound()`-from-`generateMetadata` patch produced the SAME 200, so it was reverted (no dead changes kept).
+- Impact: crawlers that ignore `noindex` may record soft-404s; the rendered page, `robots: noindex` metadata, and user experience are correct. Log-based monitoring cannot distinguish missing slugs from real visits.
+- Minimal fix considered and rejected: removing `loading.tsx` restores honest 404 statuses but sacrifices the loading skeleton for EVERY real PDP/category visit (PHASE-01 states contract: no blank white regions while DB data loads) — a worse trade for a status code. No workaround invented beyond what Next offers.
+- Verification: `noindex` confirmed present in the streamed response (count 1–2 depending on boundary); root 404 path works; not-found UI renders correctly at all widths.
+- Related files: `src/app/(store)/product/[slug]/page.tsx`, `src/app/(store)/product/[slug]/loading.tsx`, `src/app/(store)/category/[slug]/page.tsx`, `src/app/(store)/category/[slug]/loading.tsx`, `src/app/not-found.tsx`
+- Notes: revisit option (PHASE-11/14): route-level `generateMetadata` with `blocking` metadata semantics if Next changes streaming behavior, or accept as permanent with the noindex mitigation.
+
+### ISSUE-2026-09-28-046
+- Phase: FULL-SYSTEM AUDIT (pre-PHASE-08 final gate, 2026-09-28) — dead artifacts / hygiene sweep
+- Severity: LOW (no functional, security, or data impact; classified inventory to keep the tree honest)
+- Status: ACCEPTED (documented; scheduled for the PHASE-14 hardening/cleanup pass — several items are environment-harness files that the sandbox tooling may reference)
+- Symptom: mechanical repo-wide sweep found scaffold-era and minor drift artifacts. Inventory with classification:
+  1. `.env` (git-ignored local) still carries the scaffold SQLite URL `file:.../db/custom.db`; `db/custom.db` no longer exists and no code references it. Local hygiene only.
+  2. `bun.lock` + `node_modules` retain Prisma packages with NO requiring package (code is 100% Drizzle/`pg`); `@neondatabase/serverless` is declared but never imported (isolated driver decision, documented in `src/db/client.ts`).
+  3. `tests/database-runtime-build.sh` + `.zscripts/database-runtime-build.sh` are SQLite-era harness scripts referencing the removed `db:push`; kept because the environment harness may invoke them (intentionally NOT deleted during the audit).
+  4. Dead code: `src/db/index.ts` barrel (zero importers — all use `@/db/client`); `src/app/api/route.ts` scaffold hello-world GET; `src/components/store/product-sections-placeholder.tsx` (zero importers, superseded by data-driven sections); lib exports `destroyAllAdminSessions` (session.ts), `getMediaAsset` (registry.ts), `StorefrontSearchError` (catalog.ts) with zero call sites.
+  5. Minor duplication: `centsToPriceString` (cart.ts) ≡ `centsToMoney` (whatsapp.ts) identical piaster formatting; admin products list uses a third display formatter (`toLocaleString('ar-EG')` + `ج.م` without the dot); `MAX_LINE_QUANTITY` + storage keys re-hardcoded at cart-line.tsx:26 / cart-store.ts:96 / wishlist-store.ts:43 instead of importing the canonical constants; a cents→string→cents round-trip at checkout-view.tsx:318 and a float `toFixed` estimate at product-detail.tsx:236 (display-only; the authoritative subtotal math everywhere is integer piasters — proven cents-exact by verify:cart + checkout snapshots).
+  6. `docs/ops/PROJECT_STRUCTURE.md` is a stale generic template contradicting the real tree (proposes src/domain/*, missing robots/sitemap pages etc.); the accurate maps live in EXECUTION_STATUS.md + worklog.
+  7. ~30 unused shadcn/ui primitives (standard full-set scaffold) and ~20 unused npm dependencies (@dnd-kit, @tanstack/*, mdxeditor, next-auth, next-intl, next-themes, recharts, z-ai-web-dev-sdk, …) — pruning candidates for PHASE-14.
+  8. Playground demo prices "349 ج.م" inside the labeled QA overlay (playground.tsx) — documented dev aid, remove before launch (DESIGN_SYSTEM.md).
+- Root cause: PHASE-00 scaffold artifacts never in application code paths + incremental constant drift.
+- Impact: none functional; duplicates are display-only and all money MATH is the canonical integer-piaster helpers (DB CHECKs re-assert the identity — 28/28 db:verify incl. money identities).
+- Minimal fix: none applied during the audit (zero-risk rule for a closure gate; environment-harness files must not be removed unilaterally). Recommended: single PHASE-14 cleanup commit pruning items 2/4/5/7/8 + regenerating `PROJECT_STRUCTURE.md` from the real tree.
+- Verification: sweep evidence recorded in worklog; every src/ import resolves (typecheck ✅); no TODO/FIXME markers anywhere in src/; no duplicate route pages; single DB client (src/db/client.ts) with all 13 src + 10 script consumers.
+- Related files: as itemized above
+- Notes: recorded per the audit rule that even small issues must be documented, never silently dropped.
+
+
 ### ISSUE-2026-09-28-038
 - Phase: Reconciliation round (owner CRITICAL RECONCILIATION directive, 2026-09-28) — RESOLVED (2026-09-28: all three credential paths re-issued by the owner; runtime digest CONFIRMED via live Production runtime logs; see confirmation block below)
 - Severity: HIGH (blocks push/CI/production-runtime-log inspection/live-branch verification)
