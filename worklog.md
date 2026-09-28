@@ -868,3 +868,19 @@ Stage Summary:
 - All gates kept active and green: 510/510 battery, typecheck/lint/build, security probes, DB invariants (29/29), zero residue on the dev branch.
 - Docs updated: EXECUTION_STATUS (completion record), TRACEABILITY (6 rows), DATA_DICTIONARY (decision #7), ISSUE_LOG (ISSUE-047 FIXED), worklog. Commit: feat(phase-08); CI + production smoke to follow.
 - PHASE-09 NOT started. Awaiting next owner directive.
+
+---
+Task ID: 22-ship (PHASE-08 commit/push/CI/production reconciliation)
+Agent: Z.ai Code (main agent)
+Task: Ship the PHASE-08 commit — push, CI, production migration + deployment + read-only smoke.
+
+Work Log:
+- Staged 29 files (+7561/−41); staged-diff secret scan clean; commit 58b2a45 pushed to main (b4fa9b0..58b2a45).
+- CI: check-run "verify" = SUCCESS on 58b2a45 (GitHub API).
+- Production migration rehearsal per DEPLOYMENT_RUNBOOK §Production workflow: pre-migration snapshot (2 migrations, OLD index, 5 cats / 0 orders / 1 settings, fingerprint a77fc2afd8ac2bd7 @ ep-cool-art-pooler — invariant) → migration 0002 applied via DRIZZLE_DATABASE_URL override from a pulled production env (value never printed; env file shredded after) → post-migration verified: 3 migrations, NEW (order_id, variant_id) partial unique index live, business baseline byte-unchanged.
+- Production deployment: READY built from 58b2a45 (the exact verified commit) — four-way reconciliation: local HEAD == origin/main == CI-green commit == production deployment commit.
+- Production read-only smoke: / 200 · robots 200 · /category/women 200 · missing PDP/category REAL 404s (ISSUE-045 fix holds live) + noindex present · /cart 200 · /admin, /admin/orders, /admin/inventory all 307 (protected) · unauth variant-search 401 · unauth order-status 401 · unauth upload 403 (no-origin) · ZERO error digests on /.
+- dev.log clean throughout the session (only intentional probe status codes).
+
+Stage Summary:
+- PHASE-08 shipped and verified END-TO-END. No PHASE-09 work. Awaiting owner directive.
