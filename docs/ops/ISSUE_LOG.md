@@ -43,6 +43,19 @@
 - Related files: `src/app/(store)/cart/page.tsx`
 - Notes: this also de-risks the PHASE-06 push: the new Vercel deployment builds successfully BEFORE the owner-gated production migration (the build no longer queries any database).
 
+### ISSUE-2026-09-28-043
+- Phase: PHASE-07 (checkout implementation round, 2026-09-28) — FIXED
+- Severity: HIGH (would have broken the idempotency contract under concurrent duplicate submissions)
+- Status: FIXED
+- Symptom: the PHASE-07 CONCURRENT idempotency test (three parallel `createOrderFromCart` calls with the SAME idempotency key, different carts) crashed the whole suite: the losing transaction surfaced `23505 duplicate key value violates unique constraint "orders_idempotency_key_unique"` as an UNCAUGHT top-level error instead of the designed `idempotent_replay` outcome.
+- Reproduction: `bun run verify:checkout` section [10] — any concurrent same-key race.
+- Root cause: `isUniqueViolation()` matched `error.code`/`error.constraint` on the TOP-LEVEL error object only. drizzle-orm ≥0.41 wraps driver errors in `DrizzleQueryError` with the original pg error in `.cause` (verified against the installed drizzle-orm 0.45.3: node_modules/drizzle-orm/errors.js), so the pg fields were one level down and every match failed. Found by the phase's own concurrency test exactly as the DoD intends.
+- Minimal fix: walk the error `cause` chain (depth ≤ 5) when matching `code === '23505'` + `constraint` (one function, src/lib/storefront/checkout.ts). No other change.
+- Verification: verify:checkout [10] now passes — `created,idempotent_replay,idempotent_replay` convergence, one order per key, winner-quantity stock consumed; full suite re-run green (134/134) and re-run stable.
+- Related files: `src/lib/storefront/checkout.ts`
+- Notes: the sequential idempotency path ([9]) masked this defect because its replay lookup runs AFTER the failing transaction returns; only true concurrency exposed it — recorded per ERROR_PROTOCOL as proof the mandatory tests earn their keep.
+
+---
 ### ISSUE-2026-09-28-042
 - Phase: PHASE-06 deep visual QA round (2026-09-28, drawer subtotal inconsistency) — FIXED
 - Severity: MEDIUM (user-visible money inconsistency between cart surfaces)

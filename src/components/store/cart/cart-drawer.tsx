@@ -119,6 +119,11 @@ export function CartDrawer() {
             <div className="space-y-3 border-t border-border/70 bg-surface/60 p-4">
               <CartSubtotalBlock />
               <Button type="button" asChild className="w-full rounded-full font-bold">
+                <Link href="/checkout" onClick={() => setOpen(false)}>
+                  إتمام الطلب — الدفع عند الاستلام
+                </Link>
+              </Button>
+              <Button type="button" asChild variant="outline" className="w-full rounded-full font-bold">
                 <Link href="/cart" onClick={() => setOpen(false)}>
                   عرض السلة الكاملة
                 </Link>

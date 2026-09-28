@@ -18,6 +18,8 @@
     "verify:auth": "bun scripts/verify-auth.ts",
     "verify:catalog": "bun scripts/verify-catalog.ts",
     "verify:storefront": "bun scripts/verify-storefront.ts",
+    "verify:checkout": "bun scripts/verify-checkout.ts",
+    "verify:cart": "bun scripts/verify-cart.ts",
     "db:verify:local": "node scripts/verify-local-database.mjs"
   },
   "dependencies": {

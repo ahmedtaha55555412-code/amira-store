@@ -218,12 +218,12 @@ export function CartEmptyState({ onBrowse }: { onBrowse?: () => void }) {
   );
 }
 
-/** Honest footer note shared by drawer + page (checkout is PHASE-07). */
+/** Honest footer note shared by drawer + page (PHASE-07 checkout is live). */
 export function CheckoutReadyNote() {
   return (
     <p className="rounded-xl bg-blush/40 px-3 py-2 text-[11px] leading-relaxed text-foreground/80">
-      إتمام الطلب والدفع عند الاستلام يُتاحان في المرحلة التالية من المشروع — سلتك محفوظة
-      وجاهزة لذلك.
+      الدفع عند الاستلام — تُتفق تكلفة الشحن معك عبر واتساب بعد مراجعة العنوان، ويُعاد التحقق من
+      الأسعار والمخزون من المتجر عند تأكيد الطلب.
     </p>
   );
 }

@@ -126,11 +126,14 @@ export function CartPageView() {
           </p>
         ) : null}
 
-        {/* Honest checkout posture — order creation arrives PHASE-07 (MASTER_PLAN §10).
-            The cart is deliberately kept complete and ready to feed it. */}
-        <Button type="button" size="lg" disabled className="w-full rounded-full text-base font-bold">
-          <CreditCard aria-hidden className="size-4" />
-          إتمام الطلب — قريبًا
+        {/* Checkout CTA — order creation is PHASE-07: one transactional call
+            with server-side revalidation; the cart is cleared only after the
+            server confirms (task-9 contract). */}
+        <Button type="button" asChild size="lg" className="w-full rounded-full text-base font-bold">
+          <Link href="/checkout">
+            <CreditCard aria-hidden className="size-4" />
+            إتمام الطلب — الدفع عند الاستلام
+          </Link>
         </Button>
         <CheckoutReadyNote />
 
