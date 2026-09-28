@@ -399,3 +399,112 @@ verifiable in development QA; the upsert is re-run safe and demo rows remain cle
   fails (`strict_word_similarity(...) = 0`). Neon's managed clusters are
   UTF-8 by default — this only affects disposable local rehearsals.
   Verified: similarity('مرطاب','مرطب') = 0 under `C`, 0.375 under `C.utf8`.
+## 13. PRODUCTION bring-up — committed migrations applied to Neon `main` (2026-09-28, owner-authorized)
+
+Owner directive (2026-09-28): the confirmed root cause of the Production runtime 500s
+(ISSUE-2026-09-28-038 — Neon Production `main` has no application schema; runtime logs
+reproduced `GET /` → PostgreSQL `42P01 relation "categories" does not exist`, digest
+`2975296465`) authorized the bring-up of the EXISTING Production database by the
+DEPLOYMENT_RUNBOOK release procedure ONLY: committed Drizzle migrations (+ the
+production-safe `db:bootstrap` where the runbook requires it). Explicitly forbidden and
+NOT done: `db:seed`, demo products, fake customers/orders/reviews, any reset/drop/
+truncate, any touch of the `neon_auth` platform schema, any change to the Vercel↔Neon
+integration binding, PHASE-07 work.
+
+### 13.1 Pre-change evidence (verified BEFORE any mutation)
+
+Repository / canonical migration state:
+
+- GitHub `main` is the source of truth; the deployed Production commit `70dd015`
+  (deployment `dpl_FSR9p4A54Gs6`, READY; CI run 36387648285 GREEN) differs from HEAD
+  only by docs (`git diff 70dd015..HEAD` = EXECUTION_STATUS.md + worklog.md).
+- Committed migrations = exactly two files (journal `drizzle/meta/_journal.json`):
+  `0000_init_schema.sql` sha256 `a2a86f8b326955fc…` and `0001_storefront_search.sql`
+  sha256 `bb29d309a181e22d…`. No uncommitted schema changes; CI has no build-time
+  migration step (typecheck → lint → build), so Production migration is an explicit
+  out-of-band release action — exactly the runbook's step 4.
+- Expected post-migration shape measured THIS session on a disposable embedded
+  PostgreSQL rehearsal (same machine, same committed migration files, same
+  `drizzle-kit migrate` mechanism, UTF-8 ctype per §12): **23 tables, 9 enums,
+  89 indexes, 34 FK constraints, 34 CHECK constraints, 6 trigram GIN indexes,
+  extensions {pg_trgm, plpgsql}, `__drizzle_migrations` = 2 rows with hashes equal to
+  the two files' sha256s.** Production must match this profile exactly.
+- Target-identity gates (hash-only protocol, §9.4): the production connection string
+  pulled from the Vercel↔Neon integration must hash to `a77fc2afd8ac2bd7…` (§9.1
+  record) and its endpoint id must differ from the isolated development branch's
+  `ep-dark-boat-b1fejsk4` (whose fingerprint `e5d2abaf3816965f…` must NOT match).
+- Live pre-mutation snapshot (this round, BEFORE `drizzle-kit migrate`; read-only probes
+  against the pooled→direct-derived endpoint `ep-cool-art-b1snfj5i.c-5.eu-central-1.aws.neon.tech`,
+  database `neondb`, user `neondb_owner`, PostgreSQL 18.6): public schema = **0 tables,
+  0 enums, 0 indexes, 0 FK/CHECK constraints**; `neon_auth` platform schema present with
+  its 9 tables (account, invitation, jwks, member, organization, project_config, session,
+  user, verification) — untouched by this procedure; `drizzle` schema ABSENT
+  (`drizzle.__drizzle_migrations` does not exist); extensions = {plpgsql} only.
+  Connection fingerprints: pooled `sha256=a77fc2afd8ac2bd7…` (== §9.1 production record),
+  direct-derived URL hashed separately in-session; endpoint id `ep-cool-art-b1snfj5i` ≠
+  development's `ep-dark-boat-b1fejsk4`; development fingerprint `e5d2abaf3816965f…` NOT
+  matched. One transient first-connection drop (Neon free-compute cold start) was retried
+  transparently by the driver pool; all probes then completed.
+- Second-Neon-resource check (Vercel API, read-only): exactly ONE project (`amira-store`,
+  `prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA`); storage store `neon-cobalt-globe`
+  (`store_Xot2tvwkL5JACcF7`) is the ONLY connected resource (projectsMetadata binds the
+  project, envVarPrefix DATABASE, 18 `DATABASE_*` variables, environments
+  development/preview/production). One additional UNBOUND store named `amira-store`
+  (`store_dqlFkjRT5Qe6XRyB`) exists with `projectsMetadata: []` and supplies ZERO
+  environment variables — an inert leftover of the integration install flow, not a second
+  live database binding; flagged for owner-side cleanup (deletion is a mutation outside
+  this round's authorization).
+
+### 13.2 Mutation record (what actually ran, in order)
+
+1. `drizzle-kit migrate` with `DRIZZLE_DATABASE_URL` = the production DIRECT endpoint
+   (`ep-cool-art-b1snfj5i.c-5.eu-central-1.aws.neon.tech`, derived from the integration's
+   pooled production URL by removing the `-pooler` infix, per §5 policy) →
+   **`[✓] migrations applied successfully!`** — applied the two committed migrations
+   `0000_init_schema` + `0001_storefront_search`. No `db push` anywhere; no data statements.
+2. `bun run db:bootstrap` with `DATABASE_URL` = the production POOLED URL (the script's
+   own driver path) → `connectivity ✔` / `migrations current ✔ (2 applied)` /
+   `store_settings ✔ (absent-only)` / `five main categories ✔ (absent-only)` /
+   `DONE — products/orders/customers/inventory untouched.` Both cold-start connection
+   transients were retried transparently by the driver pool (documented free-tier behavior).
+
+### 13.3 Post-migration verification (read-only probes, direct endpoint)
+
+- `drizzle.__drizzle_migrations` = **2 rows**: id 1 hash `a2a86f8b326955fc…`,
+  id 2 hash `bb29d309a181e22d…` — each byte-equal to `sha256` of the corresponding
+  committed migration file (verified in-process).
+- Schema profile **matches the §13.1 rehearsal expectation EXACTLY**: 23/23 tables
+  (name-for-name identical), 9/9 enums, 89/89 indexes, 34/34 FK constraints, 34/34
+  CHECK constraints, 6/6 trigram GIN indexes, extensions {pg_trgm, plpgsql}.
+- `neon_auth` platform schema untouched: 9 tables before and after.
+- After bootstrap: `store_settings` = exactly 1 row (id 1); categories = exactly the
+  5 documented bootstrap rows (نسائي، رجالي، أطفال، مواليد، مستحضرات تجميل);
+  business counts all **0** (products, orders, customers, reviews, admin_users,
+  media_assets, homepage_sections/banners, inventory_movements, whatsapp_testimonials,
+  size_guides, attributes) — no demo data, per the owner directive.
+
+### 13.4 Runtime verification (actual Vercel Production runtime)
+
+- Serving deployment: `dpl_AEjjJDjyyA1Rnqa884wrbnP9y2WC` (READY, built from `5703066`,
+  docs-only descendant of `70dd015` — `git diff 70dd015..5703066` = EXECUTION_STATUS.md +
+  worklog.md; zero source delta). `dpl_FSR9p4A54Gs6` (`70dd015`) remains READY and intact
+  in the deployment history. No source-code regression was introduced by this round.
+- Live route re-test (production alias `amira-store-opal.vercel.app`): `GET /` → **200**
+  (131 KB real render; was 500 with digest `2975296465`), `/robots.txt` 200,
+  `/category/{women,men,cosmetics}` 200, `/search?q=شنط` 200, `/search?q=` 200,
+  `/cart` 200, `/product/__no_such_product__` → streamed honest not-found state
+  (`notFound()` + «غير موجود» UI), `/wishlist` → 404 (correct: wishlist is a drawer,
+  not a page). Zero digests, zero `__next_error__` shells in ANY response.
+- Fresh runtime log capture (live `vercel logs` streaming while re-hitting the routes,
+  deployment `dpl_AEjjJDjyyA1Rnqa884wrbnP9y2WC`): digest `2975296465` **ABSENT**,
+  `42P01`/`does not exist` **ABSENT**, **zero 5xx** (all logged responseStatusCodes 200).
+  The only `level:"error"` lines are the known node-postgres SSL-mode deprecation
+  WARNING emitted on stderr (upstream advisory, present since PHASE-02 on every
+  environment; not an application error, not a 5xx).
+- Production connectivity through the production runtime is thereby proven end-to-end:
+  serverless requests on `amira-store-opal.vercel.app` executed live Neon queries over
+  the integration-supplied production connection and returned real rendered pages.
+- Credentials protocol: the production connection string existed only inside the
+  pulled `/tmp` env file and process environments (chmod 600); it was never printed,
+  logged, or committed; only sha256 prefixes and endpoint ids were recorded. All
+  `/tmp` credential artifacts + device codes shredded after verification.
