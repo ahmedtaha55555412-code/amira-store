@@ -1055,3 +1055,20 @@ Stage Summary:
 - PHASE-10 = COMPLETE per its DoD: the homepage looks complete and its content is maintainable without code changes while all business rules are preserved. All six owner decisions implemented exactly (D-1 absent-only bootstrap, D-2 announcement chain, D-3 no messaging backend, D-4 public-media-only branding, D-5 minimal metadata, D-6 neutral drafts + documented owner legal review before launch).
 - PHASE-00→09 contracts preserved: checkout/WhatsApp truth (settings read at order creation untouched), PHASE-09 private media model (registry access_mode gate extended, not altered), pricing/new-arrivals/offers invariants re-proven by the full battery on the same tree.
 - PHASE_11 LOCKED awaiting owner unlock.
+
+---
+Task ID: PHASE-10-FINAL-GATE
+Agent: Z.ai Code (main)
+Task: PHASE-10 final gate — deployment identity + production smoke + close-out
+
+Work Log:
+- Implementation commit e0d2cae pushed; CI check-run "verify" = success on the SAME SHA.
+- Vercel Production deployment dpl_6MwPt1jPJBdEBWaXTNkJ7KzHf235 = READY, built from e0d2cae. Three-way chain EXACT: origin/main == CI-green == Production == e0d2cae.
+- Production smoke round 1 (e0d2cae): 12-route matrix green (home/robots/category/cart/search/review/about/contact/policies×3 = 200, missing = 404, /admin = 307); /api/media matrix (400/404/405) + admin content route unauth 401; zero 5xx.
+- ANOMALY CAUGHT: production homepage rendered only the layout chrome — homepage_sections was 0 rows on Production (the §13 bring-up of 2026-09-28 predates the D-1 bootstrap extension in this commit). The resolver's honest fallbacks behaved exactly as designed (no error; graceful degradation). RESOLVED per the §13 standing owner-authorized release procedure ("production-safe db:bootstrap where the runbook requires it"): hash-only production identity gate (sha256 a77fc2afd8ac2bd7… @ ep-cool-art == the recorded invariant), read-only pre-check (23 tables / settings 1 / categories 5 / sections 0 / products 0 / orders 0 / migrations 3), absent-only bootstrap run (10 canonical sections inserted; settings/categories byte-untouched; no demo data), post-check (10 sections in canonical order). Documented in DATABASE.md §14.
+- Production homepage smoke re-run: ALL 12 blocks render (hero/categories/new-arrivals/offers/benefits/brand-story/reviews/testimonials/whatsapp-cta + announcement + footer links), honest empty states for catalog/social sections (production business truth: 0 products), zero 5xx.
+- Docs commit 3f6277f (DATABASE.md §14) pushed; CI = success; Production dpl_2hnnLwwPtfXX6gqvd47ieqjQHSGL = READY from 3f6277f. Final chain EXACT: origin/main == CI-green == Production == 3f6277f. Final 12-route smoke green (404/307 honest), homepage sections verified live.
+- Temp credential files shredded; working tree clean; no secrets printed/committed at any point.
+
+Stage Summary:
+- PHASE-10 FINAL CLOSED: implementation + verification + deployment + production follow-up complete. PHASE-11 LOCKED awaiting owner unlock.
