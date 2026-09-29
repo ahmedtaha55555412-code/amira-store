@@ -15,6 +15,19 @@
 
 ---
 
+### ISSUE-2026-09-29-056
+- Phase: PHASE_10 closure (governance/documentation-only round, 2026-09-29)
+- Severity: LOW (documentation governance; zero executable impact)
+- Status: FIXED
+- Symptom: owner reported a phase-numbering conflict — the repository was said to contain `AMIRA_STORE_GITLAB_AI_MASTER_EXECUTION_PLAN.md`, a legacy plan using divergent numbering (PHASE-09=Checkout, PHASE-10=Order Tracking, PHASE-11=Reviews) contradicting the canonical structure (PHASE-08=Inventory+Order Management, PHASE-09=Reviews+WhatsApp Testimonials, PHASE-10=Homepage+Content Pages+Settings-Driven Branding).
+- Reproduction: `git ls-files | grep AMIRA_STORE` → empty; `git log --all -- AMIRA_STORE_GITLAB_AI_MASTER_EXECUTION_PLAN.md` → empty.
+- Root cause: the document does not exist in this repository at all — absent from the working tree, the complete git history of every branch, every remote ref (main @ a2bacc7, phase-00/bootstrap-preview @ e7e1c49), and the /tmp mirror; no tracked file or worklog entry references the filename, "GITLAB", or the legacy numbering. It is an external/GitLab-era planning artifact; the reported in-repo conflict therefore cannot exist.
+- Impact: none on executable code. Residual risk only: someone comparing this repository against the external legacy document could apply its obsolete numbering.
+- Minimal fix: canonical phase authority documented in `EXECUTION_STATUS.md` (GOVERNANCE_NOTE, 2026-09-29): MASTER_PLAN.md (§29) + docs/phases/PHASE-00…PHASE-15 are the sole canonical phase source; the legacy document is ruled HISTORICAL/NON-BINDING. No legacy file was fabricated or restored; no historical documentation erased; no application code touched.
+- Verification: repo-wide `git grep` sweeps (legacy mappings PHASE-09+checkout / PHASE-10+order-tracking / PHASE-11+reviews; the filename; "gitlab") = ZERO matches. `EXECUTION_STATUS.md`: PHASE_07..10 canonical and COMPLETE, PHASE_11 LOCKED, LAST_COMPLETED_PHASE=PHASE_10. `docs/qa/TRACEABILITY.md`: 09=reviews/testimonials, 10=homepage+D-1..D-6 decisions, no legacy mapping. Documentation-only change → full regression NOT rerun (executable files untouched, per owner directive).
+- Related files: `EXECUTION_STATUS.md`, `docs/ops/ISSUE_LOG.md`, `worklog.md`
+- Notes: canonical mapping cross-checked against docs/phases/PHASE-07…11 titles. Out-of-scope observation (recorded, not acted on): docs/ops/PROJECT_STRUCTURE.md's tree snapshot predates the PHASE-09/10 routes — a documentation-freshness matter, not a numbering conflict; candidate for a future docs round.
+
 ### ISSUE-2026-09-29-051
 - Phase: PHASE_10 (implementation round, 2026-09-29)
 - Severity: MEDIUM (audit-integrity defect; every settings mutation failed AFTER committing its change)
