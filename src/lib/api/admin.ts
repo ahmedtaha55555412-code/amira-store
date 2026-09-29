@@ -18,9 +18,12 @@ import { CategoryServiceError } from '@/lib/catalog/categories';
 import { PricingValidationError } from '@/lib/catalog/pricing';
 import { ProductServiceError } from '@/lib/catalog/products';
 import { ImageValidationError } from '@/lib/media/validation';
+import { MediaStorageUnavailableError } from '@/lib/media/types';
 import { OrderServiceError } from '@/lib/admin/orders';
 import { ReviewModerationError } from '@/lib/admin/reviews';
 import { TestimonialServiceError } from '@/lib/admin/testimonials';
+import { HomepageServiceError } from '@/lib/admin/homepage';
+import { SettingsServiceError } from '@/lib/admin/settings';
 import { ReviewServiceError } from '@/lib/storefront/reviews';
 
 /** JSON body gate: same-origin + application/json. Returns a 403 response when rejected. */
@@ -62,6 +65,11 @@ export function errorResponse(error: unknown): NextResponse {
     ReviewModerationError,
     TestimonialServiceError,
     ReviewServiceError,
+    SettingsServiceError,
+    HomepageServiceError,
+    // Honest unconfigured-storage path (MASTER_PLAN §20): status 503 with the
+    // exact remediation message — never a generic 500.
+    MediaStorageUnavailableError,
   ];
   for (const kind of known) {
     if (error instanceof kind) {

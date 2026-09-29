@@ -15,15 +15,19 @@ type BrandLogoProps = {
  * The only component feature UI may use to render the store logo.
  * Renders a custom admin-provided logo when available; otherwise renders the
  * default mark + wordmark. Keeps branding replaceable without code edits.
+ *
+ * PHASE-10: settings-driven — the resolver reads the store_settings logo
+ * reference (public media only, D-4) and falls back to the default mark.
+ * Server component; explicit props still win (used by admin surfaces).
  */
-export function BrandLogo({
+export async function BrandLogo({
   logoUrl,
   storeName,
   className,
   markClassName,
   wordmarkClassName,
 }: BrandLogoProps) {
-  const settings = getBrandSettings();
+  const settings = await getBrandSettings();
   const name = storeName ?? settings.storeName;
   const src = logoUrl ?? settings.logoUrl;
 

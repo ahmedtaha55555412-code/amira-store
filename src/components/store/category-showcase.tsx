@@ -22,10 +22,16 @@ function departmentIcon(slug: string): LucideIcon {
 }
 
 /**
- * Category showcase (PHASE-05 task 2/3): the five real departments from the
- * database, linked to their listing pages with live product counts.
+ * Category showcase (PHASE-05 task 2/3 → PHASE-10 framing props): the five
+ * real departments from the database, linked to their listing pages with
+ * live product counts. Title/subtitle are admin-framing only — the CATEGORY
+ * list itself always stays database-driven.
  */
-export async function CategoryShowcase() {
+export async function CategoryShowcase({
+  framing,
+}: {
+  framing?: { title?: string | null; subtitle?: string | null } | null;
+} = {}) {
   const tree = await getStorefrontCategoryTree();
 
   return (
@@ -33,8 +39,11 @@ export async function CategoryShowcase() {
       <SectionHeading
         id="categories-title"
         eyebrow="تسوّق حسب القسم"
-        title="أقسام أميرة استور"
-        description="خمسة أقسام رئيسية تغطي احتياجات كل أفراد العائلة — اختاري قسمك وابدئي التسوق."
+        title={framing?.title || "أقسام أميرة استور"}
+        description={
+          framing?.subtitle ||
+          "خمسة أقسام رئيسية تغطي احتياجات كل أفراد العائلة — اختاري قسمك وابدئي التسوق."
+        }
       />
 
       {tree.length === 0 ? (

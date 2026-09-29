@@ -21,7 +21,7 @@ import path from 'node:path';
 import { sql } from 'drizzle-orm';
 
 import { db, getPool } from '../src/db/client';
-import { categories, storeSettings } from '../src/db/schema';
+import { categories, homepageSections, storeSettings } from '../src/db/schema';
 
 /* -------------------------------------------------------------------------- */
 /* 1. Connectivity                                                             */
@@ -125,6 +125,44 @@ for (const [i, c] of mainCategories.entries()) {
     .onConflictDoNothing({ target: categories.slug });
 }
 console.log('[db-bootstrap] five main categories ✔ (absent-only)');
+
+/* -------------------------------------------------------------------------- */
+/* 5. Homepage section vocabulary (only if absent) — PHASE-10 (D-1)            */
+/* -------------------------------------------------------------------------- */
+/**
+ * The code-limited section key vocabulary (single source of truth lives in
+ * src/lib/admin/homepage.ts — duplicated here as a literal so the bootstrap
+ * stays dependency-free). Absent-only insert: existing rows (including any
+ * admin-curated titles/config) are NEVER overwritten, and no row is ever
+ * deleted — a destructive overwrite would destroy owner content. Products
+ * remain query-driven; no product-selection flag exists in this model.
+ */
+
+const HOMEPAGE_SECTIONS = [
+  { key: 'announcement', title: 'شريط الإعلانات' },
+  { key: 'hero', title: 'البانر الرئيسي' },
+  { key: 'categories', title: 'الأقسام' },
+  { key: 'new_arrivals', title: 'وصل حديثًا' },
+  { key: 'offers', title: 'العروض' },
+  { key: 'benefits', title: 'لماذا أميرة استور' },
+  { key: 'brand_story', title: 'قصتنا' },
+  { key: 'reviews', title: 'تقييمات العملاء' },
+  { key: 'testimonials', title: 'آراء عملائنا على واتساب' },
+  { key: 'whatsapp_cta', title: 'تواصلي معنا' },
+] as const;
+
+for (const [i, s] of HOMEPAGE_SECTIONS.entries()) {
+  await db
+    .insert(homepageSections)
+    .values({ sectionKey: s.key, title: s.title, sortOrder: i })
+    .onConflictDoNothing({ target: homepageSections.sectionKey });
+}
+const sectionRows = await db
+  .select({ n: sql<number>`count(*)::int` })
+  .from(homepageSections);
+console.log(
+  `[db-bootstrap] homepage sections ✔ (${sectionRows[0]?.n ?? 0} rows present; absent-only)`,
+);
 
 /* -------------------------------------------------------------------------- */
 /* Done — nothing else is touched                                              */

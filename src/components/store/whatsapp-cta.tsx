@@ -3,9 +3,21 @@ import { Button } from "@/components/ui/button";
 import { getBrandSettings } from "@/lib/branding";
 import { Container } from "./container";
 
-/** Strong WhatsApp CTA band — real handoff to the store number (editable via Admin later). */
-export function WhatsAppCta() {
-  const settings = getBrandSettings();
+type WhatsAppCtaProps = {
+  /** Admin-curated copy (homepage_sections.whatsapp_cta.config). Falls back to the managed defaults. */
+  title?: string | null;
+  body?: string | null;
+  ctaLabel?: string | null;
+};
+
+/**
+ * Strong WhatsApp CTA band — real handoff to the store number
+ * (store_settings.whatsapp_phone; editable via Admin since PHASE-10).
+ * The href is ALWAYS the settings-driven store WhatsApp — never a
+ * client-supplied value.
+ */
+export async function WhatsAppCta({ title, body, ctaLabel }: WhatsAppCtaProps) {
+  const settings = await getBrandSettings();
   const waHref = `https://wa.me/${settings.whatsappPhone}`;
 
   return (
@@ -25,11 +37,11 @@ export function WhatsAppCta() {
             id="wa-cta-title"
             className="text-2xl font-extrabold text-balance sm:text-3xl"
           >
-            تحتاج مساعدة في الاختيار؟
+            {title ?? "تحتاج مساعدة في الاختيار؟"}
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-loose text-primary-foreground/90 sm:text-base">
-            فريقنا جاهز للرد على استفساراتك ومساعدتك في إتمام طلبك عبر واتساب
-            مباشرة.
+            {body ??
+              "فريقنا جاهز للرد على استفساراتك ومساعدتك في إتمام طلبك عبر واتساب مباشرة."}
           </p>
 
           <div className="mt-7 flex justify-center">
@@ -46,7 +58,7 @@ export function WhatsAppCta() {
                 aria-label={`تواصل معنا عبر واتساب على الرقم ${settings.whatsappDisplay} (يفتح في نافذة جديدة)`}
               >
                 <MessageCircle aria-hidden className="size-5" />
-                تواصل عبر واتساب
+                {ctaLabel ?? "تواصل عبر واتساب"}
               </a>
             </Button>
           </div>

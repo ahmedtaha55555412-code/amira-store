@@ -15,6 +15,71 @@
 
 ---
 
+### ISSUE-2026-09-29-051
+- Phase: PHASE_10 (implementation round, 2026-09-29)
+- Severity: MEDIUM (audit-integrity defect; every settings mutation failed AFTER committing its change)
+- Status: FIXED
+- Symptom: the first live run of `verify:homepage` aborted with `invalid input syntax for type uuid: "1"` (22P02) on `INSERT INTO admin_activity_logs` triggered by `updateStoreSettings`.
+- Reproduction: call any settings mutation (update / logo / favicon) → the settings UPDATE commits, then `recordAdminActivity` throws.
+- Root cause: `admin_activity_logs.entity_id` is a uuid column; the settings service passed the singleton's INTEGER row id (`'1'`) as its entity id.
+- Impact: settings changes were persisted but every mutation surfaced an unexpected error (500 at the API layer) and wrote no audit row — an inconsistent mutation/audit state.
+- Minimal fix: singleton mutations now run the update + ONE sanitized audit row in a SINGLE transaction; the row is identified by `entityType: 'store_settings'` + `metadata.singleton = 1` with `entityId: null` (uuid column contract respected). Applied to `updateStoreSettings`, `updateStoreLogo`, `updateStoreFavicon`.
+- Verification: `verify:homepage` 57/57 (settings mutation gates + audit writes inside transactions); repeated settings save/delete/reset round-trips in browser E2E all 200; dev.log shows zero 5xx across the entire round.
+- Related files: `src/lib/admin/settings.ts`
+- Notes: mutation+audit atomicity now matches the established admin-service pattern (orders/reviews/testimonials).
+
+### ISSUE-2026-09-29-052
+- Phase: PHASE_10 (implementation round, 2026-09-29)
+- Severity: MEDIUM (contract violation: silent error-shape change)
+- Status: FIXED
+- Symptom: `validateSectionConfig(key, null)` — the documented "restore code defaults" contract for section configs — threw `HomepageServiceError: Invalid input: expected object, received null` (400) instead of clearing the config.
+- Reproduction: `PATCH /api/admin/homepage/sections/<announcement-id>` with `{"config": null}` → 400.
+- Root cause: the per-key zod schema was applied to the raw value before the null-clear case was handled.
+- Impact: admins could not restore a section's default copy once a config had been saved (the storefront would show curated copy forever); the homepage-manager's clear flow failed with an honest error.
+- Minimal fix: null/undefined short-circuits to `null` (restore defaults) inside `validateSectionConfig` BEFORE schema evaluation; real schema violations still throw.
+- Verification: `verify:homepage` sections 5/6 (config message → fallback → cleared → BRAND default) 57/57; browser E2E: setting then clearing the announcement message via the UI returns the storefront to the BRAND default copy.
+- Related files: `src/lib/admin/homepage.ts`
+- Notes: the admin homepage manager additionally normalizes empty-string fields to omitted and a fully-empty config to `null` client-side, mirroring the server contract (real keyboards firing onChange are unaffected; automation `fill("")` short-circuits the input event — recorded for future E2E authoring).
+
+### ISSUE-2026-09-29-053
+- Phase: PHASE_10 (implementation round, 2026-09-29)
+- Severity: MEDIUM (build breakage caught before push)
+- Status: FIXED
+- Symptom: `bun run build` failed prerendering `/policies/privacy` — the (store) layout's server components (StoreHeader category tree, settings-driven branding) queried the database at BUILD time with no reachable DATABASE_URL (`ECONNREFUSED`).
+- Reproduction: `bun run build` on the PHASE-10 tree.
+- Root cause: the five NEW static-content pages (about/contact/policies/*) lacked the dynamic declaration every other storefront page carries; static prerendering pulled the DB-backed layout into the build worker.
+- Impact: build failed; no runtime or data impact.
+- Minimal fix: `export const dynamic = "force-dynamic"` added to the five new pages — identical to the existing storefront pattern (cart/search/review/order-success/homepage all declare it), so this introduces zero behavioral change and keeps the build environment database-independent.
+- Verification: `bun run build` succeeds (route table lists /about /contact /policies/{privacy,terms,shipping} as ƒ dynamic); full battery re-run green.
+- Related files: `src/app/(store)/about/page.tsx`, `src/app/(store)/contact/page.tsx`, `src/app/(store)/policies/{privacy,terms,shipping}/page.tsx`
+- Notes: STATIC export was considered and rejected — those pages render settings-driven branding (favicon/footer/contact channels), and forcing the layout DB-free would complicate the PHASE-01 contract for no measured gain; documented here per ERROR_PROTOCOL.
+
+### ISSUE-2026-09-29-054
+- Phase: PHASE_10 (implementation round, 2026-09-29)
+- Severity: LOW (honest-503 mapping was silently absent)
+- Status: FIXED
+- Symptom: `errorResponse()` (shared admin API error mapper) did not recognize `MediaStorageUnavailableError`, so the DOCUMENTED honest contract ("the endpoint answers 503 with the exact remediation", MASTER_PLAN §20 / PHASE-04 docs) was in practice mapped to a generic 500 on every route relying on the mapper.
+- Reproduction: without Blob credentials, `POST /api/admin/media/upload` throws `MediaStorageUnavailableError` (status 503) → `errorResponse` fell through to the unexpected-error branch → 500.
+- Root cause: the class carries `.status = 503` but was never added to the mapper's known-error list when introduced in PHASE-04.
+- Impact: the unconfigured-storage state still showed the honest Arabic UI banner, but the HTTP contract differed from the documented one (500 vs 503).
+- Minimal fix: `MediaStorageUnavailableError` added to `errorResponse`'s known list (its own `.status` 503 + exact remediation message then flow through the standard path).
+- Verification: typecheck/lint/build clean; the mapping path is exercised by the shared suites that throw this error in unconfigured environments; documented as a discovered pre-existing defect, minimal fix only.
+- Related files: `src/lib/api/admin.ts`
+- Notes: no behavior change for configured environments; production carries OIDC credentials so the honest path is dormant there.
+
+### ISSUE-2026-09-29-055
+- Phase: PHASE_10 (browser E2E, 2026-09-29)
+- Severity: LOW (pre-existing, console-only cosmetic artifact)
+- Status: OPEN (out of PHASE-10 scope — no unrelated code touched)
+- Symptom: React hydration attribute mismatch warning on `aria-controls="radix-…"` of the storefront header's mobile-menu `SheetTrigger` after admin→storefront client navigation.
+- Reproduction: login to admin → navigate client-side to `/` → console shows the mismatch once.
+- Root cause: Radix primitives generate the `aria-controls` id from React `useId`, which can differ between the streamed server snapshot and the client render on client-side re-navigation. The involved component (`src/components/store/store-header.tsx`, PHASE-05) is untouched by PHASE-10; the warning is console-only (UI renders and functions correctly, snapshot tree matches).
+- Impact: cosmetic console warning; no functional, data, or accessibility impact observed (the sheet opens/closes correctly in E2E).
+- Minimal fix: intentionally NOT applied this phase — the strict one-phase/no-unrelated-refactor rule wins; recorded for a future hardening round (candidate: stable `useId` seeding or upgrading the Radix slot chain).
+- Verification: not applicable (no code change).
+- Related files: `src/components/store/store-header.tsx` (pre-existing)
+- Notes: recorded per the transparency rule — "never hide an error" — after root-causing it to a PHASE-00→09 code path.
+
 ### ISSUE-2026-09-28-050
 - Phase: PHASE_09 (admin media content route, 2026-09-28) — fixed during browser QA
 - Severity: LOW (admin-only preview route; dev-seed demo assets triggered it; Production business baseline has ZERO media so no production impact)

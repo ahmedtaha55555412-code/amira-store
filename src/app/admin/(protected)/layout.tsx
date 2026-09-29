@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Boxes, ClipboardList, KeyRound, Images, MessageSquareQuote, Package, Star, Warehouse } from 'lucide-react';
+import { Boxes, ClipboardList, KeyRound, Images, LayoutTemplate, MessageSquareQuote, Package, Settings, Star, Warehouse } from 'lucide-react';
 
 import { BrandLogo } from '@/components/brand/brand-logo';
 import { Button } from '@/components/ui/button';
@@ -125,6 +125,28 @@ export default async function ProtectedAdminLayout({
               <Link href="/admin/media">
                 <Images className="h-4 w-4" aria-hidden="true" />
                 الوسائط
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-full"
+            >
+              <Link href="/admin/homepage">
+                <LayoutTemplate className="h-4 w-4" aria-hidden="true" />
+                الصفحة الرئيسية
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-full"
+            >
+              <Link href="/admin/settings">
+                <Settings className="h-4 w-4" aria-hidden="true" />
+                الإعدادات
               </Link>
             </Button>
             <Button

@@ -350,3 +350,48 @@ verified by `scripts/verify-migrations.ts` (see `docs/ops/DATABASE.md`):
     registry access_mode AND owning-entity status; the original never leaves the private
     store). Public review-card author note unchanged: site reviews intentionally carry NO
     author-name column — public cards show «عميل أميرة استور» + verified badge only.
+
+---
+
+## PHASE_10 implementation notes (2026-09-29)
+
+The homepage content + settings tables above were activated in PHASE-10 with ZERO schema changes
+(no migration; count stays 3). Justified decisions recorded here:
+
+1. **`homepage_sections.section_key` vocabulary is code-limited** (`HOMESECTION_KEYS` in
+   `src/lib/admin/homepage.ts`, mirrored as a literal by `scripts/db-bootstrap.ts`): announcement,
+   hero, categories, new_arrivals, offers, benefits, brand_story, reviews, testimonials,
+   whatsapp_cta. Unknown keys can never be created through the API (validate → 404), and the
+   public reader skips any DB-only rows defensively. The 12-block homepage = these 10 managed
+   rows + the header/footer layout chrome.
+2. **Per-key JSONB config schemas** (zod, server-enforced, `null` = restore code defaults):
+   `announcement {message}` (decision D-2 source of the announcement-bar copy),
+   `hero {eyebrow?, title, subtitle?, ctaLabel?, ctaHref?}` (ctaHref = relative path or
+   `https://wa.me/<digits>` only — external link-farm hrefs refused), `benefits {items[3..6]
+   {title, description}}`, `brand_story {body, imageMediaId?}` (public asset, D-4),
+   `whatsapp_cta {title?, body?, ctaLabel?}`; the query-driven sections (categories, new_arrivals,
+   offers, reviews, testimonials) intentionally define EMPTY schemas — framing (title/subtitle/
+   visibility/order) lives in the section columns, and NO product-selection field exists anywhere
+   (MASTER_PLAN §4 hard exclusion).
+3. **`config: null` is a documented clearing contract** — "restore the code defaults" — not a
+   schema violation (ISSUE-2026-09-29-052). The admin manager normalizes empty-string fields to
+   omitted and a fully-empty object to null client-side, mirroring the server.
+4. **Banners start INACTIVE** (`is_active` default false at the service layer) — activation is an
+   explicit admin action; the active reader additionally filters by the optional starts_at/ends_at
+   window (`now()`-based) and skips private-store pathnames defensively (D-4).
+5. **D-4 public-media rule**: `store_settings.logo_media_id`, `store_settings.favicon_media_id`,
+   `homepage_banners.media_asset_id` and `brand_story.config.imageMediaId` may reference ONLY
+   `access_mode='public'` image assets — enforced server-side at assignment/creation
+   (registry check). The PHASE-09 private two-store model is untouched; private originals can
+   never back a public branding surface. Media-registry guarded deletes already cover
+   homepage_banners as a hard reference and store_settings as a weak (SET NULL) reference.
+6. **`store_settings.whatsapp_phone` normalization** — admin updates are validated with the same
+   `normalizeEgyptianPhone` rule the storefront uses (single source of truth); the column stores
+   the canonical `+20…` form. Checkout continues to read this row at order creation (PHASE-07
+   contract unchanged; `whatsapp_phone_snapshot` semantics untouched).
+7. **Singleton audit rows**: store_settings mutations write `entityType='store_settings'` with
+   `entityId: null` + `metadata.singleton = 1` (entity_id is a uuid column — ISSUE-2026-09-29-051);
+   update + audit run in one transaction.
+8. **Section ordering** — `sort_order` is a dense 0..n-1 sequence maintained by an atomic
+   complete-order reorder (unknown/duplicate ids refused); the announcement bar is fixed chrome at
+   position 0 (its copy/visibility are editable, its position is not).

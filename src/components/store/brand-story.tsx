@@ -4,7 +4,16 @@ import { Section, SectionHeading } from "./section";
 const VALUES = ["الجودة أولًا", "أسعار عادلة", "خدمة قريبة"];
 
 /** Brand story section (PHASE-01 shell) — original brand copy, no invented metrics. */
-export function BrandStory() {
+export function BrandStory({
+  framing,
+}: {
+  /** PHASE-10 admin framing: section title/subtitle + optional body copy. */
+  framing?: {
+    title?: string | null;
+    subtitle?: string | null;
+    body?: string | null;
+  } | null;
+}) {
   return (
     <Section id="story" aria-labelledby="story-title">
       <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
@@ -46,10 +55,15 @@ export function BrandStory() {
             id="story-title"
             align="start"
             eyebrow="قصتنا"
-            title="أميرة استور… حكاية عائلة"
+            title={framing?.title || "أميرة استور… حكاية عائلة"}
             description=""
             className="mb-5 sm:mb-6"
           />
+          {framing?.body ? (
+            <div className="flex flex-col gap-4 text-sm leading-loose text-muted-foreground sm:text-base">
+              <p>{framing.body}</p>
+            </div>
+          ) : (
           <div className="flex flex-col gap-4 text-sm leading-loose text-muted-foreground sm:text-base">
             <p>
               بدأت فكرة أميرة استور من سؤال بسيط: لماذا يجد كل فرد في العائلة
@@ -63,6 +77,7 @@ export function BrandStory() {
               عبر واتساب قبل تأكيد طلبك.
             </p>
           </div>
+          )}
           <ul className="mt-6 flex flex-wrap gap-2">
             {VALUES.map((value) => (
               <li

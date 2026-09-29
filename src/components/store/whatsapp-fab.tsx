@@ -2,8 +2,8 @@ import { MessageCircle } from "lucide-react";
 import { getBrandSettings } from "@/lib/branding";
 
 /** Floating WhatsApp handoff — always reachable, respects safe areas. */
-export function WhatsAppFloatingButton() {
-  const settings = getBrandSettings();
+export async function WhatsAppFloatingButton() {
+  const settings = await getBrandSettings();
   const waHref = `https://wa.me/${settings.whatsappPhone}`;
 
   return (
