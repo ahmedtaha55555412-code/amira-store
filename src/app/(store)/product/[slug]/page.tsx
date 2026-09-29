@@ -9,6 +9,7 @@ import {
 import { SizeGuideView } from "@/components/store/size-guide-view";
 import { StoreBreadcrumb } from "@/components/store/breadcrumb";
 import { Container } from "@/components/store/container";
+import { BRAND } from "@/config/brand";
 import {
   getStorefrontProductDetail,
   hasStorefrontProductBySlug,
@@ -47,7 +48,13 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
       title: detail.product.metaTitle ?? detail.product.name,
       description,
       type: "website",
-      ...(detail.gallery[0]?.url ? { images: [{ url: detail.gallery[0].url }] } : {}),
+      locale: "ar_EG",
+      url: `/product/${detail.product.slug}`,
+      images: [
+        detail.gallery[0]?.url
+          ? { url: detail.gallery[0].url, alt: detail.product.name }
+          : { url: BRAND.assets.ogImage, width: 1200, height: 630, alt: detail.product.name },
+      ],
     },
   };
 }

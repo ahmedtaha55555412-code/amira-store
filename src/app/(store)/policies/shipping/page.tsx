@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 
 import { PolicyShell } from "@/components/store/policy-shell";
+import { staticPageMetadata } from "@/lib/storefront/metadata";
 
 export const dynamic = "force-dynamic";
 
-/** Minimal Arabic metadata only — canonical/OG tuning is PHASE-11 (D-5). */
-export const metadata: Metadata = {
+export const metadata: Metadata = staticPageMetadata({
+  path: "/policies/shipping",
   title: "سياسة الشحن",
   description:
     "سياسة شحن أميرة استور: تُحدد تكلفة الشحن حسب عنوانك عبر واتساب قبل تأكيد الطلب، والدفع نقدًا عند الاستلام.",
-  robots: { index: true, follow: true },
-};
+});
 
 /**
  * Shipping policy (PHASE-10, decision D-6): factual neutral draft matching

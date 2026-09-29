@@ -3,16 +3,16 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/store/container";
 import { LogoMark } from "@/components/brand/logo-mark";
+import { staticPageMetadata } from "@/lib/storefront/metadata";
 
 export const dynamic = "force-dynamic";
 
-/** Minimal Arabic metadata only — canonical/OG/sitemap tuning is PHASE-11 (D-5). */
-export const metadata: Metadata = {
+export const metadata: Metadata = staticPageMetadata({
+  path: "/about",
   title: "من نحن",
   description:
     "أميرة استور — متجر عائلي عربي للأزياء ومستحضرات التجميل: تشكيلات مختارة بعناية لكل أفراد العائلة، دفع عند الاستلام، وتأكيد تكلفة الشحن عبر واتساب.",
-  robots: { index: true, follow: true },
-};
+});
 
 const VALUES = ["الجودة أولًا", "أسعار عادلة", "خدمة قريبة"] as const;
 

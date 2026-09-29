@@ -26,10 +26,14 @@ export const dynamic = "force-dynamic";
  */
 export default function OrderSuccessPage() {
   return (
-    <Section className="py-8 sm:py-10">
-      <Container className="flex flex-col gap-6">
-        <OrderSuccessView />
-      </Container>
-    </Section>
+    /* PHASE-11 a11y: the main landmark (and the skip-link target) is required
+       on every storefront route — siblings render it per-page. */
+    <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
+      <Section className="py-8 sm:py-10">
+        <Container className="flex flex-col gap-6">
+          <OrderSuccessView />
+        </Container>
+      </Section>
+    </main>
   );
 }

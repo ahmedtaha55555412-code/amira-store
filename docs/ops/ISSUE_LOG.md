@@ -15,6 +15,70 @@
 
 ---
 
+### ISSUE-2026-09-29-061
+- Phase: PHASE_11 (final gate, 2026-09-29)
+- Severity: LOW (environment recurrence — detected and resolved at the final gate; zero user impact)
+- Status: FIXED
+- Symptom: the local PHASE-11 auto-snapshot commit (`543c61f`, sandbox-generated UUID message) carried the DELETION of `src/app/api/admin/media/upload/route.ts` (−71 lines) although nothing in the PHASE-11 round (SEO/perf/a11y scope; ISSUE-057…060) touched or removed it; any deploy of that tree would have dropped the admin media-upload capability from production.
+- Reproduction: `git show 543c61f --stat` lists the route as deleted; the file is present in `origin/main` (a681be0); admin settings UI posts to this route.
+- Root cause: THIRD recurrence of the documented sandbox-recycle file-loss pattern (ISSUE-038 behavior): snapshot excludes the file, the platform auto-commit records the deletion. Prior recurrences: snapshot `c3f982a` (reverted at reconciliation, worklog 2026-09-28) and the a2bacc7-era recycle (restored from origin/main before the PHASE-10 governance round, worklog). Not an intentional change: the deletion appears in NO issue entry, no worklog record, and has no rationale inside the PHASE-11 scope.
+- Minimal fix: restored the file byte-identically from `origin/main` at the final gate (`git restore --source=origin/main`), worktree blob hash == origin blob hash (`5198d94c…`); no other file touched.
+- Verification: focused live probe of the restored route 7/7 (GET 405, cross-origin 403, unauth 401, missing-file 400, real multipart upload 200 → PUBLIC store namespace `…public.blob.vercel-storage.com`, zero-residue cleanup via the registry service); typecheck + lint + build green with the route present; full battery 756/756 on the restored tree.
+- Related files: `src/app/api/admin/media/upload/route.ts`
+- Notes: deploy discipline reaffirmed — production deploys must always be gated on a tree reconciled against `origin/main` after any sandbox recycle.
+
+### ISSUE-2026-09-29-057
+- Phase: PHASE_11 (browser QA, 2026-09-29)
+- Severity: MEDIUM (a11y — the global skip-link target was dead on three storefront routes)
+- Status: FIXED
+- Symptom: `/checkout`, `/cart`, and `/order/success` rendered NO `<main>` landmark; the root layout's global skip link (`href="#main-content"`) therefore pointed at a non-existent id on those routes and activating it did nothing.
+- Reproduction: agent-browser DOM probe — `document.querySelectorAll('main').length === 0` on all three routes while the skip link targets `/#main-content`; siblings (home/category/product/search/about/contact + policies via PolicyShell) all render `<main id="main-content">`.
+- Root cause: those three pages were built as `<Section><Container>…</Container></Section>` without the per-page `<main id="main-content" tabIndex={-1} className="flex-1 outline-none">` wrapper the sibling pages use (PHASE-05 pattern).
+- Impact: keyboard/screen-reader users lost the skip-link affordance and the main landmark on the cart → checkout → success journey (WCAG landmark/bypass failure).
+- Minimal fix: wrap each of the three pages in the exact sibling `<main id="main-content" tabIndex={-1} className="flex-1 outline-none">` pattern; add a permanent HTTP-level regression check (`verify:seo` section F: main landmark on /, /about, /contact, /cart, /checkout).
+- Verification: `verify:seo` 105/105 including the new landmark checks; standalone production build serves `<main id="main-content" tabindex="-1">` on /checkout and /cart; skip link reveals on focus and moves focus to main in the browser.
+- Related files: `src/app/(store)/checkout/page.tsx`, `src/app/(store)/cart/page.tsx`, `src/app/(store)/order/success/page.tsx`, `scripts/verify-seo.ts`
+- Notes: policy pages were already compliant via `PolicyShell`'s own main landmark.
+
+### ISSUE-2026-09-29-058
+- Phase: PHASE_11 (browser QA, 2026-09-29)
+- Severity: LOW (a11y — WCAG 2.2 AA 2.5.8 Target Size Minimum on product-card title links)
+- Status: FIXED
+- Symptom: product-card title `<Link>`s measured ~20px touch height at 375px width (inline box = one text line), under the 24×24 CSS-px AA minimum.
+- Reproduction: agent-browser bounding-box audit of `h3 a` inside ProductCard at 375px → min dimension < 24.
+- Root cause: inline anchor inside the line-clamped `h3` has no vertical padding; the reserved `min-h` sits on the h3, not the link.
+- Impact: undersized text-link touch targets on every card grid; the card image area remains a full-size duplicate pointer target for the same URL, so the affected path is keyboard/touch on the text link.
+- Minimal fix: `inline-block py-1 -my-1` on the title link — extends the hitbox past 24px (measured 47px) with zero layout shift (negative margin compensates the padding).
+- Verification: agent-browser re-measure → 47×47px; card row rhythm unchanged (visual QA 375/768/1440); battery green.
+- Related files: `src/components/store/product-card.tsx`
+- Notes: header utility buttons (36/32px) and the WhatsApp FAB (48px) already satisfy the 24px AA minimum; no other undersized targets found at 375.
+
+### ISSUE-2026-09-29-059
+- Phase: PHASE_11 (responsive-image audit, 2026-09-29)
+- Severity: MEDIUM (latent correctness gap — admin-uploaded product images could not render through the next/image pipeline)
+- Status: FIXED
+- Symptom: `next.config.ts` had NO `images.remotePatterns`, while `media_assets.url` stores provider-truth Blob CDN URLs (`https://<store>.public.blob.vercel-storage.com/…`) for admin uploads; ProductCard/PDP render gallery images through `next/image`, which refuses unconfigured remote hosts at render time.
+- Reproduction: read `src/lib/media/vercel-blob.ts` (`url: blob.url` registration) + next.config.ts; any admin-uploaded product image referenced by ProductCard/PDP would hit the Next.js "hostname is not configured under images" error.
+- Root cause: PHASE-04/05 image work was verified with the local `/brand/demo/*.svg` seed media (local paths need no remotePatterns); the remote-host path was never exercised end-to-end through next/image.
+- Impact: the first real admin-uploaded product image would break the card/PDP render in production; also blocked the PHASE-11 responsive-image optimization goal for uploaded media.
+- Minimal fix: `images.remotePatterns = [{ protocol: 'https', hostname: '**.public.blob.vercel-storage.com' }]`. The PRIVATE store host is deliberately NOT allow-listed — private originals are only ever delivered through the gated `/api/media/[id]` route (ISSUE-048 contract) and must never enter the public optimizer or its cache.
+- Verification: build + production standalone render green; decision documented in the next.config comment; hero banners/review/testimonial images intentionally stay raw `<img>` per the ISSUE-049 AssetImage precedent (gated delivery semantics) — untouched.
+- Related files: `next.config.ts`
+- Notes: PHASE-11 perf directive #1 ("audit responsive images using the existing media architecture") — the allow-list enables responsive srcset optimization for uploaded public media without touching the storage architecture.
+
+### ISSUE-2026-09-29-060
+- Phase: PHASE_11 (client-JS audit, 2026-09-29)
+- Severity: LOW (pre-existing deviation from DESIGN_SYSTEM's documented launch gate)
+- Status: FIXED
+- Symptom: the 411-line QA playground client component (`ComponentPlayground`, dialog/tabs/table/toaster primitives) rendered on the PRODUCTION homepage as a fixed overlay + shipped client chunk.
+- Reproduction: DESIGN_SYSTEM.md states the playground "is a development/QA aid — gate or remove before launch phases"; the homepage mounted it unconditionally.
+- Root cause: the launch gate was documented but never wired to a mechanism (the playground predates it from PHASE-01; PHASE-10 scope ended at minimal metadata).
+- Impact: unnecessary client JS + a QA-only floating control on the customer homepage (bottom-end, next to the WhatsApp FAB).
+- Minimal fix: `{process.env.NODE_ENV === "development" ? <ComponentPlayground /> : null}` in the homepage — NODE_ENV is build-inlined, so the chunk and overlay disappear from production bundles while dev QA keeps the tool.
+- Verification: production standalone HTML contains zero playground markers; dev server still renders it; build green.
+- Related files: `src/app/(store)/page.tsx`
+- Notes: satisfies PHASE-11 perf directive #3 (reduce unnecessary client JS) using the exact mechanism DESIGN_SYSTEM anticipated.
+
 ### ISSUE-2026-09-29-056
 - Phase: PHASE_10 closure (governance/documentation-only round, 2026-09-29)
 - Severity: LOW (documentation governance; zero executable impact)

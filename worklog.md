@@ -1091,3 +1091,38 @@ Stage Summary:
 - PHASE-09 = COMPLETE, PHASE-10 = COMPLETE, PHASE-11 = LOCKED — all confirmed consistent in EXECUTION_STATUS.md and TRACEABILITY.md; no current document points PHASE-10/11 to the legacy numbering.
 - Out-of-scope observation recorded (not acted on): docs/ops/PROJECT_STRUCTURE.md tree snapshot predates PHASE-09/10 routes (freshness, not numbering).
 - Commit is documentation-only; CI must be green; production deployment intentionally not triggered (owner directive: STOP after CI + tree/sync verification; precedent a2bacc7).
+
+---
+Task ID: PHASE-11-VERIFICATION-RECOVERY
+Agent: Z.ai Code (main)
+Task: Recover the Vercel/Blob verification environment for PHASE-11 and run the 141 Blob-dependent checks (owner directives: "STOP RETRYING VERCEL DEVICE FLOW" → PAT handoff → "OWNER AUTHORIZATION — TAKE OVER VERCEL CREDENTIAL/ENVIRONMENT RECOVERY")
+
+Work Log:
+- Determined (evidence-based) that CLI+OIDC cannot bootstrap control-plane access from a recycled sandbox: zero Vercel env vars, all CLI credential paths absent, /tmp artifacts shredded, .auth/ vault gone; Vercel OIDC is minted only after CLI authentication (architectural fact, documented back to the owner).
+- Owner provided a Personal Access Token via chat per the documented vault pattern: stored at .auth/vercel_token (mode 600; .auth/ git-ignored — verified); used ONLY as --token "$VERCEL_TOKEN"; never printed/echoed/committed.
+- vercel whoami → ahmedtaha55555412-7683; existing project amira-store (prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA) verified by ID via /v9/projects — NO project or store created; production identity read-only: dpl_5H46u4hx… READY @ a681be0.
+- vercel link (existing project) + documented env pulls /tmp/env.development + /tmp/env.production; §9.6 hash-only gates ALL PASS: dev DATABASE_URL sha256 f5aa1006670416a5… @ ep-dark-boat-b1fejsk4-pooler == recorded invariant; production a77fc2afd8ac2bd7… @ ep-cool-art-b1snfj5i-pooler == invariant; dev ≠ prod DISTINCT. .env.local assembled (23 keys, multi-line unused PEM excluded, chmod 600, git-ignored); /tmp pulls shredded.
+- Blob surfaces confirmed present (names only): BLOB_PRIVATE_READ_WRITE_TOKEN, BLOB_STORE_ID, fresh short-lived VERCEL_OIDC_TOKEN (minted by the CLI pull — the public-store surface), AUTH_SESSION_SECRET in the development pull.
+- Environment failure diagnosed WITHOUT source changes: sandbox template .env (DATABASE_URL=file:…/custom.db) shadowed the app env under bun; fixed by sourcing .env.local into the launch environment (documented PHASE-10 bring-up pattern); dev server verified healthy against the dev branch (7 products — the decisive dev-vs-prod discriminator).
+- Ran the 141 blocked checks against REAL Blob surfaces: verify:homepage 57/57 (real public+private store uploads, D-4 refusals, zero probe-media residue) + verify:reviews 84/84 (private-store namespace proof, direct access 403, byte-identical server read, delivery-state matrix draft/pending 404 / published 200 / hidden 404 / re-published 200, storage-level leftovers=0). 141/141. STOPPED before commit/deploy per directive.
+
+Stage Summary:
+- Verification environment fully recovered with zero repository modifications (tree clean at 543c61f throughout); production never touched; all credential handling per the vault discipline (no secret values in any output).
+
+---
+Task ID: PHASE-11-FINAL-GATE
+Agent: Z.ai Code (main)
+Task: Owner-authorized PHASE-11 FINAL GATE — restore the sandbox-lost admin upload route, re-verify the full battery, update governance records, commit/push/deploy/production-smoke, close PHASE-11 (PHASE-12 stays LOCKED)
+
+Work Log:
+- FG-1/2: baseline re-verified (HEAD 543c61f clean, origin/main a681be0); restored src/app/api/admin/media/upload/route.ts byte-identically from origin/main (worktree blob 5198d94c… == origin blob) — the deletion was the THIRD documented sandbox-recycle file-loss recurrence (after c3f982a and the a2bacc7-era round), provably NOT PHASE-11 work (recorded as ISSUE-2026-09-29-061).
+- FG-3: exact diff review vs a681be0 — all 28 changed paths classified PHASE-11 scope (metadata/canonical/robots/sitemap/OG/JSON-LD; ISSUE-057 landmarks; ISSUE-058 touch targets; ISSUE-059 public-only remotePatterns; ISSUE-060 playground dev-gating; verify:seo suite; boot-verify-pg.mjs local verification tooling on the pre-existing embedded-postgres devDependency; docs). Zero unrelated executable changes; catalog.ts changes are a pure append (query-driven invariants untouched).
+- FG-4: typecheck ✅ lint ✅ build ✅ (route table includes /robots.txt static + /sitemap.xml dynamic).
+- FG-5: focused live probe of the restored route 7/7 — GET 405; cross-origin 403 (same-origin gate); unauthenticated 401; authenticated missing-file 400; real admin login via the real endpoint; authenticated multipart upload 200 → asset registered with PUBLIC-store namespace host (…public.blob.vercel-storage.com); zero-residue cleanup via deleteMediaAsset. (First probe attempt failed 422 on a 1×1 PNG — CORRECT app behavior: media validation enforces 100–6000px bounds; probe fixed to the suite's 200×200 payload, zero application changes. QA admin credential refreshed via the real hashPassword service per the documented PHASE-03/PHASE-10 procedure; secret never printed.)
+- FG-6: complete battery on the restored tree = 756/756, 0 failed (db:verify 29 + auth 44 + catalog 43 + storefront 101 + cart 59 + checkout 134 + orders 100 + reviews 84 + homepage 57 + seo 105) — including the fresh re-proof of verify:seo 105/105, verify:homepage 57/57 and verify:reviews 84/84 against the REAL Blob stores.
+- FG-7: governance records updated with proven facts only: ISSUE_LOG +ISSUE-2026-09-29-061 (file-loss recurrence, FIXED); EXECUTION_STATUS closure values (PROJECT_STATUS=READY_FOR_NEXT_PHASE, CURRENT_PHASE=PHASE_12, LAST_COMPLETED_PHASE=PHASE_11, PHASE_11_STATUS=COMPLETE, PHASE_12_STATUS=LOCKED) + PHASE-11 completion record; TRACEABILITY final-gate row; worklog (these records). PHASE-10 history preserved verbatim.
+- FG-8: single meaningful completion commit created from the auto-snapshot via soft reset to a681be0 (all PHASE-11 work preserved, UUID auto-commit message eliminated), pushed to origin/main.
+- FG-9/10: deployment identity + production smoke + final audit evidence commit — recorded in the follow-up worklog entry (next section).
+
+Stage Summary:
+- PHASE-11 verified COMPLETE on the final tree: 756/756 + 7/7 route probe + real-Blob re-proof + build/lint/typecheck green. PHASE_12 LOCKED awaiting owner unlock.

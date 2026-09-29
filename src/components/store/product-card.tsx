@@ -83,7 +83,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         <h3 className="min-h-[2.75rem] text-sm font-bold leading-snug sm:min-h-[2.6rem]">
           <Link
             href={`/product/${encodeURIComponent(product.slug)}`}
-            className="line-clamp-2 rounded-sm transition-colors group-hover:text-primary"
+            /* PHASE-11 a11y (WCAG 2.2 AA 2.5.8): py extends the touch target
+               past the 24px minimum while -my keeps the reserved card rhythm. */
+            className="line-clamp-2 inline-block rounded-sm py-1 -my-1 transition-colors group-hover:text-primary"
           >
             {product.name}
           </Link>

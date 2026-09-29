@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   title: "إتمام الطلب",
   description:
     "إتمام الطلب في أميرة استور — الاسم ورقم الموبايل والعنوان، الدفع عند الاستلام، وتُتفق تكلفة الشحن عبر واتساب.",
+  /** PHASE-11: per-session checkout — never an indexable document. */
+  robots: { index: false, follow: false },
 };
 
 /**
@@ -26,16 +28,20 @@ export const dynamic = "force-dynamic";
  */
 export default function CheckoutPage() {
   return (
-    <Section className="py-8 sm:py-10">
-      <Container className="flex flex-col gap-6">
-        <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold sm:text-3xl">إتمام الطلب</h1>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            أكملي بياناتك وسنؤكد طلبك عبر واتساب — الدفع عند الاستلام.
-          </p>
-        </header>
-        <CheckoutView />
-      </Container>
-    </Section>
+    /* PHASE-11 a11y: the main landmark (and the skip-link target) is required
+       on every storefront route — siblings render it per-page. */
+    <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
+      <Section className="py-8 sm:py-10">
+        <Container className="flex flex-col gap-6">
+          <header className="flex flex-col gap-1">
+            <h1 className="text-2xl font-bold sm:text-3xl">إتمام الطلب</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              أكملي بياناتك وسنؤكد طلبك عبر واتساب — الدفع عند الاستلام.
+            </p>
+          </header>
+          <CheckoutView />
+        </Container>
+      </Section>
+    </main>
   );
 }

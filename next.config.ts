@@ -2,6 +2,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // PHASE-11 responsive images: admin-uploaded public media lives on the
+  // Vercel Blob public CDN (media_assets.url stores the provider-truth URL),
+  // so the next/image pipeline must be allowed to fetch + optimize it.
+  // The PRIVATE store is intentionally NOT listed — private originals are
+  // only ever delivered through the gated /api/media/[id] route (ISSUE-048
+  // contract) and must never enter the public image optimizer or its cache.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },
+    ],
+  },
   // TypeScript is validated on EVERY build — including the Vercel production
   // deploy (the scaffold default `ignoreBuildErrors: true` was removed
   // 2026-09-27: a deploy must never ship type-broken code; CI `typecheck`

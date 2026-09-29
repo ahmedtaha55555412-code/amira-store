@@ -125,15 +125,19 @@ export function Hero({ copy, banners = [] }: HeroProps) {
               aria-label="بانرات العروض الرئيسية"
               className="relative flex snap-x snap-mandatory gap-4 overflow-x-auto rounded-[2rem] pb-2 [scrollbar-width:thin]"
             >
-              {banners.map((banner) => {
+              {banners.map((banner, bannerIndex) => {
+                // PHASE-11 LCP discipline: only the FIRST (initially visible)
+                // banner loads eagerly with high priority; the rest of the
+                // carousel loads lazily so they cannot compete for bandwidth.
                 const media = (
                   <figure className="relative flex h-full w-full flex-col">
                     <img
                       src={banner.imageUrl}
                       alt={banner.title}
                       className="absolute inset-0 h-full w-full object-cover"
-                      loading="eager"
-                      fetchPriority="high"
+                      loading={bannerIndex === 0 ? "eager" : "lazy"}
+                      fetchPriority={bannerIndex === 0 ? "high" : "auto"}
+                      decoding={bannerIndex === 0 ? undefined : "async"}
                     />
                     <figcaption className="relative mt-auto flex flex-col gap-1 bg-gradient-to-t from-black/65 to-transparent p-5 pt-12 text-start text-white">
                       <span className="text-base font-extrabold text-balance">

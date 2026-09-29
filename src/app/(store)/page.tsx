@@ -1,4 +1,5 @@
 import { PackageSearch, Percent } from "lucide-react";
+import type { Metadata } from "next";
 import { Hero } from "@/components/store/hero";
 import { CategoryShowcase } from "@/components/store/category-showcase";
 import { ProductCard } from "@/components/store/product-card";
@@ -13,6 +14,7 @@ import { WhatsAppCta } from "@/components/store/whatsapp-cta";
 import { Section, SectionHeading } from "@/components/store/section";
 import { EmptyState } from "@/components/store/states";
 import { ComponentPlayground } from "@/components/store/playground";
+import { BRAND } from "@/config/brand";
 import {
   getHomepageReviews,
   getPublishedTestimonials,
@@ -35,6 +37,20 @@ import {
  *  - NO featured/selected/best-seller logic exists anywhere.
  */
 export const dynamic = "force-dynamic";
+
+/** PHASE-11: the homepage self-canonicalizes and carries its own OG identity. */
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "ar_EG",
+    siteName: BRAND.storeName,
+    title: `${BRAND.storeName} | أزياء العائلة ومستحضرات التجميل`,
+    description: BRAND.description,
+    url: "/",
+    images: [{ url: BRAND.assets.ogImage, width: 1200, height: 630, alt: BRAND.storeName }],
+  },
+};
 
 type SectionConfig = Record<string, unknown>;
 
@@ -204,8 +220,11 @@ export default async function Home() {
         )}
       </main>
 
-      {/* QA playground overlay (homepage only, per DESIGN_SYSTEM) */}
-      <ComponentPlayground />
+      {/* QA playground overlay (homepage only, per DESIGN_SYSTEM) — dev-only
+          since PHASE-11: the design-system review tool must not ship its
+          client bundle to production customers ("gate or remove before
+          launch phases"; NODE_ENV is build-inlined so the chunk is dropped). */}
+      {process.env.NODE_ENV === "development" ? <ComponentPlayground /> : null}
     </>
   );
 }

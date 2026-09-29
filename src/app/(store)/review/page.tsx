@@ -10,7 +10,9 @@ export const metadata: Metadata = {
   title: "اكتب تقييمًا",
   description:
     "شارك تجربتك مع أميرة استور — قيّم منتجات طلبك المسلَّم من ١ إلى ٥ نجوم مع تعليق وصورة اختيارية. بدون حساب، بالتحقق عبر رقم الطلب ورقم الموبايل.",
-  robots: { index: true, follow: true },
+  /** PHASE-11: the review form is a functional (order+phone-verified) entry —
+      it must not surface as a search result per the PHASE-11 indexing design. */
+  robots: { index: false, follow: true },
 };
 
 /** The (store) chrome reads live catalog data → per-request rendering. */

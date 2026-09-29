@@ -23,8 +23,8 @@
 │   ├── phases/ (PHASE-00 … PHASE-15)
 │   └── qa/     (FINAL_ACCEPTANCE, TEST_CASES, TRACEABILITY)
 ├── public/
-│   ├── brand/                   # logo + 8 demo product SVGs (seed media)
-│   └── robots.txt
+│   └── brand/                   # logo + 8 demo product SVGs (seed media)
+│                                 # (robots.txt → superseded by app/robots.ts; sitemap: app/sitemap.ts — PHASE-11)
 ├── scripts/                     # operational scripts + tracked verification suites
 │   ├── db-bootstrap.ts          # production-safe, absent-only bootstrap
 │   ├── db-bootstrap-admin.ts    # admin bootstrap (rehearsal/dev)

@@ -51,6 +51,9 @@ export const metadata: Metadata = {
     ],
   },
   robots: { index: true, follow: true },
+  // Twitter falls back to the Open Graph tags for title/description/image;
+  // declaring the card type once here covers every indexable route.
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

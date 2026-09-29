@@ -1063,3 +1063,78 @@ export function parsePriceParam(raw: string | undefined): number | undefined {
   const value = Number(raw);
   return Number.isFinite(value) && value >= 0 ? value : undefined;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Sitemap entries (PHASE-11) — every URL that is actually reachable           */
+/*                                                                            */
+/* Mirrors the route reachability semantics EXACTLY:                          */
+/*  - a category is indexable only when it AND its full ancestor chain are    */
+/*    active (getStorefrontCategoryPage returns null otherwise → 404);        */
+/*  - a product is indexable only when it is status='active' and its owning   */
+/*    category branch is fully reachable (getStorefrontProductDetail → 404).  */
+/* No fake/demo entries, no query/filter URLs, no utility/private routes.     */
+/* -------------------------------------------------------------------------- */
+
+export type SitemapEntry = {
+  /** URL path WITHOUT the leading origin, already slug-encoded. */
+  path: string;
+  updatedAt: Date | null;
+};
+
+export async function getSitemapEntries(): Promise<{
+  categories: SitemapEntry[];
+  products: SitemapEntry[];
+}> {
+  const activeCategories = await db
+    .select({
+      id: categories.id,
+      parentId: categories.parentId,
+      slug: categories.slug,
+      updatedAt: categories.updatedAt,
+    })
+    .from(categories)
+    .where(eq(categories.isActive, true));
+
+  // Reachability over the (small) category tree: keep only fully-active branches.
+  const reachableIds = new Set<string>();
+  const byId = new Map(activeCategories.map((c) => [c.id, c]));
+  for (const category of activeCategories) {
+    let reachable = true;
+    let parentId = category.parentId;
+    while (parentId) {
+      const parent = byId.get(parentId);
+      if (!parent) {
+        reachable = false; // inactive or missing ancestor → unreachable branch
+        break;
+      }
+      parentId = parent.parentId;
+    }
+    if (reachable) reachableIds.add(category.id);
+  }
+
+  const categoryEntries = activeCategories
+    .filter((c) => reachableIds.has(c.id))
+    .map((c) => ({ path: `/category/${encodeURIComponent(c.slug)}`, updatedAt: c.updatedAt }));
+
+  if (reachableIds.size === 0) {
+    return { categories: categoryEntries, products: [] };
+  }
+
+  const productRows = await db
+    .select({
+      slug: products.slug,
+      categoryId: products.categoryId,
+      updatedAt: products.updatedAt,
+    })
+    .from(products)
+    .where(
+      and(eq(products.status, 'active'), inArray(products.categoryId, [...reachableIds])),
+    );
+
+  const productEntries = productRows.map((p) => ({
+    path: `/product/${encodeURIComponent(p.slug)}`,
+    updatedAt: p.updatedAt,
+  }));
+
+  return { categories: categoryEntries, products: productEntries };
+}

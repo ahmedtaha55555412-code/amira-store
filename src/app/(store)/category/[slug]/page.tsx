@@ -12,6 +12,7 @@ import { SortSelect, type SortOption } from "@/components/store/sort-select";
 import { StoreBreadcrumb } from "@/components/store/breadcrumb";
 import { EmptyState } from "@/components/store/states";
 import { Container } from "@/components/store/container";
+import { BRAND } from "@/config/brand";
 import {
   getStorefrontCategoryPage,
   getStorefrontFacets,
@@ -45,12 +46,26 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   const { slug } = await params;
   const page = await getStorefrontCategoryPage(safeDecode(slug));
   if (!page) return { title: "القسم غير موجود", robots: { index: false, follow: false } };
+  const title = page.category.name;
+  const description =
+    page.category.description ??
+    `تسوّقي أحدث منتجات قسم «${page.category.name}» من أميرة استور — الدفع عند الاستلام والتوصيل لكل مصر.`;
   return {
-    title: page.category.name,
-    description:
-      page.category.description ??
-      `تسوّقي أحدث منتجات قسم «${page.category.name}» من أميرة استور — الدفع عند الاستلام والتوصيل لكل مصر.`,
+    title,
+    description,
     alternates: { canonical: `/category/${page.category.slug}` },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      locale: "ar_EG",
+      url: `/category/${page.category.slug}`,
+      // Filtered views keep this same clean canonical/OG identity (PHASE-11:
+      // combinatorial filter/query URLs can never become duplicate documents).
+      images: [
+        { url: BRAND.assets.ogImage, width: 1200, height: 630, alt: page.category.name },
+      ],
+    },
   };
 }
 

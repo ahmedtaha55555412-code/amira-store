@@ -9,13 +9,18 @@
  *    is THIS shape. PHASE-06's cart consumes it unchanged — the purchase panel
  *    builds it today and surfaces it honestly (cart is the next phase).
  *
- * 2. `buildProductJsonLd()` — structured-data-ready metadata (task 13,
- *    MASTER_PLAN §21): schema.org Product with an AggregateOffer whose child
- *    Offers are the product's ACTIVE variants (price/availability per variant).
- *    The full SEO surface (canonical/OG/sitemap tuning) lands in PHASE-11.
+ * 2. `buildProductJsonLd()` — structured data (task 13, MASTER_PLAN §21):
+ *    schema.org Product with an AggregateOffer whose child Offers are the
+ *    product's ACTIVE variants (price/availability per variant). PHASE-11
+ *    absolutized the structured-data URLs (schema.org identifiers must be
+ *    absolute; origin = APP_URL).
  *
  * Prices are the raw server-verified numeric strings — never client-derived.
  */
+
+import type { Metadata } from "next";
+
+import { BRAND } from "@/config/brand";
 
 export type CartEntryDraft = {
   productId: string;
@@ -86,6 +91,52 @@ export type JsonLdProductInput = {
 
 const OFFERS_MAX = 100;
 
+/** Site origin for absolute structured-data URLs (PHASE-11; contract = APP_URL). */
+export function siteOrigin(): string {
+  return (process.env.APP_URL?.trim() || "http://localhost:3000").replace(/\/+$/, "");
+}
+
+/** Absolute URL for structured data — schema.org requires absolute identifiers. */
+export function absoluteUrl(pathOrUrl: string): string {
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  return `${siteOrigin()}${pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`}`;
+}
+
+/**
+ * PHASE-11 static-content-page metadata (about/contact/policies/*): the
+ * canonical + OG surface D-5 deferred to this phase. Every page-level
+ * openGraph REPLACES the root one, so the brand fallback image is restated
+ * here — one place, consistent across all five static routes.
+ */
+export function staticPageMetadata(input: {
+  path: string;
+  title: string;
+  description: string;
+  robots?: { index: boolean; follow: boolean };
+}): Metadata {
+  return {
+    title: input.title,
+    description: input.description,
+    ...(input.robots ? { robots: input.robots } : {}),
+    alternates: { canonical: input.path },
+    openGraph: {
+      title: input.title,
+      description: input.description,
+      type: "website",
+      locale: "ar_EG",
+      url: input.path,
+      images: [
+        {
+          url: BRAND.assets.ogImage,
+          width: 1200,
+          height: 630,
+          alt: BRAND.storeName,
+        },
+      ],
+    },
+  };
+}
+
 /** schema.org/Product with per-variant offers (price + availability truth). */
 export function buildProductJsonLd(input: JsonLdProductInput): Record<string, unknown> {
   const purchasable = input.variants.filter((v) => v.isActive).slice(0, OFFERS_MAX);
@@ -100,7 +151,8 @@ export function buildProductJsonLd(input: JsonLdProductInput): Record<string, un
     '@type': 'Product',
     name: input.name,
     ...(input.description ? { description: input.description } : {}),
-    ...(input.imageUrl ? { image: [input.imageUrl] } : {}),
+    ...(input.imageUrl ? { image: [absoluteUrl(input.imageUrl)] } : {}),
+    url: absoluteUrl(input.url),
     offers: {
       '@type': 'AggregateOffer',
       priceCurrency: 'EGP',
@@ -114,7 +166,7 @@ export function buildProductJsonLd(input: JsonLdProductInput): Record<string, un
         price: Number(v.currentPrice),
         priceCurrency: 'EGP',
         availability: v.stockQuantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-        url: input.url,
+        url: absoluteUrl(input.url),
         ...(v.label ? { name: v.label } : {}),
       })),
     },

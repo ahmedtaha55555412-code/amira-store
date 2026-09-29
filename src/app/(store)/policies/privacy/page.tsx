@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 
 import { PolicyShell } from "@/components/store/policy-shell";
+import { staticPageMetadata } from "@/lib/storefront/metadata";
 
 export const dynamic = "force-dynamic";
 
-/** Minimal Arabic metadata only — canonical/OG tuning is PHASE-11 (D-5). */
-export const metadata: Metadata = {
+export const metadata: Metadata = staticPageMetadata({
+  path: "/policies/privacy",
   title: "سياسة الخصوصية",
   description:
     "سياسة خصوصية أميرة استور: البيانات التي نجمعها عند الطلب (الاسم، رقم الهاتف، العنوان)، غرضها الوحيد، وعدم وجود حسابات أو دفع إلكتروني.",
-  robots: { index: true, follow: true },
-};
+});
 
 /**
  * Privacy policy (PHASE-10, decision D-6): factual neutral draft describing

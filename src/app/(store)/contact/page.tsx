@@ -2,17 +2,17 @@ import type { Metadata } from "next";
 import { Clock, MessageCircle, Phone } from "lucide-react";
 
 import { getBrandSettings } from "@/lib/branding";
+import { staticPageMetadata } from "@/lib/storefront/metadata";
 import { Container } from "@/components/store/container";
 
 export const dynamic = "force-dynamic";
 
-/** Minimal Arabic metadata only — canonical/OG tuning is PHASE-11 (D-5). */
-export const metadata: Metadata = {
+export const metadata: Metadata = staticPageMetadata({
+  path: "/contact",
   title: "تواصل معنا",
   description:
     "تواصل مع فريق أميرة استور عبر واتساب للاستفسار عن المنتجات أو متابعة طلبك — الدفع عند الاستلام وتأكيد تكلفة الشحن عبر واتساب.",
-  robots: { index: true, follow: true },
-};
+});
 
 /**
  * Contact page (PHASE-10, decision D-3): WhatsApp deep link + the optional

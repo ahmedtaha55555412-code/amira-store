@@ -23,7 +23,8 @@
     "verify:orders": "bun scripts/verify-orders.ts",
     "verify:reviews": "bun scripts/verify-reviews.ts",
     "db:verify:local": "node scripts/verify-local-database.mjs",
-    "verify:homepage": "bun scripts/verify-homepage.ts"
+    "verify:homepage": "bun scripts/verify-homepage.ts",
+    "verify:seo": "bun scripts/verify-seo.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
