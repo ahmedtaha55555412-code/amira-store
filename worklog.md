@@ -1198,3 +1198,19 @@ Stage Summary:
 - PHASE-12 implementation COMPLETE per its Definition of Done (a store owner can operate the store without touching code for routine catalog/order/content changes) — pending the final gate (commit/push/CI/production smoke/state transition).
 - Key artifacts: dashboard service+page, inventory adjust service+route+dialog, verify:admin suite (66 checks), AdminListPager, banner/media/settings completions, ISSUE-063/064, TRACEABILITY +13 rows, DATA_DICTIONARY PHASE-12 notes.
 - Production untouched throughout (local disposable PG only); production will receive the gated commit through the normal push → Vercel pipeline.
+
+---
+Task ID: PHASE-12-FINAL-GATE
+Agent: Z.ai Code (main)
+Task: PHASE-12 final gate — commit/push/CI/production smoke + state transition (owner directive step 12: only then set PHASE_12_STATUS=COMPLETE … PHASE_13_STATUS=LOCKED).
+
+Work Log:
+- Implementation commit 63bf918 (39 files: +3431/−128; 9 new files incl. verify-admin.ts, dashboard service, inventory service/route/dialog, AdminListPager, loading/error boundaries) pushed: 67e2bae..63bf918 main -> main. Tree clean before commit; diff surface = PHASE-12 scope only.
+- CI check-run "verify" = completed/success on 63bf918 (GitHub API).
+- Production deployment live from 63bf918 via the auto-pipeline; read-only smoke: storefront routes 200; /admin 307→login; fake-PDP honest 404; robots contract intact; sitemap 11 on-origin URLs (5 categories/0 products/6 static — production truth); canonical/og:url production origin; NEW protections verified live: /api/admin/inventory/adjust unauth 401, media PUT unauth 401, banner DELETE cross-origin 403 (ISSUE-064 fix deployed), banner DELETE unauth 401, change-password unauth 401; zero unexpected 5xx; /track-order 404 re-confirmed as the DOCUMENTED pending item (TRACEABILITY §14 — not a regression).
+- EXECUTION_STATUS state transition exactly as mandated: PHASE_12_STATUS=COMPLETE, LAST_COMPLETED_PHASE=PHASE_12, CURRENT_PHASE=PHASE_13, PHASE_13_STATUS=LOCKED, PROJECT_STATUS=READY_FOR_NEXT_PHASE + the full PHASE-12 completion record; PHASE-11 history preserved verbatim.
+- Residual (documented, honest): verify:homepage 57 + verify:reviews 84 (real-Blob) REFUSED this round — sandbox recycle removed Blob credentials (ISSUE-2026-09-29-063); 681/681 Blob-free battery green incl. verify:admin 66/66; re-run obligation recorded for the Neon development branch at the PHASE-13 gate.
+
+Stage Summary:
+- PHASE-12 CLOSED with the full evidence chain: implementation (63bf918) CI-green + production-deployed + smoke-proven; docs updated (ISSUE_LOG +063/064, TRACEABILITY +13 rows, DATA_DICTIONARY +PHASE-12 notes, EXECUTION_STATUS completion record, worklog).
+- PHASE-13 LOCKED awaiting owner unlock; no PHASE-13 work performed.
