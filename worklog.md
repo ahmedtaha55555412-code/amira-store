@@ -1158,3 +1158,24 @@ Work Log:
 
 Stage Summary:
 - PHASE-11 FINAL GATE CLOSED with the complete evidence chain: implementation (823585b) + audit (5774809) both CI-green and production-deployed; the production smoke found and fixed exactly one defect (missing APP_URL — environment-only, ISSUE-062); all 756 local verification checks + 7/7 restored-route probe + real-Blob 141 + production smokes green. PHASE-12 LOCKED awaiting owner unlock.
+
+---
+Task ID: PHASE-12-OWNER-UNLOCK
+Agent: Z.ai Code (main)
+Task: PHASE-12 OWNER UNLOCK — GOVERNANCE ONLY (owner directive). Perform ONLY the state transition required to unlock PHASE-12; no implementation, no code/schema/infra/production changes.
+
+Work Log:
+- Read and verified before editing: AGENTS.md, MASTER_PLAN.md (incl. §29 execution architecture), EXECUTION_STATUS.md (full state block + completion records), docs/phases/PHASE-12.md (Admin Dashboard Completion + Settings), and the referenced governance conventions (state machine + previous unlock pattern a681be0).
+- Pre-flight state verified: local HEAD == origin/main == 67abfde (PHASE-11 final-gate closure commit; PHASE_11_STATUS=COMPLETE, PHASE_12_STATUS=LOCKED) — matches the owner-declared authoritative state exactly.
+- Sandbox file-loss recurrence intercepted PRE-COMMIT (4th observation of the ISSUE-061 pattern, same file src/app/api/admin/media/upload/route.ts, unstaged deletion): restored losslessly via `git restore` from HEAD (worktree blob == committed blob), tree verified clean BEFORE any edit; the deletion never entered staging, any commit, or the push — no new ISSUE entry opened (followed the documented ISSUE-061 restoration procedure; no commit/state defect existed).
+- State transition applied to EXECUTION_STATUS.md — exactly 3 lines changed (same shape as the previous owner unlock a681be0): PROJECT_STATUS=READY_FOR_NEXT_PHASE→IN_PROGRESS; PHASE_12_STATUS=LOCKED→UNLOCKED (owner unlock 2026-09-29 "PHASE-12 OWNER UNLOCK — GOVERNANCE ONLY", unlock-only, no PHASE-12 implementation performed); GOVERNANCE_NOTE canonical mapping extended with PHASE-12=Admin Dashboard Completion + Settings (UNLOCKED by owner 2026-09-29 — see PHASE_12_STATUS). CURRENT_PHASE=PHASE_12, LAST_COMPLETED_PHASE=PHASE_11, PHASE_11_STATUS=COMPLETE untouched.
+- Diff audit: `git status --porcelain` = only EXECUTION_STATUS.md; `git diff --stat` = 3 insertions/3 deletions, 1 file; full diff reviewed line-by-line — zero application code, schema, migration, infrastructure, or production changes; all PHASE-11 history (PHASE_11_STATUS line + completion record block) byte-identical.
+- Unlock commit 2fe6c3d ("docs(state): PHASE-12 OWNER UNLOCK…") pushed: 67abfde..2fe6c3d main -> main.
+- CI verified via GitHub API on 2fe6c3d: check-run "verify" = completed / success.
+- Worklog record (this entry) appended as a separate docs-only commit per the standing shared-worklog mandate — the unlock/state-transition commit itself remains pure (EXECUTION_STATUS.md only).
+
+Stage Summary:
+- PHASE-12 UNLOCKED by owner directive; resulting state exactly as mandated: CURRENT_PHASE=PHASE_12, PHASE_11_STATUS=COMPLETE, LAST_COMPLETED_PHASE=PHASE_11, PHASE_12_STATUS=UNLOCKED, PROJECT_STATUS=IN_PROGRESS.
+- State-transition commit: 2fe6c3d (diff = EXECUTION_STATUS.md 3+/3- only; parent 67abfde; CI "verify" = success).
+- NO PHASE-12 implementation performed; no code/schema/migrations/infrastructure/production modified; PHASE-11 history preserved verbatim.
+- STOP immediately after the unlock per owner directive.
