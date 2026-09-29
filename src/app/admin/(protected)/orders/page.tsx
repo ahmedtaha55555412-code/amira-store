@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+import { AdminListPager, parsePageParam } from '@/components/admin/list-pager';
 import { requireAdminPage } from '@/lib/auth/guard';
 import { formatAdminDateTime } from '@/lib/admin/format';
 import {
@@ -17,8 +18,9 @@ import { formatPrice } from '@/lib/storefront/format';
 import { OrderListControls } from './order-list-controls';
 
 /**
- * Orders admin list (PHASE-08 task 1): status/shipping/payment filters,
- * order-number/customer/phone search, newest-first.
+ * Orders admin list (PHASE-08 task 1 + PHASE-12 pagination):
+ * status/shipping/payment filters, order-number/customer/phone search,
+ * newest-first, link-based pager preserving all filters.
  */
 
 export const metadata: Metadata = {
@@ -45,6 +47,7 @@ export default async function AdminOrdersPage({
     shipping?: string;
     payment?: string;
     q?: string;
+    page?: string;
   }>;
 }) {
   await requireAdminPage();
@@ -54,14 +57,18 @@ export default async function AdminOrdersPage({
   const shippingStatus = (params.shipping ?? 'all') as ShippingStatus | 'all';
   const paymentStatus = (params.payment ?? 'all') as PaymentStatus | 'all';
   const search = params.q?.slice(0, 100) ?? '';
+  const page = parsePageParam(params.page);
+  const PAGE_SIZE = 50;
 
   const { items, total } = await listOrders({
     status,
     shippingStatus,
     paymentStatus,
     search: search || null,
-    limit: 100,
+    limit: PAGE_SIZE,
+    page,
   });
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="space-y-6">
@@ -128,6 +135,20 @@ export default async function AdminOrdersPage({
           </ul>
         )}
       </div>
+
+      <AdminListPager
+        basePath="/admin/orders"
+        page={page}
+        pageCount={pageCount}
+        total={total}
+        params={{
+          status: status !== 'all' ? status : undefined,
+          shipping: shippingStatus !== 'all' ? shippingStatus : undefined,
+          payment: paymentStatus !== 'all' ? paymentStatus : undefined,
+          q: search || undefined,
+        }}
+        label="طلب"
+      />
     </div>
   );
 }

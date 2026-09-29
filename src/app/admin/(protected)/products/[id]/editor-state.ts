@@ -14,6 +14,7 @@ export type EditorProduct = {
   description: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
+  canonicalSlug: string | null;
 };
 
 export type EditorVariant = {
@@ -77,6 +78,7 @@ export function buildPayload(input: {
     description: input.product.description,
     metaTitle: input.product.metaTitle,
     metaDescription: input.product.metaDescription,
+    canonicalSlug: input.product.canonicalSlug,
     attributeIds: input.attributeIds,
     variants: input.variants.map((variant) => ({
       clientKey: variant.clientKey,

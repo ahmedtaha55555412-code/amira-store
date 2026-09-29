@@ -8,7 +8,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 
-import { errorResponse, guardJsonMutation, jsonOk } from '@/lib/api/admin';
+import { errorResponse, guardJsonMutation, guardMutation, jsonOk } from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { bannerUpdateSchema, deleteHomepageBanner, updateHomepageBanner } from '@/lib/admin/homepage';
 
@@ -42,9 +42,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
+  // Same-origin gate (PHASE-12 hardening parity with every other admin
+  // mutation route — DELETE previously lacked the CSRF defense).
+  const guard = guardMutation(request);
+  if (guard) return guard;
+
   try {
     const session = await requireAdminMutation();
     const { id } = await params;

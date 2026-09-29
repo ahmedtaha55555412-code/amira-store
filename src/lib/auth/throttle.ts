@@ -110,3 +110,94 @@ export async function clearLoginFailures(username: string): Promise<void> {
       ),
     );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Change-password throttling (PHASE-12)                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The change-password endpoint re-verifies the CURRENT password inside a
+ * valid session — an attacker with a hijacked tab could otherwise brute-force
+ * it at unlimited rate. The same DB-backed pattern as the login throttle
+ * applies: failed attempts ARE audit rows (`auth.password_change.failed`),
+ * keyed by admin user id AND HMAC-hashed IP. Successful changes clear the
+ * transient failure rows (the success row remains as the permanent marker).
+ */
+
+export const PASSWORD_CHANGE_FAILURE_WINDOW_MINUTES = LOGIN_FAILURE_WINDOW_MINUTES;
+export const PASSWORD_CHANGE_MAX_FAILURES = LOGIN_MAX_FAILURES;
+
+export type PasswordChangeThrottleState = {
+  throttled: boolean;
+  recentFailures: number;
+  retryAfterSeconds: number;
+};
+
+export async function getPasswordChangeThrottleState(
+  adminUserId: string,
+  ipHash?: string | null,
+): Promise<PasswordChangeThrottleState> {
+  const since = new Date(Date.now() - WINDOW_MS);
+
+  const identityCondition = ipHash
+    ? sql`((${adminActivityLogs.adminUserId} = ${adminUserId})
+          or (${adminActivityLogs.metadata} ->> 'ipHash') = ${ipHash})`
+    : sql`(${adminActivityLogs.adminUserId} = ${adminUserId})`;
+
+  const rows = await db
+    .select({
+      n: sql<number>`count(*)::int`,
+      oldest: sql<Date | null>`min(${adminActivityLogs.createdAt})`,
+    })
+    .from(adminActivityLogs)
+    .where(
+      and(
+        eq(adminActivityLogs.action, 'auth.password_change.failed'),
+        gte(adminActivityLogs.createdAt, since),
+        identityCondition,
+      ),
+    );
+
+  const recentFailures = rows[0]?.n ?? 0;
+  const oldest = rows[0]?.oldest ? new Date(rows[0].oldest).getTime() : null;
+  const retryAfterSeconds =
+    oldest === null
+      ? 0
+      : Math.max(1, Math.ceil((oldest + WINDOW_MS - Date.now()) / 1000));
+
+  return {
+    throttled: recentFailures >= PASSWORD_CHANGE_MAX_FAILURES,
+    recentFailures,
+    retryAfterSeconds,
+  };
+}
+
+/** Record one failed change-password attempt (audit row doubles as throttle state). */
+export async function recordPasswordChangeFailure(input: {
+  adminUserId: string;
+  ipHash?: string | null;
+  reason?: 'wrong_current_password' | 'validation_failed';
+}): Promise<void> {
+  await db.insert(adminActivityLogs).values({
+    adminUserId: input.adminUserId,
+    action: 'auth.password_change.failed',
+    entityType: 'admin_auth',
+    entityId: input.adminUserId,
+    metadata: {
+      ipHash: input.ipHash ?? null,
+      reason: input.reason ?? 'wrong_current_password',
+    },
+  });
+}
+
+/** Remove transient failure rows for the admin after a successful change. */
+export async function clearPasswordChangeFailures(adminUserId: string): Promise<void> {
+  await db
+    .delete(adminActivityLogs)
+    .where(
+      and(
+        eq(adminActivityLogs.action, 'auth.password_change.failed'),
+        eq(adminActivityLogs.adminUserId, adminUserId),
+      ),
+    );
+}

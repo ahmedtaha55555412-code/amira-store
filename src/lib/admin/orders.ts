@@ -962,6 +962,8 @@ export type OrderListFilters = {
   paymentStatus?: PaymentStatus | 'all';
   search?: string | null;
   limit?: number;
+  /** 1-based page (PHASE-12 list pagination); clamped ≥ 1. */
+  page?: number;
 };
 
 export type OrderListRow = {
@@ -1007,6 +1009,8 @@ export async function listOrders(filters: OrderListFilters = {}): Promise<{
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
   const limit = Math.min(Math.max(filters.limit ?? 100, 1), 200);
+  const page = Math.max(filters.page ?? 1, 1);
+  const offset = (page - 1) * limit;
 
   const items = await db
     .select({
@@ -1026,7 +1030,8 @@ export async function listOrders(filters: OrderListFilters = {}): Promise<{
     .from(orders)
     .where(where)
     .orderBy(desc(orders.createdAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 
   const totalRows = await db
     .select({ n: sql<number>`count(*)::int` })

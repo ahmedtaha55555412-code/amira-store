@@ -16,11 +16,19 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowDown, ArrowUp, Eye, EyeOff, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Eye, EyeOff, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -46,6 +54,8 @@ type BannerRow = {
   ctaHref: string | null;
   isActive: boolean;
   sortOrder: number;
+  startsAt: string | null;
+  endsAt: string | null;
   mediaUrl: string;
 };
 
@@ -439,6 +449,35 @@ export function HomepageManager({ sections, banners }: Props) {
 /* Banners                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/** ISO → datetime-local input value (local time, minutes precision). */
+function toLocalInput(iso: string | null): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+type BannerEditState = {
+  title: string;
+  subtitle: string;
+  ctaLabel: string;
+  ctaHref: string;
+  startsAt: string;
+  endsAt: string;
+};
+
+function bannerToEditState(banner: BannerRow): BannerEditState {
+  return {
+    title: banner.title,
+    subtitle: banner.subtitle ?? '',
+    ctaLabel: banner.ctaLabel ?? '',
+    ctaHref: banner.ctaHref ?? '',
+    startsAt: toLocalInput(banner.startsAt),
+    endsAt: toLocalInput(banner.endsAt),
+  };
+}
+
 function BannersPanel({
   banners,
   onRefresh,
@@ -456,6 +495,9 @@ function BannersPanel({
     ctaHref: '',
   });
   const [file, setFile] = useState<File | null>(null);
+  // PHASE-12: full banner editing (copy + CTA + schedule) and reordering.
+  const [editing, setEditing] = useState<BannerRow | null>(null);
+  const [editForm, setEditForm] = useState<BannerEditState | null>(null);
 
   async function createBanner() {
     if (!file) {
@@ -494,7 +536,7 @@ function BannersPanel({
     }
   }
 
-  async function patchBanner(id: string, body: Record<string, unknown>) {
+  async function patchBanner(id: string, body: Record<string, unknown>, successTitle?: string) {
     setBusy(true);
     try {
       const response = await fetch(`/api/admin/homepage/banners/${id}`, {
@@ -505,15 +547,21 @@ function BannersPanel({
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         toast({ title: payload?.error ?? 'تعذر تحديث البانر.', variant: 'destructive' });
-        return;
+        return false;
       }
+      if (successTitle) toast({ title: successTitle });
       onRefresh();
+      return true;
     } finally {
       setBusy(false);
     }
   }
 
   async function deleteBanner(id: string) {
+    const confirmed = window.confirm(
+      'حذف البانر نهائيًا؟ تبقى صورته في مكتبة الوسائط (يُرفض حذفها وهي مرجوعة).',
+    );
+    if (!confirmed) return;
     setBusy(true);
     try {
       const response = await fetch(`/api/admin/homepage/banners/${id}`, {
@@ -531,6 +579,50 @@ function BannersPanel({
     }
   }
 
+  /** Reorder by swapping this banner's sortOrder with its neighbor (two PATCHes). */
+  async function reorder(index: number, direction: -1 | 1) {
+    const neighborIndex = index + direction;
+    if (neighborIndex < 0 || neighborIndex >= banners.length) return;
+    const current = banners[index]!;
+    const neighbor = banners[neighborIndex]!;
+    setBusy(true);
+    try {
+      // Detach through a temporary value first to dodge a transient equal-sortOrder state.
+      const okCurrent = await patchBanner(current.id, { sortOrder: -1 });
+      if (!okCurrent) return;
+      const okNeighbor = await patchBanner(neighbor.id, { sortOrder: current.sortOrder });
+      if (!okNeighbor) return;
+      await patchBanner(current.id, { sortOrder: neighbor.sortOrder }, 'تم تحديث الترتيب.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveEdit() {
+    if (!editing || !editForm) return;
+    if (!editForm.title.trim()) {
+      toast({ title: 'عنوان البانر مطلوب.', variant: 'destructive' });
+      return;
+    }
+    if (editForm.startsAt && editForm.endsAt && editForm.startsAt > editForm.endsAt) {
+      toast({ title: 'تاريخ البداية يجب أن يسبق تاريخ النهاية.', variant: 'destructive' });
+      return;
+    }
+    const ok = await patchBanner(
+      editing.id,
+      {
+        title: editForm.title.trim(),
+        subtitle: editForm.subtitle.trim() || null,
+        ctaLabel: editForm.ctaLabel.trim() || null,
+        ctaHref: editForm.ctaHref.trim() || null,
+        startsAt: editForm.startsAt ? new Date(editForm.startsAt).toISOString() : null,
+        endsAt: editForm.endsAt ? new Date(editForm.endsAt).toISOString() : null,
+      },
+      'تم حفظ تعديلات البانر.',
+    );
+    if (ok) setEditing(null);
+  }
+
   return (
     <section aria-labelledby="banners-heading" className="flex flex-col gap-4">
       <div>
@@ -539,7 +631,8 @@ function BannersPanel({
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           صور إعلانية تظهر في أعلى الصفحة الرئيسية. تُحفظ الصور كوسائط عامة،
-          ويبقى البانر غير مفعّل حتى تقوم بتفعيله.
+          ويبقى البانر غير مفعّل حتى تقوم بتفعيله. يمكنك تعديل النصوص ونافذة
+          العرض وترتيب البانرات من هنا.
         </p>
       </div>
 
@@ -613,7 +706,7 @@ function BannersPanel({
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {banners.map((banner) => (
+          {banners.map((banner, index) => (
             <li
               key={banner.id}
               className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center"
@@ -631,6 +724,14 @@ function BannersPanel({
                   <Badge variant={banner.isActive ? 'default' : 'outline'}>
                     {banner.isActive ? 'مفعّل' : 'غير مفعّل'}
                   </Badge>
+                  <Badge variant="outline" className="bg-card">
+                    الترتيب: {banner.sortOrder}
+                  </Badge>
+                  {banner.startsAt || banner.endsAt ? (
+                    <Badge variant="outline" className="bg-card">
+                      نافذة عرض مجدولة
+                    </Badge>
+                  ) : null}
                 </div>
                 {banner.subtitle ? (
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -638,13 +739,46 @@ function BannersPanel({
                   </p>
                 ) : null}
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                 <Switch
                   checked={banner.isActive}
                   disabled={busy}
                   onCheckedChange={(v) => patchBanner(banner.id, { isActive: v })}
                   aria-label={`تفعيل/تعطيل ${banner.title}`}
                 />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9"
+                  disabled={busy || index === 0}
+                  onClick={() => reorder(index, -1)}
+                  aria-label={`تحريك ${banner.title} للأعلى`}
+                >
+                  <ArrowUp aria-hidden className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9"
+                  disabled={busy || index === banners.length - 1}
+                  onClick={() => reorder(index, 1)}
+                  aria-label={`تحريك ${banner.title} للأسفل`}
+                >
+                  <ArrowDown aria-hidden className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9"
+                  disabled={busy}
+                  onClick={() => {
+                    setEditing(banner);
+                    setEditForm(bannerToEditState(banner));
+                  }}
+                  aria-label={`تحرير ${banner.title}`}
+                >
+                  <Pencil aria-hidden className="size-4" />
+                </Button>
                 <Button
                   variant="outline"
                   size="icon"
@@ -660,6 +794,92 @@ function BannersPanel({
           ))}
         </ul>
       )}
+
+      <Dialog
+        open={editing !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>تحرير البانر</DialogTitle>
+            <DialogDescription>
+              عدّل النصوص وزر الدعوة ونافذة العرض. الحقول الفارغة تُحفظ كقيم
+              فارغة (بدون نص/بدون جدولة).
+            </DialogDescription>
+          </DialogHeader>
+          {editForm ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label htmlFor="banner-edit-title">العنوان</Label>
+                <Input
+                  id="banner-edit-title"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  maxLength={120}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label htmlFor="banner-edit-subtitle">النص الفرعي</Label>
+                <Input
+                  id="banner-edit-subtitle"
+                  value={editForm.subtitle}
+                  onChange={(e) => setEditForm({ ...editForm, subtitle: e.target.value })}
+                  maxLength={240}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="banner-edit-cta-label">نص زر الدعوة</Label>
+                <Input
+                  id="banner-edit-cta-label"
+                  value={editForm.ctaLabel}
+                  onChange={(e) => setEditForm({ ...editForm, ctaLabel: e.target.value })}
+                  maxLength={40}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="banner-edit-cta-href">رابط الدعوة (مسار داخلي أو واتساب)</Label>
+                <Input
+                  id="banner-edit-cta-href"
+                  dir="ltr"
+                  value={editForm.ctaHref}
+                  placeholder="/category/women"
+                  onChange={(e) => setEditForm({ ...editForm, ctaHref: e.target.value })}
+                  maxLength={300}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="banner-edit-starts">بداية العرض (اختياري)</Label>
+                <Input
+                  id="banner-edit-starts"
+                  type="datetime-local"
+                  value={editForm.startsAt}
+                  onChange={(e) => setEditForm({ ...editForm, startsAt: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="banner-edit-ends">نهاية العرض (اختياري)</Label>
+                <Input
+                  id="banner-edit-ends"
+                  type="datetime-local"
+                  value={editForm.endsAt}
+                  onChange={(e) => setEditForm({ ...editForm, endsAt: e.target.value })}
+                />
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)} disabled={busy}>
+              إلغاء
+            </Button>
+            <Button onClick={saveEdit} disabled={busy} className="gap-2">
+              {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : null}
+              حفظ التعديلات
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

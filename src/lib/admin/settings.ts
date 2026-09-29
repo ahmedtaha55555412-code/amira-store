@@ -98,6 +98,23 @@ export const settingsUpdateSchema = z
       .transform((v) => (v === '' ? null : v))
       .optional(),
     socialLinks: socialLinksSchema.nullable().optional(),
+    /**
+     * Display-context settings (PHASE-12). The storefront language, currency,
+     * and timezone are FIXED business scope (MASTER_PLAN §2/§32: Arabic-only,
+     * EGP, Egypt) — the schema accepts exactly those canonical values so the
+     * stored row, the API, and the display layer stay in provable agreement;
+     * anything else is refused with an explicit Arabic error. Changing the
+     * business scope is an owner decision, not a settings edit.
+     */
+    currencyCode: z.literal('EGP', {
+      message: 'عملة المتجر ثابتة: الجنيه المصري (EGP) وفق نطاق العمل.',
+    }).optional(),
+    locale: z.literal('ar', {
+      message: 'لغة المتجر ثابتة: العربية (ar) وفق نطاق العمل.',
+    }).optional(),
+    timezone: z.literal('Africa/Cairo', {
+      message: 'المنطقة الزمنية ثابتة: القاهرة (Africa/Cairo) وفق نطاق العمل.',
+    }).optional(),
   })
   .strict()
   .refine((v) => Object.keys(v).length > 0, 'لا توجد تغييرات لحفظها.');
@@ -296,6 +313,11 @@ export async function updateStoreSettings(
   if (input.socialLinks !== undefined) {
     patch.socialLinks = input.socialLinks === null ? null : input.socialLinks;
   }
+  // Display-context fields (PHASE-12): validated to the canonical business
+  // values by the schema; persisting them keeps row/api/display in agreement.
+  if (input.currencyCode !== undefined) patch.currencyCode = input.currencyCode;
+  if (input.locale !== undefined) patch.locale = input.locale;
+  if (input.timezone !== undefined) patch.timezone = input.timezone;
 
   // Audit ATOMIC with the change; the singleton row is identified by its
   // entityType + metadata (entity_id is a uuid column — an integer id does

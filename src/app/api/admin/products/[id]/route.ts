@@ -31,6 +31,7 @@ const bodySchema = z.object({
   description: z.string().max(20000).nullish(),
   metaTitle: z.string().max(200).nullish(),
   metaDescription: z.string().max(500).nullish(),
+  canonicalSlug: z.string().max(120).nullish(),
   attributeIds: z.array(z.string().uuid()).max(10),
   variants: z
     .array(

@@ -63,6 +63,8 @@ export default async function AdminHomepagePage() {
         ctaHref: b.ctaHref,
         isActive: b.isActive,
         sortOrder: b.sortOrder,
+        startsAt: b.startsAt ? b.startsAt.toISOString() : null,
+        endsAt: b.endsAt ? b.endsAt.toISOString() : null,
         mediaUrl: b.mediaUrl,
       }))}
     />

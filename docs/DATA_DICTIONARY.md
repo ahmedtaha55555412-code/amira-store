@@ -395,3 +395,39 @@ The homepage content + settings tables above were activated in PHASE-10 with ZER
 8. **Section ordering** — `sort_order` is a dense 0..n-1 sequence maintained by an atomic
    complete-order reorder (unknown/duplicate ids refused); the announcement bar is fixed chrome at
    position 0 (its copy/visibility are editable, its position is not).
+
+---
+
+## PHASE_12 implementation notes (2026-09-29)
+
+PHASE-12 (Admin Dashboard Completion + Settings) required ZERO schema changes — migration
+count stays 3. Justified decisions recorded here:
+
+1. **Inventory manual adjustment** (`src/lib/admin/inventory.ts` + `/api/admin/inventory/adjust`):
+   writes the SAME `inventory_movements` ledger PHASE-08 built — `movement_type='manual_adjustment'`,
+   nullable `order_id`, `admin_user_id`, and the MANDATORY admin-typed reason in `reason`. The
+   table's existing CHECKs (`quantity_delta <> 0`, non-negative before/after,
+   `stock_after = stock_before + quantity_delta`) are the structural guarantee; the service adds a
+   row-locked (FOR UPDATE) recompute + a 10,000 |delta| sanity bound. Audit: `inventory.stock.adjusted`
+   atomically in the same transaction.
+2. **`products.canonical_slug` is now managed end-to-end** (PHASE-04 left the column dormant):
+   editable via the product aggregate PUT (slug-format + uniqueness against other products;
+   null = canonical URL follows the product slug). No schema change — the PHASE-11 PDP
+   canonical contract simply gained its management surface.
+3. **`store_settings` display-context columns (`currency_code`/`locale`/`timezone`) are surfaced**
+   via the settings API with CANONICAL-VALUE validation (`z.literal` EGP / ar / Africa/Cairo):
+   the storefront language/currency/timezone are FIXED business scope (MASTER_PLAN §2/§32), so the
+   API refuses anything else with the business-scope Arabic error; persistence + audit are real and
+   the admin UI shows the row values read-only. The storefront display layer (ar-EG numerals, EGP
+   symbol) provably agrees with the stored row.
+4. **Media operations are audited** (PHASE-12 parity with all other admin mutations):
+   `media.uploaded` / `media.alt_updated` / `media.deleted` rows in `admin_activity_logs` — the
+   delete path captures pathname/access-mode BEFORE the registry row is removed. No new tables.
+5. **Change-password throttle** derives state from `admin_activity_logs` rows with action
+   `auth.password_change.failed` (exactly the login-throttle pattern): 5 failures / 15 min keyed
+   by admin id + HMAC IP hash; transient rows are deleted on success (the success row stays as the
+   permanent marker). No schema change.
+6. **Banners/sections/homepage**: full banner editing + reorder already existed in the schema
+   (PATCH contract); PHASE-12 only completed the UI surface and restored the DELETE route's
+   same-origin gate (ISSUE-2026-09-29-064). Section keys remain code-limited; query-driven
+   sections keep EMPTY config schemas — no product-selection field exists anywhere.

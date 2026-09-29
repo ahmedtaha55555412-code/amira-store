@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 
+import { AdminListPager, parsePageParam } from '@/components/admin/list-pager';
 import { Button } from '@/components/ui/button';
 import { requireAdminPage } from '@/lib/auth/guard';
 import { getCategoryTree } from '@/lib/catalog/categories';
@@ -9,10 +10,13 @@ import { listProducts } from '@/lib/catalog/products';
 import { formatPrice } from '@/lib/storefront/format';
 
 import { ProductListControls } from './product-list-controls';
+import { ProductStatusAction } from './product-status-action';
 
 /**
- * Products admin list (PHASE-04 task 2): status/category/search filters,
- * per-product variant/stock/price summary, quick status transitions.
+ * Products admin list (PHASE-04 task 2 + PHASE-12 completion): status/category
+ * /search filters with link-based pagination, per-product variant/stock/price
+ * summary, and a per-row status quick action (draft/active/archived through
+ * the audited status route).
  */
 
 export const metadata: Metadata = {
@@ -31,7 +35,7 @@ const STATUS_LABEL: Record<string, string> = {
 export default async function AdminProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; category?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; category?: string; q?: string; page?: string }>;
 }) {
   await requireAdminPage();
   const params = await searchParams;
@@ -42,11 +46,20 @@ export default async function AdminProductsPage({
       : 'all';
   const categoryId = params.category && /^[0-9a-f-]{36}$/i.test(params.category) ? params.category : null;
   const search = params.q?.slice(0, 100) ?? null;
+  const page = parsePageParam(params.page);
+  const PAGE_SIZE = 50;
 
   const [{ items, total }, tree] = await Promise.all([
-    listProducts({ status, categoryId, search, limit: 100 }),
+    listProducts({
+      status,
+      categoryId,
+      search,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    }),
     getCategoryTree(true),
   ]);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const flatCategories = flattenCategories(tree);
 
@@ -111,6 +124,11 @@ export default async function AdminProductsPage({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <ProductStatusAction
+                      productId={product.id}
+                      productName={product.name}
+                      status={product.status}
+                    />
                     <Button asChild variant="outline" size="sm" className="rounded-full">
                       <Link href={`/admin/products/${product.id}`}>تحرير</Link>
                     </Button>
@@ -121,6 +139,19 @@ export default async function AdminProductsPage({
           </ul>
         )}
       </div>
+
+      <AdminListPager
+        basePath="/admin/products"
+        page={page}
+        pageCount={pageCount}
+        total={total}
+        params={{
+          status: status !== 'all' ? status : undefined,
+          category: categoryId ?? undefined,
+          q: search || undefined,
+        }}
+        label="منتج"
+      />
     </div>
   );
 }

@@ -34,20 +34,61 @@ export default async function AdminSettingsPage() {
       </div>
 
       {row ? (
-        <SettingsForm
-          initial={{
-            storeName: row.storeName,
-            whatsappPhone: row.whatsappPhone,
-            whatsappMessageTemplate: row.whatsappMessageTemplate,
-            supportPhone: row.supportPhone,
-            footerText: row.footerText,
-            socialLinks: (row.socialLinks ?? null) as {
-              instagram?: string;
-              facebook?: string;
-              tiktok?: string;
-            } | null,
-          }}
-        />
+        <>
+          <SettingsForm
+            initial={{
+              storeName: row.storeName,
+              whatsappPhone: row.whatsappPhone,
+              whatsappMessageTemplate: row.whatsappMessageTemplate,
+              supportPhone: row.supportPhone,
+              footerText: row.footerText,
+              socialLinks: (row.socialLinks ?? null) as {
+                instagram?: string;
+                facebook?: string;
+                tiktok?: string;
+              } | null,
+            }}
+          />
+
+          {/* Display-context settings (PHASE-12): the language/currency/
+              timezone of the storefront are FIXED business scope (MASTER_PLAN
+              §2/§32 — Arabic-only, EGP, Egypt). They live in store_settings as
+              DATA and the display layer formats with exactly these values, so
+              the surface is completed honestly as read-only business scope. */}
+          <section
+            aria-labelledby="display-context-h"
+            className="rounded-2xl border bg-card p-4 sm:p-6"
+          >
+            <h2 id="display-context-h" className="text-lg font-bold">
+              لغة العرض والعملة
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              ثابتة وفق نطاق عمل المتجر (عربي فقط · جنيه مصري · مصر) — لا تُعد
+              من هذه الشاشة؛ تغييرها قرار مالك يُوثَّق في خطة المتجر. تُقرأ
+              القيم من صف الإعدادات في قاعدة البيانات وتطابقها طبقة العرض.
+            </p>
+            <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border bg-surface-subtle/40 p-3">
+                <dt className="text-xs font-medium text-muted-foreground">اللغة</dt>
+                <dd className="mt-1 text-sm font-bold text-foreground" dir="ltr">
+                  {row.locale}
+                </dd>
+              </div>
+              <div className="rounded-xl border bg-surface-subtle/40 p-3">
+                <dt className="text-xs font-medium text-muted-foreground">العملة</dt>
+                <dd className="mt-1 text-sm font-bold text-foreground" dir="ltr">
+                  {row.currencyCode}
+                </dd>
+              </div>
+              <div className="rounded-xl border bg-surface-subtle/40 p-3">
+                <dt className="text-xs font-medium text-muted-foreground">المنطقة الزمنية</dt>
+                <dd className="mt-1 text-sm font-bold text-foreground" dir="ltr">
+                  {row.timezone}
+                </dd>
+              </div>
+            </dl>
+          </section>
+        </>
       ) : (
         <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
           إعدادات المتجر غير مهيأة — شغّل تهيئة قاعدة البيانات أولًا.

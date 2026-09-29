@@ -333,6 +333,27 @@ export function ProductEditor({
               maxLength={500}
             />
           </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="pe-canonical-slug">
+              الرابط الأساسي (canonical) — اختياري
+            </Label>
+            <Input
+              id="pe-canonical-slug"
+              dir="ltr"
+              value={product.canonicalSlug ?? ''}
+              onChange={(event) =>
+                setProduct((prev) => ({ ...prev, canonicalSlug: event.target.value }))
+              }
+              className="h-11"
+              maxLength={120}
+              placeholder="/product/women-dress-blue"
+            />
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              اتركه فارغًا ليتبع الرابط الأساسي مسار المنتج تلقائيًا. عند
+              إدخاله يجب أن يكون حروفًا/أرقامًا وشرطات فقط وغير مستخدم لمنتج
+              آخر.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

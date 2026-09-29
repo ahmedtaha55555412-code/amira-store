@@ -24,10 +24,15 @@ import { z } from 'zod';
 
 import { db } from '@/db/client';
 import { adminActivityLogs, adminSessions, adminUsers } from '@/db/schema';
-import { AdminAuthError, requireAdminMutation } from '@/lib/auth/guard';
+import { AdminAuthError, getClientIpHash, requireAdminMutation } from '@/lib/auth/guard';
 import { isJsonRequest, isSameOriginRequest, withNoStore } from '@/lib/auth/origin';
 import { hashPassword, passwordPolicyIssues, verifyPassword } from '@/lib/auth/password';
 import { ADMIN_SESSION_COOKIE } from '@/lib/auth/session';
+import {
+  clearPasswordChangeFailures,
+  getPasswordChangeThrottleState,
+  recordPasswordChangeFailure,
+} from '@/lib/auth/throttle';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -69,6 +74,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   const { currentPassword, newPassword, confirmNewPassword } = parsed.data;
 
+  // PHASE-12 throttle: brute-forcing the CURRENT password from a hijacked
+  // session is bounded like login — DB-backed, keyed by admin + IP hash.
+  const ipHash = await getClientIpHash();
+  const throttle = await getPasswordChangeThrottleState(session.admin.id, ipHash);
+  if (throttle.throttled) {
+    return withNoStore(
+      NextResponse.json(
+        {
+          error: `محاولات كثيرة فاشلة — أعد المحاولة بعد ${Math.ceil(throttle.retryAfterSeconds / 60)} دقيقة.`,
+        },
+        { status: 429, headers: { 'Retry-After': String(throttle.retryAfterSeconds) } },
+      ),
+    );
+  }
+
   if (newPassword !== confirmNewPassword) {
     return withNoStore(
       NextResponse.json(
@@ -96,6 +116,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const currentOk = await verifyPassword(currentPassword, user.passwordHash);
     if (!currentOk) {
+      await recordPasswordChangeFailure({
+        adminUserId: user.id,
+        ipHash,
+        reason: 'wrong_current_password',
+      });
       return withNoStore(
         NextResponse.json(
           { error: 'كلمة المرور الحالية غير صحيحة.' },
@@ -134,6 +159,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         metadata: { sessionsRevoked: 'all' },
       });
     });
+
+    // Transient throttle state is cleared on success (the success audit row
+    // above remains as the permanent marker).
+    await clearPasswordChangeFailures(user.id);
 
     const response = withNoStore(NextResponse.json({ ok: true, requireRelogin: true }));
     response.cookies.set(ADMIN_SESSION_COOKIE, '', {

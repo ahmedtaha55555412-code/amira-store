@@ -14,11 +14,14 @@ import {
   type InventoryView,
 } from '@/lib/admin/orders';
 
+import { StockAdjustButton } from './stock-adjuster';
+
 /**
- * Inventory ledger + stock views (PHASE-08 tasks 14–15).
- * Read-only by design: the ledger is the audit record of movements that the
- * order domain (checkout + admin edits + cancellations) writes — there is no
- * manual stock mutation in scope.
+ * Inventory ledger + stock views (PHASE-08 tasks 14–15) + manual adjustment
+ * (PHASE-12): the ledger is the audit record of every movement (sales, order
+ * edits, cancellations, and — since PHASE-12 — admin manual adjustments with
+ * a mandatory reason, written through the transactional
+ * /api/admin/inventory/adjust route).
  */
 
 export const metadata: Metadata = {
@@ -65,8 +68,9 @@ export default async function AdminInventoryPage({
       <section>
         <h1 className="text-2xl font-bold text-foreground">المخزون وسجل الحركات</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          سجل الحركات هو المصدر التدقيقي لكل تغيّر في الكميات (بيع، تعديل طلبات،
-          إرجاع إلغاء). اضغط على أي متغير لعرض حركاته بالتفصيل.
+          سجل الحركات هو المصدر التدقيقي لكل تغيّر في الكميات (بيع، تعديل
+          طلبات، إرجاع إلغاء، تعديل يدوي بسبب مُصرّح به). اضغط على أي متغير
+          لعرض حركاته بالتفصيل، أو استخدم «تعديل» لتعديل الكمية بسبب إلزامي.
         </p>
       </section>
 
@@ -191,10 +195,10 @@ export default async function AdminInventoryPage({
               const isOut = variant.stockQuantity === 0;
               const isLow = !isOut && variant.stockQuantity <= variant.lowStockThreshold;
               return (
-                <li key={variant.variantId} className="p-3 transition-colors hover:bg-muted/40">
+                <li key={variant.variantId} className="flex flex-wrap items-center gap-2 p-3 transition-colors hover:bg-muted/40">
                   <Link
                     href={`/admin/inventory?variant=${variant.variantId}${view !== 'all' ? `&view=${view}` : ''}${search ? `&q=${encodeURIComponent(search)}` : ''}`}
-                    className="flex flex-wrap items-center gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    className="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     <span
                       className={`inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-xs font-bold ${
@@ -228,6 +232,12 @@ export default async function AdminInventoryPage({
                       </Badge>
                     )}
                   </Link>
+                  <StockAdjustButton
+                    variantId={variant.variantId}
+                    sku={variant.sku}
+                    productName={variant.productName}
+                    stockQuantity={variant.stockQuantity}
+                  />
                 </li>
               );
             })}

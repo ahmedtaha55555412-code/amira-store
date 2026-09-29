@@ -15,6 +15,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { errorResponse, guardMutation } from '@/lib/api/admin';
+import { recordAdminActivity } from '@/lib/auth/activity';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import {
   isMediaUploadConfigured,
@@ -51,6 +52,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       declaredContentType: file.type || null,
       altText,
       adminUserId: session.admin.id,
+    });
+
+    // PHASE-12: media operations are audited like every other admin mutation.
+    await recordAdminActivity({
+      adminUserId: session.admin.id,
+      action: 'media.uploaded',
+      entityType: 'media_asset',
+      entityId: asset.id,
+      metadata: {
+        pathname: asset.pathname,
+        accessMode: asset.accessMode,
+        mimeType: asset.mimeType,
+        sizeBytes: asset.sizeBytes,
+      },
     });
 
     return NextResponse.json({

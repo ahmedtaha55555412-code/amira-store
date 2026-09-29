@@ -23,6 +23,7 @@ import { OrderServiceError } from '@/lib/admin/orders';
 import { ReviewModerationError } from '@/lib/admin/reviews';
 import { TestimonialServiceError } from '@/lib/admin/testimonials';
 import { HomepageServiceError } from '@/lib/admin/homepage';
+import { InventoryServiceError } from '@/lib/admin/inventory';
 import { SettingsServiceError } from '@/lib/admin/settings';
 import { ReviewServiceError } from '@/lib/storefront/reviews';
 
@@ -67,6 +68,7 @@ export function errorResponse(error: unknown): NextResponse {
     ReviewServiceError,
     SettingsServiceError,
     HomepageServiceError,
+    InventoryServiceError,
     // Honest unconfigured-storage path (MASTER_PLAN §20): status 503 with the
     // exact remediation message — never a generic 500.
     MediaStorageUnavailableError,

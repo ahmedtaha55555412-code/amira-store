@@ -55,6 +55,7 @@ export default async function AdminProductEditorPage({
           description: aggregate.product.description,
           metaTitle: aggregate.product.metaTitle,
           metaDescription: aggregate.product.metaDescription,
+          canonicalSlug: aggregate.product.canonicalSlug,
         },
         variants: aggregate.variants.map((variant) => ({
           clientKey: variant.id,

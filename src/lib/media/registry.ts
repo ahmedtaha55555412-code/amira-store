@@ -11,7 +11,7 @@
  *   no operation can orphan or silently re-point rows (PHASE-04 task 11).
  */
 
-import { count, eq, or } from 'drizzle-orm';
+import { count, desc, eq, or } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import {
@@ -105,4 +105,49 @@ export async function deleteMediaAsset(mediaAssetId: string): Promise<MediaRefer
 /** List assets newest-first for the admin media library. */
 export async function listMediaAssets(limit = 120): Promise<MediaAsset[]> {
   return db.select().from(mediaAssets).limit(limit);
+}
+
+/* -------------------------------------------------------------------------- */
+/* PHASE-12: media library completion helpers                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Ids referenced by ANY domain table (hard + weak references alike).
+ * One batched distinct-scan per reference table; the diff against the
+ * registry ids yields the unreferenced set for the admin UI.
+ */
+export async function findUnreferencedMediaIds(limit = 200): Promise<string[]> {
+  const assetRows = await db
+    .select({ id: mediaAssets.id })
+    .from(mediaAssets)
+    .orderBy(desc(mediaAssets.createdAt))
+    .limit(Math.min(limit, 500));
+  if (assetRows.length === 0) return [];
+
+  const referenced = new Set<string>();
+
+  const hardSources = [
+    { table: productImages, column: productImages.mediaAssetId },
+    { table: reviewImages, column: reviewImages.mediaAssetId },
+    { table: whatsappTestimonials, column: whatsappTestimonials.mediaAssetId },
+    { table: homepageBanners, column: homepageBanners.mediaAssetId },
+  ] as const;
+  for (const source of hardSources) {
+    const rows = await db.select({ id: source.column }).from(source.table);
+    for (const row of rows) referenced.add(row.id);
+  }
+
+  const [categoryRows, settingsRows] = await Promise.all([
+    db.select({ id: categories.imageMediaId }).from(categories),
+    db
+      .select({ logo: storeSettings.logoMediaId, favicon: storeSettings.faviconMediaId })
+      .from(storeSettings),
+  ]);
+  for (const row of categoryRows) if (row.id) referenced.add(row.id);
+  for (const row of settingsRows) {
+    if (row.logo) referenced.add(row.logo);
+    if (row.favicon) referenced.add(row.favicon);
+  }
+
+  return assetRows.map((row) => row.id).filter((id) => !referenced.has(id));
 }

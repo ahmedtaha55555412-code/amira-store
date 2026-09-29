@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+import { AdminListPager, parsePageParam } from '@/components/admin/list-pager';
 import { requireAdminPage } from '@/lib/auth/guard';
 import { formatAdminDateTime } from '@/lib/admin/format';
 import {
@@ -38,15 +39,16 @@ const FILTERS: { value: AdminReviewStatus | 'all'; label: string }[] = [
 ];
 
 /**
- * Reviews moderation admin (PHASE-09): the moderation queue for site reviews.
- * Approving publishes the review (and materializes its image public);
- * rejecting hides it from all public surfaces. Approved verified reviews
- * carry «مشتري موثّق» on the storefront.
+ * Reviews moderation admin (PHASE-09 + PHASE-12 pagination): the moderation
+ * queue for site reviews. Approving publishes the review (and materializes
+ * its image public); rejecting hides it from all public surfaces. Approved
+ * verified reviews carry «مشتري موثّق» on the storefront. Product names link
+ * to the product's own editor.
  */
 export default async function AdminReviewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   await requireAdminPage();
   const params = await searchParams;
@@ -55,11 +57,15 @@ export default async function AdminReviewsPage({
   const status = (FILTERS.find((f) => f.value === raw)?.value ?? 'pending') as
     | AdminReviewStatus
     | 'all';
+  const page = parsePageParam(params.page);
+  const PAGE_SIZE = 50;
 
   const { items, total, pendingCount } = await listAdminReviews({
     status,
-    limit: 100,
+    limit: PAGE_SIZE,
+    page,
   });
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="space-y-6">
@@ -105,6 +111,15 @@ export default async function AdminReviewsPage({
           ))}
         </ul>
       )}
+
+      <AdminListPager
+        basePath="/admin/reviews"
+        page={page}
+        pageCount={pageCount}
+        total={total}
+        params={{ status: raw }}
+        label="مراجعة"
+      />
     </div>
   );
 }
@@ -162,7 +177,7 @@ function ReviewCard({
           <p className="mt-2 text-xs text-muted-foreground">
             المنتج:{' '}
             <Link
-              href={`/admin/products`}
+              href={`/admin/products/${review.productId}`}
               className="font-semibold text-foreground hover:underline"
             >
               {review.productName}

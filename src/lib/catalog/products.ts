@@ -97,6 +97,8 @@ export type ProductAggregateInput = {
   description?: string | null;
   metaTitle?: string | null;
   metaDescription?: string | null;
+  /** SEO canonical override (PHASE-12): null = canonical URL follows /product/{slug}. */
+  canonicalSlug?: string | null;
   /** Attribute ids the product uses (ordered; may be empty = default variant only). */
   attributeIds: string[];
   variants: VariantInput[];
@@ -622,6 +624,30 @@ export async function saveProductAggregate(
       slug = base;
     }
 
+    /* canonical slug (PHASE-12): the SEO canonical override is editable
+       end-to-end. Empty → null (canonical URL follows the product slug);
+       otherwise it must be a valid slug and unused by any OTHER product
+       (the storefront PDP renders <link rel=canonical> from this column —
+       PHASE-11 SEO contract). */
+    const canonicalInput = input.canonicalSlug?.trim() ? slugify(input.canonicalSlug) : null;
+    if (canonicalInput !== null) {
+      if (!isSlugValid(canonicalInput)) {
+        throw new ProductServiceError(
+          'الرابط الأساسي (canonical) يجب أن يحتوي حروفًا أو أرقامًا وشرطات فقط.',
+        );
+      }
+      if (canonicalInput !== (existing.canonicalSlug ?? null)) {
+        const [canonicalConflict] = await tx
+          .select({ id: products.id })
+          .from(products)
+          .where(and(eq(products.canonicalSlug, canonicalInput), ne(products.id, productId)))
+          .limit(1);
+        if (canonicalConflict) {
+          throw new ProductServiceError('الرابط الأساسي (canonical) مستخدم بالفعل لمنتج آخر.');
+        }
+      }
+    }
+
     const [product] = await tx
       .update(products)
       .set({
@@ -632,6 +658,7 @@ export async function saveProductAggregate(
         description: input.description?.trim() || null,
         metaTitle: input.metaTitle?.trim() || null,
         metaDescription: input.metaDescription?.trim() || null,
+        canonicalSlug: canonicalInput,
         updatedAt: new Date(),
       })
       .where(eq(products.id, productId))

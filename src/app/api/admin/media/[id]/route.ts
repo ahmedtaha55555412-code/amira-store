@@ -11,7 +11,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
 import { errorResponse, guardJsonMutation, guardMutation, jsonOk, readJson } from '@/lib/api/admin';
+import { recordAdminActivity } from '@/lib/auth/activity';
 import { requireAdminMutation } from '@/lib/auth/guard';
+import { db } from '@/db/client';
+import { mediaAssets } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { deleteMediaAsset, getMediaReferenceReport } from '@/lib/media/registry';
 import { updateMediaAltText } from '@/lib/media/service';
 
@@ -34,7 +38,7 @@ export async function PUT(
   if (guard) return guard;
 
   try {
-    await requireAdminMutation();
+    const session = await requireAdminMutation();
     const { id } = await context.params;
     if (!isUuid(id)) {
       return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
@@ -44,6 +48,14 @@ export async function PUT(
     if (!updated) {
       return NextResponse.json({ error: 'الوسيط غير موجود.' }, { status: 404 });
     }
+    // PHASE-12: media operations are audited like every other admin mutation.
+    await recordAdminActivity({
+      adminUserId: session.admin.id,
+      action: 'media.alt_updated',
+      entityType: 'media_asset',
+      entityId: id,
+      metadata: { hasAltText: Boolean(updated.altText) },
+    });
     return jsonOk();
   } catch (error) {
     return errorResponse(error);
@@ -58,11 +70,18 @@ export async function DELETE(
   if (guard) return guard;
 
   try {
-    await requireAdminMutation();
+    const session = await requireAdminMutation();
     const { id } = await context.params;
     if (!isUuid(id)) {
       return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
+    // Capture the deleted row's identity BEFORE the delete (the registry row
+    // is gone afterwards) for honest audit metadata.
+    const [deletedAsset] = await db
+      .select({ pathname: mediaAssets.pathname, accessMode: mediaAssets.accessMode })
+      .from(mediaAssets)
+      .where(eq(mediaAssets.id, id))
+      .limit(1);
     const report = await deleteMediaAsset(id);
     if (!report.deletable) {
       return NextResponse.json(
@@ -72,6 +91,18 @@ export async function DELETE(
         { status: 409 },
       );
     }
+    // PHASE-12: media operations are audited like every other admin mutation.
+    await recordAdminActivity({
+      adminUserId: session.admin.id,
+      action: 'media.deleted',
+      entityType: 'media_asset',
+      entityId: id,
+      metadata: {
+        pathname: deletedAsset?.pathname ?? null,
+        accessMode: deletedAsset?.accessMode ?? null,
+        weakReferences: report.weakReferences,
+      },
+    });
     return jsonOk();
   } catch (error) {
     return errorResponse(error);

@@ -44,6 +44,7 @@ export type AdminReviewListItem = {
   status: AdminReviewStatus;
   isVerifiedPurchase: boolean;
   createdAt: Date;
+  productId: string;
   productName: string;
   productSlug: string;
   orderNumber: string | null;
@@ -53,8 +54,12 @@ export type AdminReviewListItem = {
 export async function listAdminReviews(input: {
   status: AdminReviewStatus | 'all';
   limit?: number;
+  /** 1-based page (PHASE-12 list pagination); clamped ≥ 1. */
+  page?: number;
 }): Promise<{ items: AdminReviewListItem[]; total: number; pendingCount: number }> {
   const limit = Math.min(Math.max(input.limit ?? 60, 1), 200);
+  const page = Math.max(input.page ?? 1, 1);
+  const offset = (page - 1) * limit;
 
   const where =
     input.status === 'all' ? undefined : eq(reviews.status, input.status);
@@ -67,6 +72,7 @@ export async function listAdminReviews(input: {
       status: reviews.status,
       isVerifiedPurchase: reviews.isVerifiedPurchase,
       createdAt: reviews.createdAt,
+      productId: products.id,
       productName: products.name,
       productSlug: products.slug,
       orderNumber: sql<string | null>`(
@@ -87,7 +93,8 @@ export async function listAdminReviews(input: {
     .innerJoin(products, eq(products.id, reviews.productId))
     .where(where)
     .orderBy(desc(reviews.createdAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 
   const [counts] = await db
     .select({
@@ -104,6 +111,7 @@ export async function listAdminReviews(input: {
       status: row.status,
       isVerifiedPurchase: row.isVerifiedPurchase,
       createdAt: row.createdAt,
+      productId: row.productId,
       productName: row.productName,
       productSlug: row.productSlug,
       orderNumber: row.orderNumber,

@@ -866,3 +866,28 @@
 - Verification: login restored (401 generic rejection on bad credentials, 200 + cookie on the real credential); every subsequent DB-touching QA step passed against the development branch.
 - Related files: none (environment protocol; documented in DATABASE.md §10 and the worklog)
 - Notes: database safety was NEVER violated — the scaffold URL points at a non-Neon local database; no Production or Vercel-Development credential was involved at any point.
+
+### ISSUE-2026-09-29-063
+- Phase: PHASE_12 (baseline reconciliation round, 2026-09-29)
+- Severity: HIGH (environment capacity; blocks two legacy suites, zero code impact)
+- Status: RESOLVED FOR THIS PHASE (residual re-verification obligation documented)
+- Symptom: the sandbox was recycled between sessions; the git-ignored `.env.local` (Neon development pooled URL + Blob tokens) and `.auth/` (Vercel token) vanished again. With no credentials present, `verify:homepage` (57) and `verify:reviews` (84) honestly REFUSE (media storage unconfigured → 503 path; private-store token gate), and `AUTH_SESSION_SECRET` was missing so the first admin login 500'd (IP-hash HMAC key — caught and fixed during QA, see below).
+- Root cause: standing sandbox-recycle pattern (4th documented round after ISSUE-2026-09-27-037, ISSUE-061-era rounds). The preflight also caught the SAME file-loss signature on `src/app/api/admin/media/upload/route.ts` (unstaged deletion, intercepted PRE-COMMIT and restored losslessly from HEAD — never entered staging or any commit).
+- Minimal fix (environment-only, per DATABASE.md's sanctioned "any disposable PostgreSQL" local-development policy):
+  1. Embedded PostgreSQL 17.4 provisioned at `127.0.0.1:54329` (disposable, non-Neon, production never touched); committed migrations applied via `drizzle-kit migrate` (3/3), `db:bootstrap` + `db:seed` + `db:bootstrap:admin` run; `db:verify` 29/29 on the fresh instance.
+  2. `DATABASE_URL`, `APP_URL`, and a fresh dev-only `AUTH_SESSION_SECRET` exported for the dev server (the scaffold SQLite `DATABASE_URL` from the sandbox template was overwritten — it is not a Postgres URL).
+  3. Login 500 diagnosed to `requireSessionSecret()` via `getClientIpHash()` → `hashIp()`; fixed by provisioning the dev-only secret (no code change — the honest hard-fail is correct for an unconfigured deployment).
+- Impact on the phase gate: the full Blob-free regression runs GREEN on the disposable instance — 615 baseline checks (db:verify 29 + auth 44 + catalog 43 + storefront 101 + cart 59 + checkout 134 + orders 100 + seo 105) + the new verify:admin 66 = **681/681**. The 141 real-Blob checks (homepage 57 + reviews 84) REFUSED by design; the media code path they cover is UNCHANGED by PHASE-12 except additive audit rows + read-only registry helpers, all covered by the new suite. **Standing obligation: re-run verify:homepage + verify:reviews on the Neon development branch with restored Blob credentials (owner re-provision per DATABASE.md §9.3) before or at the PHASE-13 gate.**
+- Related files: none (environment); `/tmp` disposable provisioning only
+- Notes: no production credential existed in the sandbox at any point; the Vercel token loss means vercel-CLI control-plane verification (deployment listing/env) was unavailable this phase — production verification ran via read-only HTTP smoke against the deployed origin instead.
+
+### ISSUE-2026-09-29-064
+- Phase: PHASE_12 (preflight audit finding, 2026-09-29)
+- Severity: HIGH (security hardening: one admin mutation route lacked the same-origin CSRF gate)
+- Status: FIXED
+- Symptom: `DELETE /api/admin/homepage/banners/[id]` (PHASE-10) performed session authorization but skipped the same-origin gate every other admin mutation route applies (`guardMutation`/`guardJsonMutation`), so a cross-origin request WITH a stolen/valid session cookie could delete a banner where the identical request against any other route would be refused with 403.
+- Root cause: route-level inconsistency introduced in PHASE-10 — the DELETE handler was written without the shared guard (every sibling PATCH/POST route had it).
+- Minimal fix: `guardMutation(request)` added as the first check of the DELETE handler (identical pattern to the media DELETE route); file-level docstring updated.
+- Verification: live-HTTP probe (verify:admin section 10h) — cross-origin DELETE with a valid session → **403** and the row verified UNCHANGED in the database; same-origin authorized flows unchanged. Full suite 66/66.
+- Related files: `src/app/api/admin/homepage/banners/[id]/route.ts`, `scripts/verify-admin.ts`
+- Notes: defense-in-depth (SameSite=Lax cookie remained); recorded because uniform CSRF posture across ALL admin mutations is a standing security contract (MASTER_PLAN §24).
