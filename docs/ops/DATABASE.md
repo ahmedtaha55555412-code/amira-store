@@ -551,3 +551,35 @@ Repository / canonical migration state:
   pulled `/tmp` env file and process environments (chmod 600); it was never printed,
   logged, or committed; only sha256 prefixes and endpoint ids were recorded. All
   `/tmp` credential artifacts + device codes shredded after verification.
+
+## 14. PHASE-10 production follow-up — homepage_sections absent-only bootstrap (2026-09-29, §13 standing procedure)
+
+The PHASE-10 commit `e0d2cae` extended `db:bootstrap` with the D-1 absent-only
+initialization of the 10 canonical `homepage_sections` rows (announcement, hero,
+categories, new_arrivals, offers, benefits, brand_story, reviews, testimonials,
+whatsapp_cta — enabled, sort_order 0..9, config NULL, titles per the canonical set).
+The production database had been brought up by §13 (2026-09-28) with the then-current
+script, so `homepage_sections` was still 0 rows after the e0d2cae deploy — the
+production homepage correctly rendered only the layout chrome (the resolver's honest
+fallbacks) until the bootstrap follow-up ran.
+
+Executed per the §13 standing, owner-authorized release procedure ("the
+production-safe `db:bootstrap` where the runbook requires it"), with the full §9
+hash-only identity gates:
+
+1. Production env pulled via the documented `vercel env pull` protocol;
+   `sha256(DATABASE_URL.production) = a77fc2afd8ac2bd7…` @ `ep-cool-art-b1snfj5i-pooler`
+   — EXACT invariant match (fail-fast gate) — values never displayed.
+2. Read-only pre-check: 23 tables / settings 1 / categories 5 / **homepage_sections 0** /
+   products 0 / orders 0 / migrations 3.
+3. `bun run db:bootstrap` with the production POOLED URL →
+   `store_settings ✔ (untouched)` / `five main categories ✔ (absent-only)` /
+   **`homepage sections ✔ (10 rows present; absent-only)`** / products & orders untouched.
+4. Post-verification: sections = exactly the 10 canonical keys in canonical order;
+   settings row byte-unchanged; products still 0 (no demo data anywhere); production
+   homepage smoke re-run — all 12 homepage blocks render (honest empty states for the
+   catalog/social sections, which is the true production business state), footer policy
+   links live, zero 5xx across the full route matrix.
+
+No migration was involved (schema count stays 3); no secret value was printed, logged,
+or committed; the temporary env files were shredded after the run.
