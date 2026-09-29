@@ -1126,3 +1126,20 @@ Work Log:
 
 Stage Summary:
 - PHASE-11 verified COMPLETE on the final tree: 756/756 + 7/7 route probe + real-Blob re-proof + build/lint/typecheck green. PHASE_12 LOCKED awaiting owner unlock.
+
+---
+Task ID: PHASE-11-FINAL-GATE-DEPLOY
+Agent: Z.ai Code (main)
+Task: Commit/push/CI/deploy the PHASE-11 completion + production smoke + smallest-scope production fix (owner directive: "PHASE-11 FINAL GATE — OWNER AUTHORIZATION")
+
+Work Log:
+- Commit 823585b (single meaningful PHASE-11 completion commit created from the auto-snapshot via soft reset to a681be0 — all PHASE-11 work preserved, UUID auto-commit eliminated) pushed: a681be0..823585b main -> main. Tree clean.
+- CI check-run "verify" = completed/success on 823585b (GitHub API).
+- Production deployment dpl_DviELohFjdZyoLjcFpYPtHanxSdi = READY built from 823585b — three-way chain EXACT (origin/main == CI-green == Production == 823585b).
+- Production smoke round 1 (read-only; no seed, no test business data, no destructive operations): 17/17 route/protection probes green — homepage/search/cart/checkout/review/about 200; /admin 307 → /admin/login 200 (noindex present); RESTORED upload route live on production (GET 405, unauth POST 401, cross-origin 403); /api/media matrix 400/404/405; missing product/category honest 404; zero unexpected 5xx; sitemap.xml 11 URLs (5 categories + 0 products + 6 static — production truth, zero forbidden patterns, zero fake entries); private-store host leakage: none.
+- TWO metadata defects caught by the smoke: canonical/og:url + robots Sitemap reference carried http://localhost:3000 in production. Root cause: documented origin contract is APP_URL; production target was MISSING the variable (dev pull has it; verified via env API). Homepage JSON-LD "none" verified CORRECT-BY-DESIGN (Product JSON-LD is PDP-only; production catalog is honestly 0 products).
+- SMALLEST-SCOPE FIX (environment-only, zero code change): created APP_URL=https://amira-store-opal.vercel.app on the production target via the Vercel API (control-plane config of the existing project; no other variable touched; no second project/store). Recorded as ISSUE-2026-09-29-062. Redeploy required (robots.txt is build-time) — triggered by this documentation commit; re-smoke follows in the final audit record.
+- Documentation: ISSUE_LOG +ISSUE-062; TRACEABILITY +final-gate row +metadata-origin row; EXECUTION_STATUS +deployment identity line in the PHASE-11 completion block; worklog (this record).
+
+Stage Summary:
+- PHASE-11 completion commit deployed and smoke-proven; one production-config defect (missing APP_URL) found by the smoke and fixed at the environment layer per the documented contract; final chain record follows after the redeploy re-smoke.

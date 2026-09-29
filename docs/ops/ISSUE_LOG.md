@@ -12,8 +12,19 @@
 - Verification:
 - Related files:
 - Notes:
-
 ---
+
+### ISSUE-2026-09-29-062
+- Phase: PHASE_11 (final gate — production smoke round 1, 2026-09-29)
+- Severity: MEDIUM (SEO — absolute URLs in production metadata resolved to a localhost origin)
+- Status: FIXED
+- Symptom: production homepage/category canonical + og:url and the robots.txt Sitemap reference rendered `http://localhost:3000/…` on https://amira-store-opal.vercel.app (caught by the final-gate production smoke, NOT by local suites — the local APP_URL contract value IS localhost:3000, so verify:seo 105/105 was correct locally).
+- Reproduction: curl production / and /robots.txt; canonical/meta/og and Sitemap line all carried the localhost origin.
+- Root cause: the documented origin contract is `APP_URL` (metadata.ts + robots.ts fallback `|| "http://localhost:3000"`); the development environment defines APP_URL but the PRODUCTION environment was missing the variable entirely (verified via the Vercel env API) — the fallback therefore engaged in production.
+- Minimal fix: environment-only — created `APP_URL=https://amira-store-opal.vercel.app` on the production target via the Vercel API (control-plane config of the existing project; zero application-code changes; documented contract honored). robots.txt is build-time (redeploy required); canonical/og:url resolve at runtime.
+- Verification: production re-smoke after redeploy — canonical/og:url/Sitemap references carry the production origin (see the final-gate audit record); local verification unchanged (tree untouched by the fix).
+- Related files: none (environment configuration only; contract documented in src/lib/storefront/metadata.ts + src/app/robots.ts)
+- Notes: the env API listed 23 production variables after creation; no other variable was touched; no second project/store created.
 
 ### ISSUE-2026-09-29-061
 - Phase: PHASE_11 (final gate, 2026-09-29)
