@@ -9,7 +9,7 @@ Allowed project states:
 - `COMPLETE`
 
 ## Current state
-PROJECT_STATUS=IN_PROGRESS — owner-authorized FINAL CLOSURE 2026-09-30 ("PHASE-14 — FINAL CLOSURE AUTHORIZATION"): the final read-only consistency sweep PASSED 15/15 (origin/main == 6a28e2c1b5e63cea1de7b81ff02358e3c385d174 at sweep time; working tree clean; PHASE-14 documentation + Gate 0–6 evidence records verified consistent; ISSUE-068 RESOLVED — FINAL and ISSUE-070 RESOLVED with read-back; no open BLOCKER/HIGH issue belonging to PHASE-14; GitHub main protection + required `verify` check live-read-back-verified; Vercel Deployment Protection live-probed 302→SSO + noindex; production healthy 200; disposable rehearsal project and stray rr-v1/rr-v2 absent — Vercel account contains ONLY `amira-store`; secret sweep clean: 0 GitHub secret-scanning alerts, tracked-tree pattern scan clean, .auth/.vercel/.env* untracked+ignored); PHASE-15 is now the CURRENT phase and remains LOCKED awaiting the explicit owner unlock; PROJECT_STATUS=COMPLETE and CURRENT_PHASE=NONE remain deliberately UNSET per the standing directive
+PROJECT_STATUS=BLOCKED — owner-authorized PHASE-15 executed 2026-09-30 ("PHASE-15 AUTHORIZATION — FINAL ACCEPTANCE + LAUNCH HANDOFF") to its honest boundary: 916 fresh deterministic/CI checks green (873 Blob-free + verify:phase14 43), typecheck/lint/build green, 35/35 visual-QA matrix at 7 viewports, production 19/19 anonymous route matrix + business-configuration probes, GitHub/Vercel live read-backs, traceability fully reconciled — while recycle round 9 wiped the credential vault (BY DESIGN; ISSUE-068 class), so the remaining subset (fresh 141 real-Blob, live Vercel/Neon refresh, production transaction/admin smoke) is BLOCKED (A) awaiting the owner re-provision per DATABASE.md §9.3/§9.6 + production-admin establishment (admin_users = 0 — DoD #6) + production test-catalog decision; PROJECT_STATUS=COMPLETE and CURRENT_PHASE=NONE deliberately NOT set per the directive's Otherwise branch
 CURRENT_PHASE=PHASE_15
 LAST_COMPLETED_PHASE=PHASE_14
 CURRENT_BRANCH=main
@@ -20,8 +20,8 @@ PHASE_10_STATUS=COMPLETE — owner-unlocked 2026-09-29 ("PHASE-10 IMPLEMENTATION
 PHASE_11_STATUS=COMPLETE — owner-unlocked 2026-09-29 ("PHASE-11 OWNER UNLOCK"); owner-authorized FINAL GATE 2026-09-29 ("PHASE-11 FINAL GATE — OWNER AUTHORIZATION"); SEO + Performance + Accessibility DELIVERED and verified (completion record below)
 PHASE_12_STATUS=COMPLETE — owner-unlocked 2026-09-29 ("PHASE-12 OWNER UNLOCK — GOVERNANCE ONLY"); owner directive "PHASE-12 IMPLEMENTATION — FULL ADMIN DASHBOARD + SETTINGS" (2026-09-29); Admin Dashboard Completion + Settings DELIVERED and verified (completion record below)
 PHASE_13_STATUS=COMPLETE — owner-authorized FINAL CLOSURE 2026-09-30 ("PHASE-13 FINAL CLOSURE — OWNER AUTHORIZATION"); owner-unlocked 2026-09-29 ("PHASE-13 OWNER UNLOCK — GOVERNANCE ONLY"); implementation DELIVERED 2026-09-30: /track-order implemented (§14 contract: no-oracle two-step lookup + hashed-IP rate limit 12/5 min + §12-derived timeline + noindex), 5 new suites (verify:tracking 49 + verify:phase13 51 + verify:security 39 + verify:concurrency 22 + verify:e2e 31 = 192 new checks), 3 defects found+fixed (ISSUE-2026-09-30-065 stored-XSS JSON-LD breakout HIGH, -066 English zod messages LOW, -067 admin-GET 500→401 MEDIUM), full Blob-free regression 681/681 + 192 new = 873 GREEN, typecheck/lint/build ✅, browser QA 360–1920 zero-overflow + keyboard/dialog/empty/404 + clean console. FINAL GATE 2026-09-30: the previously-blocked 141 real-Blob checks (ISSUE-063) re-run GREEN after the owner-authorized credential re-provision per DATABASE.md §9.3/§9.6 — verify:homepage 57/57 + verify:reviews 84/84 = 141/141 against the REAL public store (OIDC pair) + REAL private store + the Neon development branch (hash-only fingerprint gates PASS: development f5aa1006670416a5… @ ep-dark-boat-b1fejsk4-pooler isolated; production invariant a77fc2afd8ac2bd7… unchanged); private-original protection + publication-state matrix reconfirmed live (direct private GET 403; controlled-delivery DRAFT/PENDING/HIDDEN 404 vs PUBLISHED/APPROVED 200; byte-identical authorized reads); storage leftovers = 0 on both stores (completion record below)
-PHASE_14_STATUS=COMPLETE — owner-authorized FINAL CLOSURE 2026-09-30 ("PHASE-14 — FINAL CLOSURE AUTHORIZATION") after the final read-only consistency sweep 15/15; owner-unlocked 2026-09-30 ("PHASE-14 OWNER UNLOCK — GOVERNANCE / STATE TRANSITION ONLY"), implementation EXECUTED 2026-09-30 per the owner directive (GitHub + Neon + Vercel + CI/CD + Production Hardening): CI workflow hardened + trigger-matrix proven (ISSUE-2026-09-30-069), branch-protection attempt recorded as plan-limited then RESOLVED post-publication (ISSUE-2026-09-30-070, read-back proven), migration rehearsal PASSED on the sanctioned disposable PostgreSQL (29/29 invariants), full deterministic regression 873/873 FRESH GREEN, typecheck/lint/build PASS, Preview deployment path proven platform-level (SSO-protected), production read-only smoke PASS (zero 5xx), secret/supply-chain audit CLEAN, verify:phase14 43/43, runbook/BASELINE/TRACEABILITY/ISSUE_LOG updated; branch protection became ACTIVE post-publication (ISSUE-070 RESOLVED, read-back proven); LIVE-infrastructure subset CLOSED 2026-09-30 after the owner-delivered credential (Gate 6 record below: identity/topology/fingerprints/141 real-Blob fresh/authenticated preview smoke/runtime logs/disposable rollback rehearsal — zero application changes, zero production mutations); security incidents PRESERVED as historical evidence (automation-bypass secret one-time session-log exposure + same-session revocation, behavioral re-verification; stray rr-v1/rr-v2 rehearsal projects deleted within minutes; sandbox recycle rounds documented) — PHASE_15_STATUS=LOCKED (below); PROJECT_STATUS=COMPLETE deliberately NOT set
-PHASE_15_STATUS=LOCKED — phase not started; no PHASE-15 implementation authorized or executed; awaiting explicit owner unlock
+PHASE_14_STATUS=COMPLETE — owner-authorized FINAL CLOSURE 2026-09-30 ("PHASE-14 — FINAL CLOSURE AUTHORIZATION") after the final read-only consistency sweep 15/15; owner-unlocked 2026-09-30 ("PHASE-14 OWNER UNLOCK — GOVERNANCE / STATE TRANSITION ONLY"), implementation EXECUTED 2026-09-30 per the owner directive (GitHub + Neon + Vercel + CI/CD + Production Hardening): CI workflow hardened + trigger-matrix proven (ISSUE-2026-09-30-069), branch-protection attempt recorded as plan-limited then RESOLVED post-publication (ISSUE-2026-09-30-070, read-back proven), migration rehearsal PASSED on the sanctioned disposable PostgreSQL (29/29 invariants), full deterministic regression 873/873 FRESH GREEN, typecheck/lint/build PASS, Preview deployment path proven platform-level (SSO-protected), production read-only smoke PASS (zero 5xx), secret/supply-chain audit CLEAN, verify:phase14 43/43, runbook/BASELINE/TRACEABILITY/ISSUE_LOG updated; branch protection became ACTIVE post-publication (ISSUE-070 RESOLVED, read-back proven); LIVE-infrastructure subset CLOSED 2026-09-30 after the owner-delivered credential (Gate 6 record below: identity/topology/fingerprints/141 real-Blob fresh/authenticated preview smoke/runtime logs/disposable rollback rehearsal — zero application changes, zero production mutations); security incidents PRESERVED as historical evidence (automation-bypass secret one-time session-log exposure + same-session revocation, behavioral re-verification; stray rr-v1/rr-v2 rehearsal projects deleted within minutes; sandbox recycle rounds documented) — PHASE_15_STATUS=BLOCKED (below; executed 2026-09-30, owner-credential-gated subset outstanding); PROJECT_STATUS=COMPLETE deliberately NOT set
+PHASE_15_STATUS=BLOCKED — owner-unlocked and executed 2026-09-30 ("PHASE-15 AUTHORIZATION — FINAL ACCEPTANCE + LAUNCH HANDOFF"); NOT a restart of any prior phase and NOT open-ended development: the phase is a final acceptance/handoff proof. Executed per GATE 15.0–15.15 (record at the end of this file): every mandatory FINAL_ACCEPTANCE item received an actual result (PASS/NEW, PASS/PREV, or BLOCKED(A) — zero conversions, zero hidden failures); the ONLY unmet class is the owner-credential-gated subset above; no application/schema/config defect was found (ISSUE-072 LOW dev-only cosmetic documented); PHASE_15 stays CURRENT awaiting the owner-side unblock, after which the blocked subset runs and — if green — PROJECT_STATUS=COMPLETE / CURRENT_PHASE=NONE / LAST_COMPLETED_PHASE=PHASE_15 are set per the directive
 GOVERNANCE_NOTE (phase-numbering authority, 2026-09-29): the CANONICAL phase source of record is MASTER_PLAN.md (§29 execution architecture) together with its bounded phase definitions docs/phases/PHASE-00…PHASE-15 — canonical mapping: PHASE-07=Checkout, PHASE-08=Inventory+Order Management, PHASE-09=Reviews+WhatsApp Testimonials, PHASE-10=Homepage+Content Pages+Settings-Driven Branding, PHASE-11=SEO+Performance+Accessibility (UNLOCKED by owner 2026-09-29; COMPLETE 2026-09-29 — see PHASE_11_STATUS), PHASE-12=Admin Dashboard Completion + Settings (UNLOCKED by owner 2026-09-29; COMPLETE 2026-09-29 — see PHASE_12_STATUS), PHASE-13=Full QA + Security + Failure Testing (UNLOCKED by owner 2026-09-29; COMPLETE 2026-09-30 — see PHASE_13_STATUS). A legacy external execution-plan document (AMIRA_STORE_GITLAB_AI_MASTER_EXECUTION_PLAN.md — GitLab-era numbering: PHASE-09=Checkout, PHASE-10=Order Tracking, PHASE-11=Reviews) is NOT part of this repository (verified absent from the working tree, the complete git history of every branch, and every remote ref as of a2bacc7) and is ruled HISTORICAL/NON-BINDING: if encountered outside this repository, its numbering must NOT be used for this project. Repo-wide sweep 2026-09-29: no tracked document references the legacy numbering (evidence + verification: ISSUE-2026-09-29-056).
 ENVIRONMENT_NOTE: `.env.local` was RE-PROVISIONED 2026-09-28 during the hardening round (Neon development pooled URL derived from the integration role credentials against the REAL dev endpoint `ep-dark-boat-b1fejsk4-pooler`; `BLOB_READ_WRITE_TOKEN` (development-scoped, sandbox-only) + `BLOB_STORE_ID` included). The full battery has since run GREEN against the REAL Neon development branch (409/409). The standing re-provision follow-up is RESOLVED; live-branch work no longer depends on the owner. (2026-09-30 addendum: after the ISSUE-063 5th-round recycle the Blob surfaces are no longer persisted in `.env.local` — they are re-provisioned per DATABASE.md §9.3/§9.6 through the owner-authorized Vercel token vaulted in the git-ignored `.auth/` directory (development OIDC pair + private-store token; §9.6 hash-only fingerprints re-verified); the 141/141 real-Blob closure evidence ran on that basis.)
 HISTORICAL_NOTE (resolved): the sandbox was recycled to a PHASE-01-era disk snapshot mid-PHASE-06 (ISSUE-2026-09-27-037 — RESOLVED at the PHASE-06 closure gate). The PHASE-05 working state was recovered from the surviving /tmp PolarFS snapshot and reconciled LOSSLESSLY on top of canonical a7eaa03; local `main` == `origin/main` since the 2026-09-28 fast-forward pushes. All credentials (GitHub, Vercel) were re-issued via owner device flows; live development-branch verification completed 2026-09-28 before the most recent recycle excluded `.env.local` again (re-provision per DATABASE.md §9.3 resumes live-branch work).
@@ -455,3 +455,138 @@ For each phase, record:
 - Linked issues
 
 Do not mark a phase complete based only on “build succeeded.”
+
+---
+
+# PHASE-15 execution record — Final Acceptance + Launch Handoff (2026-09-30)
+
+Owner directive: "PHASE-15 AUTHORIZATION — FINAL ACCEPTANCE + LAUNCH HANDOFF". Absolute rules
+honored: no prior phase restarted, nothing reimplemented, build success ≠ acceptance, no
+failure hidden/renamed/downgraded. Results labeling: NEW EXECUTION vs PREVIOUSLY PROVEN —
+never converted.
+
+## GATE results
+
+- **15.0 BASELINE (PASS, read-only):** HEAD == origin/main == `14eaf27` (PHASE-14 closure
+  merge; CI green); state values verified (CURRENT_PHASE=PHASE_15; PHASE_14_STATUS=COMPLETE);
+  recycle round 9 detected at pre-flight (ISSUE-061 signature: tracked upload route missing →
+  restored byte-identically, blob `6cebc016…` == origin blob, tree clean, ZERO commits; the
+  recycle also wiped `.auth/vercel_token`, `.vercel/`, vercel CLI, /tmp — owner-gated
+  re-provision, no workaround invented); GitHub main protection ACTIVE (live read-back);
+  production identity/health verified (anonymous probes); no tracked secrets.
+- **15.1 FINAL_ACCEPTANCE (PASS with documented BLOCKED subset):** `docs/qa/FINAL_ACCEPTANCE.md`
+  executed top-to-bottom — every mandatory item now carries an actual result (PASS/NEW,
+  PASS/PREV, or BLOCKED(A) in the Blocked-Item Ledger). Traceability: all 9 stale rows
+  reconciled to DONE with current evidence (Egypt/EGP, tracking, logo, GitHub-ready,
+  Neon-ready, Vercel-ready, no-secrets, Blob auth currency, branch protection). Every phase
+  00–14 recorded complete; no BLOCKER/HIGH issue open (LOW: 055/010 documented OPEN,
+  072 new LOW documented OPEN). EXECUTION_STATUS lists every phase COMPLETE except
+  PHASE_15=BLOCKED (this record).
+- **15.2 PRODUCT/CUSTOMER UX (PASS, NEW):** 35/35 zero-horizontal-overflow matrix
+  (360/390/768×1024/1024×768/1440/1920/2560 × home/category/product/cart/Arabic-search);
+  dir=rtl lang=ar everywhere; Arabic-only copy; mobile menu opens with the full category
+  tree; product page generic attributes (حجم + درجة — size NOT forced to color); variant
+  selection gates CTA and enables quantity; cart drawer + cart page with exact variant
+  lines and qty floors; guest wishlist with explicit local-storage disclosure; touch-target
+  scan (only the focus-revealed skip-link <24px — compliant); honest empty-search and 404
+  states; 6 evidence screenshots archived. No redesign performed (no real acceptance defect).
+- **15.3 COMMERCE JOURNEY (PASS, NEW):** `verify:e2e` 31/31 golden journey (home →
+  category/search → product → variant → cart → checkout → order creation → success →
+  WhatsApp handoff; server-authoritative price/stock; immediate decrement; idempotent
+  duplicate prevention; COD only) + `verify:checkout` 134/134 + `verify:tracking` 49/49
+  (order number + phone; no-oracle; rate-limited) + `verify:orders` 100/100 (admin sees
+  order; shipping cost entry; delivery condition gates reviews) + review/testimonial
+  moderation proofs. Production transaction legs: BLOCKED(A) (Blocked-Item Ledger).
+- **15.4 ADMIN/OPERATIONS (PASS, NEW + PREV):** `verify:admin` 66/66 (products/variants/
+  pricing/stock/categories/orders/shipping/ledger/reviews/testimonials/homepage/logo/
+  settings/account) + `verify:auth` 44/44 (one admin, username+password, change-password
+  inside admin, no register/forgot/email) + route-map exclusions (no returns/brands/coupons/
+  tags/featured/bestseller/selected logic — build output + `verify:security`).
+- **15.5 SECURITY (PASS, NEW):** `verify:security` 39/39 (36 admin mutation routes 401
+  unauthenticated; forged tokens 401); login rate limiting LIVE-OBSERVED (429 + Retry-After
+  after 5 failures/15 min — genuine behavior witnessed during battery sequencing);
+  tracking rate-limited (hashed IP 12/5 min); checkout server validation + client
+  price/stock override proofs; upload validation battery; private testimonial originals
+  storage-level privacy (PREV 84/84 + direct private GET 403); audit rows cover high-impact
+  admin changes; GitHub secret scanning 0 open/0 resolved alerts; security headers on
+  production (HSTS preload, DENY, nosniff, strict referrer, locked permissions-policy).
+  No secret value revealed at any point.
+- **15.6 DATABASE (PASS, NEW + PREV):** `db:verify:local` ALL CHECKS PASS on fresh
+  disposable DBs (migrations from committed chain alone; bootstrap+seed idempotent; 29/29
+  invariant probes incl. money identities, ledger after=before+delta, no negative stock,
+  singleton settings, exactly-once cancellation restore); seed deterministic +
+  development-only; production does not auto-seed (§13/§14 absent-only + 0 business rows);
+  production migration state = PREVIOUSLY PROVEN 3/3 hash==file (§13.3; live re-probe
+  blocked A).
+- **15.7 SEO/A11Y/PERF (PASS, NEW + PREV):** production robots.txt (admin/api/cart/checkout/
+  order disallowed), 11-URL canonical sitemap on the production origin, canonical links,
+  og:locale ar_EG, Product + AggregateOffer + per-variant Offer JSON-LD verified against DB
+  truth (`verify:seo` 105/105 fresh); a11y: skip-link/focus/labels/keyboard + WCAG 2.2 AA
+  target per PHASE-11/13 (PREV) + fresh touch-target and RTL checks; CWV targets per
+  PHASE-11 (PREV; zero executable delta since).
+- **15.8 GITHUB/CI (PASS, NEW):** main protected (read-back: verify required, enforce_admins,
+  no force-push/deletion, PR gate 0 approvals); CI "verify" success on `14eaf27` and every
+  main push; workflow deterministic (pinned actions, pinned Bun, frozen lockfile);
+  `verify:phase14` 43/43 fresh; release/production commit identifiable; protection NOT
+  weakened.
+- **15.9 NEON (PASS, PREV + blocked-A refresh):** production branch identity + fingerprints
+  (§9.6, Gate 6C EXACT); migration alignment (§13.3 hash==file 3/3); development isolation
+  (fingerprint ≠ production; endpoint ≠ production); preview strategy (integration-native
+  copy-on-write); pooling/driver per §5. Live re-probe blocked (A) — no destructive action
+  taken or needed.
+- **15.10 VERCEL/PRODUCTION (PASS, NEW + PREV):** project identity exact
+  (`amira-store`/`prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA`, productionBranch main); production
+  alias `amira-store-opal.vercel.app` 200; deployment identity = the final release commit
+  `14eaf27` (READY; verified at the PHASE-14 closure and still serving — no push since);
+  deployment protection 302→SSO + noindex on raw deployment URLs; runtime logs 0 5xx
+  (PREV Gate 6F; live re-read blocked A; today's 19-route matrix produced zero 5xx);
+  production env vars/Blob config PREV (Gate 6B/6D).
+- **15.11 BUSINESS CONFIGURATION (PASS, NEW on public surfaces + PREV DB-level):**
+  production renders store name أميرة استور (61 occurrences), `<html lang="ar" dir="rtl">`,
+  WhatsApp wa.me/201019003677 (the owner-approved default), 5 canonical categories,
+  logo/favicon present, footer/policy pages live, honest empty catalog states (NO demo data
+  anywhere — products = 0 by design); settings row values PREV (§13/§14 records; DB-level
+  re-probe blocked A).
+- **15.12 BACKUP/RECOVERY/ROLLBACK/OPS (PASS, documentary):** DEPLOYMENT_RUNBOOK.md
+  (deployment order, last-known-good identification, instant application rollback,
+  forward-only migration compatibility, Neon restore path, live-rehearsal status
+  Gate 6G); DATABASE.md (migration policy, credential protocol, §13-§15 production
+  procedures); no destructive production recovery test performed (per directive).
+- **15.13 README/HANDOFF (PASS after this commit):** operator quick-reference section added
+  (setup, environment contract, migration, seed, bootstrap, tests, deployment, operations —
+  names only, no secrets).
+- **15.14 FINAL RELEASE IDENTITY (PASS):** production commit `14eaf27`
+  (`14eaf27b523e5987f40345c04b9da034f8cb105e`) — CI-green, READY deployment serving, docs
+  recorded here; no version tag created (repository policy has none; the documented
+  production commit satisfies MASTER_PLAN §31).
+- **15.15 FINAL LAUNCH SMOKE (PARTIAL — BLOCKED(A) on transaction/admin legs):** browse legs
+  NEW-green on production (home/category×5/search/track/review/policies/robots/sitemap/
+  admin-guard 307/API-guard 405/honest 404 — zero 5xx); transaction + admin legs (order →
+  stock → WhatsApp → admin sees order → shipping → delivered → review → testimonial publish)
+  require the production admin credential (admin_users = 0 — owner establishes it outside
+  source control per DoD #6) and a production test-catalog decision (catalog intentionally
+  empty; a documented test product + cleanup strategy would be used, honoring "remove them
+  without violating production integrity"). No destructive test data was created.
+
+## Issue ledger (PHASE-15)
+
+- ISSUE-061 ROUND-9 ADDENDUM recorded (recycle signature + credential-vault loss).
+- ISSUE-2026-09-30-072 NEW: LOW, dev-mode-only hydration console warning; production
+  console clean (0 warnings/0 errors on clean reload); OPEN/documented, non-blocking.
+- No BLOCKER/HIGH issue open. Remaining OPEN LOWs: 055 (console cosmetic, out-of-scope),
+  010 (orphan Neon resource — owner decision), 072 (this round).
+
+## Final state (per the owner directive's Otherwise branch)
+
+- PROJECT_STATUS=BLOCKED; CURRENT_PHASE=PHASE_15; LAST_COMPLETED_PHASE=PHASE_14;
+  PHASE_15_STATUS=BLOCKED; PROJECT_STATUS=COMPLETE / CURRENT_PHASE=NONE / 
+  LAST_COMPLETED_PHASE=PHASE_15 deliberately NOT set (the owner-credential-gated subset
+  above must first run green).
+- **Unblock (owner-side):** (1) re-provision the Vercel PAT into git-ignored
+  `.auth/vercel_token` per DATABASE.md §9.3/§9.6 → fresh 141 real-Blob + §9.6 fingerprint
+  re-pull + production DB read-only probes + runtime logs + authenticated preview smoke;
+  (2) establish the production admin credential outside source control (one-time
+  `db:bootstrap:admin` on production, operator-provided values — the CLI refuses when an
+  admin exists; values never stored/printed); (3) approve the production test-catalog
+  strategy for the transaction smoke (documented test product + full cleanup). Then the
+  blocked subset runs; if green, the final transition is set per the directive.
