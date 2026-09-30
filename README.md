@@ -56,3 +56,5 @@ This repository is the Amira Store **application** repository. The planning pack
 - Environment contract: `.env.example` (names only; real values only in platform secret stores).
 - Baseline tooling/auth verification and environment decisions: `docs/ops/BASELINE.md`.
 - Execution state: see `EXECUTION_STATUS.md`.
+
+<!-- PHASE-14 CI trigger-matrix test marker (branch-only; never merged) -->
