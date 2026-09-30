@@ -74,8 +74,8 @@ export const reviewLookupSchema = z.object({
   phone: z
     .string()
     .trim()
-    .min(8)
-    .max(25)
+    .min(8, 'برجاء كتابة رقم موبايل مصري صحيح (مثال: 01012345678).')
+    .max(25, 'برجاء كتابة رقم موبايل مصري صحيح (مثال: 01012345678).')
     .refine((value) => normalizeEgyptianPhone(value) !== null, {
       message: 'برجاء كتابة رقم موبايل مصري صحيح (مثال: 01012345678).',
     }),

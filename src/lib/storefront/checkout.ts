@@ -95,8 +95,14 @@ export const CHECKOUT_MAX_LINES = 50;
 export const CHECKOUT_MAX_LINE_QUANTITY = 99;
 
 export const checkoutItemSchema = z.object({
-  variantId: z.string().uuid(),
-  quantity: z.number().int().min(1).max(CHECKOUT_MAX_LINE_QUANTITY),
+  // Arabic field messages (ISSUE-2026-09-30-066 class): the route surfaces the
+  // first zod message directly to the customer — never an English default.
+  variantId: z.string().uuid('معرّف المنتج غير صالح.'),
+  quantity: z
+    .number('الكمية غير صالحة.')
+    .int('الكمية غير صالحة — يجب أن تكون رقمًا صحيحًا.')
+    .min(1, 'الكمية غير صالحة — الحد الأدنى ١.')
+    .max(CHECKOUT_MAX_LINE_QUANTITY, `الحد الأقصى للكمية ${CHECKOUT_MAX_LINE_QUANTITY}.`),
 });
 
 export const checkoutRequestSchema = z.object({
@@ -107,8 +113,8 @@ export const checkoutRequestSchema = z.object({
   customerPhone: z
     .string()
     .trim()
-    .min(8)
-    .max(25)
+    .min(8, 'برجاء كتابة رقم موبايل مصري صحيح (مثال: 01012345678).')
+    .max(25, 'برجاء كتابة رقم موبايل مصري صحيح (مثال: 01012345678).')
     .refine((value) => normalizeEgyptianPhone(value) !== null, {
       message: 'برجاء كتابة رقم موبايل مصري صحيح (مثال: 01012345678).',
     }),

@@ -25,7 +25,12 @@
     "db:verify:local": "node scripts/verify-local-database.mjs",
     "verify:homepage": "bun scripts/verify-homepage.ts",
     "verify:seo": "bun scripts/verify-seo.ts",
-    "verify:admin": "bun scripts/verify-admin.ts"
+    "verify:admin": "bun scripts/verify-admin.ts",
+    "verify:tracking": "bun scripts/verify-tracking.ts",
+    "verify:phase13": "bun scripts/verify-phase13.ts",
+    "verify:security": "bun scripts/verify-security.ts",
+    "verify:concurrency": "bun scripts/verify-concurrency.ts",
+    "verify:e2e": "bun scripts/verify-e2e.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

@@ -14,7 +14,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { errorResponse, guardMutation, jsonOk } from '@/lib/api/admin';
-import { requireAdminMutation, requireAdminPage } from '@/lib/auth/guard';
+import { requireAdminMutation } from '@/lib/auth/guard';
 import {
   bannerCreateSchema,
   createHomepageBanner,
@@ -27,7 +27,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(): Promise<NextResponse> {
   try {
-    await requireAdminPage();
+    await requireAdminMutation();
 
     const banners = await getAdminBanners();
     return jsonOk({ banners });

@@ -15,7 +15,7 @@ import {
   hasStorefrontProductBySlug,
 } from "@/lib/storefront/catalog";
 import { getProductTestimonials } from "@/lib/storefront/reviews";
-import { buildProductJsonLd } from "@/lib/storefront/metadata";
+import { buildProductJsonLd, serializeJsonLd } from "@/lib/storefront/metadata";
 import { ProductSkeleton } from "./product-skeleton";
 
 export const dynamic = "force-dynamic";
@@ -142,7 +142,7 @@ async function ProductDetail({ slug }: { slug: string }) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="border-b border-border/70 bg-surface-subtle/40">

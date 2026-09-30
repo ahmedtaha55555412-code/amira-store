@@ -14,7 +14,7 @@ import {
   guardJsonMutation,
   jsonOk,
 } from '@/lib/api/admin';
-import { requireAdminMutation, requireAdminPage } from '@/lib/auth/guard';
+import { requireAdminMutation } from '@/lib/auth/guard';
 import {
   getStoreSettings,
   settingsUpdateSchema,
@@ -26,7 +26,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(): Promise<NextResponse> {
   try {
-    await requireAdminPage();
+    await requireAdminMutation();
 
     const row = await getStoreSettings();
     if (!row) {

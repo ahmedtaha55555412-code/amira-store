@@ -891,3 +891,36 @@
 - Verification: live-HTTP probe (verify:admin section 10h) — cross-origin DELETE with a valid session → **403** and the row verified UNCHANGED in the database; same-origin authorized flows unchanged. Full suite 66/66.
 - Related files: `src/app/api/admin/homepage/banners/[id]/route.ts`, `scripts/verify-admin.ts`
 - Notes: defense-in-depth (SameSite=Lax cookie remained); recorded because uniform CSRF posture across ALL admin mutations is a standing security contract (MASTER_PLAN §24).
+
+### ISSUE-2026-09-30-065
+- Phase: PHASE_13 (adversarial XSS round, 2026-09-30)
+- Severity: HIGH (stored XSS breakout context; content authored by the single admin, so exploitability is bounded, but the injected markup executes for any visitor of the affected page)
+- Status: FIXED
+- Symptom: verify:phase13 §5 stored a hostile product name (`<script>alert(1)</script>`) and short description (`"><img src=x onerror=alert(2)>`); the product page HTML contained the payload RAW inside `<script type="application/ld+json">` — JSON.stringify does not escape `<`/`>`, so the payload's own `</script>` terminated the JSON-LD block and the remainder rendered as live markup (proven: `<img onerror=...>` present as executable markup, first `</script>` break reachable).
+- Root cause: the JSON-LD injection site used `dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}` with no HTML-safety escaping of the serialized JSON.
+- Minimal fix: new `serializeJsonLd()` in `src/lib/storefront/metadata.ts` — escapes `<`→`\u003c`, `>`→`\u003e`, `&`→`\u0026`, U+2028/2029 (JSON semantics unchanged for crawlers; breakout impossible regardless of stored content origin); the product page now calls it instead of raw `JSON.stringify`. Text-node rendering was already React-escaped (verified inert for name/description/review/search contexts).
+- Verification: verify:phase13 §5 51/51 — no raw `<script>alert(1)` in HTML, no `<img …onerror=` markup, escaped `\u003c` present inside the JSON-LD block; verify:seo 105/105 still passes (structured data parses and matches DB truth).
+- Related files: `src/lib/storefront/metadata.ts`, `src/app/(store)/product/[slug]/page.tsx`, `scripts/verify-phase13.ts`
+- Notes: reflezted-XSS contexts (search query, suggestions) were probed and found inert without changes.
+
+### ISSUE-2026-09-30-066
+- Phase: PHASE_13 (schema-message sweep, 2026-09-30)
+- Severity: LOW (i18n consistency; no data/security impact)
+- Status: FIXED
+- Symptom: malformed input on customer-facing forms could surface ENGLISH zod default messages in the Arabic-only storefront: phone `.min(8)`/`.max(25)` in the reviews lookup + tracking lookup ("Too small: expected string to have >=8 characters"), and the checkout item schema (quantity/uuid — e.g. "Invalid input: expected integer") reached the 400 response body verbatim.
+- Root cause: schemas relied on zod default messages for constraints where the route surfaces `issues[0].message` directly.
+- Minimal fix: explicit Arabic messages on those constraints (tracking.ts, reviews.ts, checkout.ts item/phone schema) — no behavioral change, message-only.
+- Verification: verify:phase13 §1 (Arabic-Indic digits → Arabic error), §A1/§5d of verify:tracking/verify:e2e (400 bodies Arabic); full suites re-run green (tracking 49/49, e2e 31/31, checkout 134/134).
+- Related files: `src/lib/storefront/tracking.ts`, `src/lib/storefront/reviews.ts`, `src/lib/storefront/checkout.ts`
+- Notes: recorded because an Arabic-only store must never emit English validation copy (MASTER_PLAN §2).
+
+### ISSUE-2026-09-30-067
+- Phase: PHASE_13 (authorization matrix round, 2026-09-30)
+- Severity: MEDIUM (unauthenticated GET on three admin API routes answered 500 instead of 401; no data exposure — the failure fires before any data access — but the error contract was broken and produced noise)
+- Status: FIXED
+- Symptom: `GET /api/admin/settings`, `GET /api/admin/homepage/sections`, `GET /api/admin/homepage/banners` without a session returned **500** ("[admin-mutation] unexpected failure") instead of 401.
+- Root cause: those GET handlers called `requireAdminPage()` (page semantics: `redirect('/admin/login')` THROWS a NEXT_REDIRECT error). Inside an API route the route-level `catch → errorResponse()` did not recognize the redirect error and fell through to the generic 500 branch. All sibling API routes correctly use `requireAdminMutation()` (throws `AdminAuthError` → 401).
+- Minimal fix: swapped `requireAdminPage()` → `requireAdminMutation()` in the three GET handlers (imports updated).
+- Verification: verify:security §2 — all 36 admin mutation routes unauthenticated → 401; §3 — forged-token GETs on the three routes → 401 (regression-guard assertions added); full suites green (security 39/39, admin 66/66).
+- Related files: `src/app/api/admin/settings/route.ts`, `src/app/api/admin/homepage/sections/route.ts`, `src/app/api/admin/homepage/banners/route.ts`, `scripts/verify-security.ts`
+- Notes: unauthenticated `POST /api/admin/auth/logout` returning 200 is INTENTIONAL (no-op success — grants nothing, changes nothing) and is excluded from the 401 matrix with a comment in the suite.

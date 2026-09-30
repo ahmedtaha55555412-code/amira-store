@@ -6,7 +6,8 @@ import type { MetadataRoute } from "next";
  * Indexable: / , /about , /contact , /policies/* , /category/* , /product/*
  * Kept out of indexing: admin surfaces, all APIs, and every utility/private
  * or per-session route (cart, checkout, order success, review form, search
- * results). Filtered category views remain crawlable but self-canonicalize
+ * results, order tracking). Filtered category views remain crawlable but
+ * self-canonicalize
  * to the clean category URL (per-route canonical metadata), so combinatorial
  * filter/query URLs cannot become duplicate indexable documents.
  */
@@ -27,6 +28,7 @@ export default function robots(): MetadataRoute.Robots {
           "/order/",
           "/review",
           "/search",
+          "/track-order",
         ],
       },
     ],

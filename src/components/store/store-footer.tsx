@@ -121,6 +121,14 @@ export async function StoreFooter() {
                   تواصل معنا
                 </Link>
               </li>
+              <li className="text-sm text-footer-foreground/70">
+                <Link
+                  href="/track-order"
+                  className="transition-colors hover:text-footer-foreground"
+                >
+                  تتبع الطلب
+                </Link>
+              </li>
               {SECTION_NAV.map((item) => (
                 <li key={item.href}>
                   <a

@@ -1233,3 +1233,24 @@ Stage Summary:
 - PHASE-13 (Full QA + Security + Failure Testing) UNLOCKED; PROJECT_STATUS=IN_PROGRESS; PHASE-13 implementation NOT started — unlock-only run per owner HARD STOP.
 - Final live state: CURRENT_PHASE=PHASE_13, PHASE_12_STATUS=COMPLETE, LAST_COMPLETED_PHASE=PHASE_12, PHASE_13_STATUS=UNLOCKED, PROJECT_STATUS=IN_PROGRESS.
 - Obligations carried into PHASE-13: Blob-suite re-run (ISSUE-063), /track-order explicit test+classification, ISSUE-055 preserved.
+
+---
+Task ID: PHASE-13-IMPLEMENTATION
+Agent: Z.ai Code (main)
+Task: PHASE-13 IMPLEMENTATION — Full QA + Security + Failure Testing (owner directive, 2026-09-30).
+
+Work Log:
+- Baseline reconciled: HEAD == origin/main == 3fa70f0 (unlock commit); ISSUE-061 file-loss signature intercepted AGAIN (upload route unstaged deletion) and restored with byte identity (6cebc01).
+- Environment re-provisioned per the sanctioned disposable pattern (ISSUE-063): PostgreSQL 18.4 via embedded-postgres native binaries (pg_ctl daemon, 127.0.0.1:54329/amira_dev), migrations 3/3 + bootstrap + seed + admin bootstrap; db:verify 29/29; dev server on :3000 with .env.local (DATABASE_URL/AUTH_SESSION_SECRET/APP_URL). Blob credentials NOT recoverable (no Vercel token/CLI anywhere; Blob store binding is an owner-side action) → verify:homepage + verify:reviews honestly REFUSED — the standing ISSUE-063 obligation stays OPEN (5th documented recycle round).
+- /track-order (MASTER_PLAN §14; previously PENDING in TRACEABILITY): implemented in the smallest justified scope — src/lib/storefront/tracking.ts (schema, hashed-IP rate limiter 12/5min, two-step no-oracle lookup, §12-derived timeline constants), /api/storefront/track-order (house guard pipeline), (store)/track-order page (noindex, force-dynamic, Arabic RTL) + client view (timeline UI, honest ملغى banner), robots.ts disallow + footer link.
+- NEW suites (registered in package.json): verify:tracking 49/49; verify:phase13 51/51 (adversarial quantities/money/encoding, media negative validation, stored+reflected XSS, DB invariant recompute, failure injection); verify:security 39/39 (36-route 401 matrix, forged sessions, CSRF with valid session, brute-force 429+Retry-After, no-username-enum, cookie flags, no-store, headers, 405s, honest 503); verify:concurrency 22/22 (REAL parallel HTTP: final-stock race, same-key race, multi-session race, parallel admin edits — all with DB truth + tie-aware ledger linearization); verify:e2e 31/31 (golden journey + failure variants). TOTAL NEW: 192.
+- DEFECTS FOUND AND FIXED (ISSUE_LOG): ISSUE-2026-09-30-065 HIGH — stored-XSS breakout via unescaped JSON-LD (JSON.stringify inside ld+json script) → serializeJsonLd() escapes </>&/U+2028/9; ISSUE-2026-09-30-066 LOW — English zod defaults on customer-facing constraints (tracking/reviews/checkout) → Arabic messages; ISSUE-2026-09-30-067 MEDIUM — three admin API GET routes used requireAdminPage() (redirect-throw → 500 unauthenticated) → requireAdminMutation() (401), regression guards added.
+- REGRESSION: db:verify 29 + auth 44 + catalog 43 + storefront 101 + cart 59 + checkout 134 + orders 100 + admin 66 + seo 105 = 681/681 Blob-free GREEN after all code changes; + 192 new = 873 green total. typecheck ✅ lint ✅ build ✅.
+- Browser QA (agent-browser, 10 evidence screenshots in /tmp/phase13-qa): home zero-overflow at 360/390/375/768/1024/1280/1440/1920; 8 storefront + 10 admin surfaces zero-overflow at 375+1440; track-order full journey (form→timeline→Arabic error); keyboard (skip-link, focus-visible 2px, labels, Escape closes dialog); empty search + honest 404; console clean. ISSUE-055 did not reproduce; documented status unchanged.
+- Documentation: ISSUE_LOG +065/066/067 (+ ISSUE-063 5th-round note), TRACEABILITY +12 PHASE-13 rows (the /track-order PENDING row is now DONE), worklog, EXECUTION_STATUS.
+- PRODUCTION READ-ONLY SMOKE (post-push): recorded in the final gate section below.
+
+Stage Summary:
+- PHASE-13 work DELIVERED and verified with one environmentally-bound exception: the 141 real-Blob checks (verify:homepage 57 + verify:reviews 84) are BLOCKED on owner-side credential re-provision (ISSUE-063 recurrence) — NOT a code defect; the media code path is unchanged except additive protections verified Blob-free.
+- Per the error protocol and §22 (ONLY after EVERY gate item), PHASE-13 is marked BLOCKED (not COMPLETE): PROJECT_STATUS=BLOCKED, PHASE_13_STATUS=BLOCKED, CURRENT_PHASE=PHASE_13, LAST_COMPLETED_PHASE=PHASE_12, PHASE-14 LOCKED.
+- Unblock condition: owner re-provisions development Blob credentials → re-run verify:homepage + verify:reviews (141) → if green, PHASE-13 gate closes (state transition to COMPLETE/PHASE-14 LOCKED/READY_FOR_NEXT_PHASE) without any further work.

@@ -137,6 +137,26 @@ export function staticPageMetadata(input: {
   };
 }
 
+/**
+ * HTML-safe JSON-LD serialization (PHASE-13, ISSUE-2026-09-30-065).
+ *
+ * JSON.stringify does NOT escape `<`/`>`/`&`. Inside a
+ * `<script type="application/ld+json">` block, a payload containing
+ * `</script>` would terminate the block early and let the remainder render
+ * as live markup (stored XSS breakout — proven by the PHASE-13 adversarial
+ * suite). Escaping `<`, `>`, `&` and the U+2028/U+2029 line separators as
+ * \uXXXX keeps the JSON semantically identical for crawlers while making
+ * breakout impossible regardless of the stored content's origin.
+ */
+export function serializeJsonLd(data: unknown): string {
+  return JSON.stringify(data)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
 /** schema.org/Product with per-variant offers (price + availability truth). */
 export function buildProductJsonLd(input: JsonLdProductInput): Record<string, unknown> {
   const purchasable = input.variants.filter((v) => v.isActive).slice(0, OFFERS_MAX);
