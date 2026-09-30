@@ -1254,3 +1254,27 @@ Stage Summary:
 - PHASE-13 work DELIVERED and verified with one environmentally-bound exception: the 141 real-Blob checks (verify:homepage 57 + verify:reviews 84) are BLOCKED on owner-side credential re-provision (ISSUE-063 recurrence) — NOT a code defect; the media code path is unchanged except additive protections verified Blob-free.
 - Per the error protocol and §22 (ONLY after EVERY gate item), PHASE-13 is marked BLOCKED (not COMPLETE): PROJECT_STATUS=BLOCKED, PHASE_13_STATUS=BLOCKED, CURRENT_PHASE=PHASE_13, LAST_COMPLETED_PHASE=PHASE_12, PHASE-14 LOCKED.
 - Unblock condition: owner re-provisions development Blob credentials → re-run verify:homepage + verify:reviews (141) → if green, PHASE-13 gate closes (state transition to COMPLETE/PHASE-14 LOCKED/READY_FOR_NEXT_PHASE) without any further work.
+
+---
+Task ID: PHASE-13-BLOCKER-RECOVERY
+Agent: Z.ai Code (main)
+Task: PHASE-13 BLOCKER RECOVERY — Blob credential re-provision + ISSUE-063 suite re-run ONLY (owner directive, 2026-09-30; HARD STOP after the 141 result — no phase closure in this step).
+
+Work Log:
+- Sandbox state: HEAD == origin/main == 4a99e6b (PHASE-13 BLOCKED status commit), tree clean; ISSUE-061 file-loss signature did NOT recur (upload route intact, 2750B, empty diff vs HEAD).
+- Credential recovery per DATABASE.md §9.3/§9.6 + owner-authorized Vercel PAT: Vercel CLI 61.0.0 provisioned; token stored ONLY in git-ignored `.auth/vercel_token` (mode 600, dir 700; `.auth/` ignore rule verified via `git check-ignore`). `vercel whoami` → expected owner identity; `vercel projects ls` → EXACTLY one project (amira-store) — nothing created; `vercel link --project amira-store` → projectId `prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA` matches the documented existing project; `.vercel/` git-ignored.
+- Environment pulls (§9.6 hash-only protocol, values never displayed): production sha256(DATABASE_URL) = `a77fc2afd8ac2bd7…` @ `ep-cool-art-b1snfj5i-pooler` — EXACT invariant match (production binding untouched); development sha256 = `f5aa1006670416a5…` @ `ep-dark-boat-b1fejsk4-pooler` — EXACT match, isolated from production. `/tmp/env.production` shredded immediately.
+- Blob auth surfaces verified LIVE (read-only `list()` probes, zero writes): PUBLIC store via the OIDC pair (BLOB_STORE_ID + VERCEL_OIDC_TOKEN from the development pull — legacy BLOB_READ_WRITE_TOKEN absent by design; OIDC = the owner-preferred short-lived surface, only workable one for sandbox-side runs); PRIVATE store via BLOB_PRIVATE_READ_WRITE_TOKEN. Pre-run baseline: 0 objects on both stores.
+- verify:homepage (real Blob + Neon development DB): **57/57 PASS** + "zero probe media residue".
+- verify:reviews round 1: 78/84 — ALL 6 failures environmental (HTTP delivery-route probes need the app server on 127.0.0.1:3000; the sandbox dev server died with the recycle; suite honestly reports "dev server unreachable"). Not an application/Blob/credential defect.
+- Dev server reprovisioned with the pulled development environment (shell env precedence over .env*; NODE_ENV=development). Infra reaps detached background processes between tool invocations (nohup/setsid/disown all reaped) → server + suite executed inside a single invocation; server stopped after the run.
+- verify:reviews full re-run (real Blob + dev server): **84/84 PASS** — incl. the 6 delivery-route checks: DRAFT→404, PENDING→404, HIDDEN→404, PUBLISHED→200, re-published→200 (publication-state matrix); direct unauthenticated private-original GET → 403 at CDN; authorized server-side read byte-identical (1004B == 1004B); approved media streams only via the controlled delivery route (/api/media/[id]).
+- Storage cleanup verified storage-level: post-run `list()` probes → PUBLIC 0 objects, PRIVATE 0 objects, leftovers = 0 (equal to pre-run baseline); suites' own LIFO cleanup asserts "zero private-store objects remain — leftovers=0" and "zero probe media residue".
+- TOTAL: verify:homepage 57 + verify:reviews 84 = **141/141 real-Blob checks GREEN** — the ISSUE-063 unblock condition is SATISFIED.
+- Production state (read-only): current production deployment dpl_FirH1exD73dKpJxaBEvnKZGVyhCk (READY, alias amira-store-opal.vercel.app) built from 4a99e6b == origin/main (docs-only delta vs implementation commit baaedf7). ZERO production mutations: verification ran ONLY against the Neon development branch (ep-dark-boat) and the real Blob stores; no deploy triggered by this round.
+- /tmp credential artifacts shredded (env.development, probe scripts, server logs); `.auth/vercel_token` retained as the standing vault per convention.
+- Worklog appended (this docs-only commit); ISSUE_LOG + EXECUTION_STATUS intentionally untouched pending the owner's FINAL PHASE-13 CLOSURE authorization.
+
+Stage Summary:
+- ISSUE-2026-09-29-063 unblock condition MET: 141/141 real-Blob checks pass (homepage 57 + reviews 84) against the real public store (OIDC) + real private store + Neon development branch; zero residue on both stores; private-original protection and the publication-state matrix reconfirmed live.
+- PHASE-13 remains BLOCKED per owner directive (closure explicitly deferred to the next authorization step); PHASE-14 stays LOCKED; production untouched (still serving 4a99e6b).
