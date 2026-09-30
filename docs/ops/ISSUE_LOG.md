@@ -37,6 +37,7 @@
 - Verification: focused live probe of the restored route 7/7 (GET 405, cross-origin 403, unauth 401, missing-file 400, real multipart upload 200 → PUBLIC store namespace `…public.blob.vercel-storage.com`, zero-residue cleanup via the registry service); typecheck + lint + build green with the route present; full battery 756/756 on the restored tree.
 - Related files: `src/app/api/admin/media/upload/route.ts`
 - Notes: deploy discipline reaffirmed — production deploys must always be gated on a tree reconciled against `origin/main` after any sandbox recycle.
+- RECYCLE ROUND 9 ADDENDUM (2026-09-30, PHASE-15 pre-flight): the file-loss signature RECURRED at HEAD == origin/main == `14eaf27` (blob `6cebc016379ffa490334dcf250f1c2d6c1ce0726` intact in HEAD/origin) → restored byte-identically from origin (blob-hash equality re-verified, 2750 B); tree clean; ZERO commits. This round's recycle ALSO wiped `.auth/vercel_token` (owner-issued Vercel PAT), `.vercel/`, the vercel CLI and /tmp — same compound signature as rounds 6–8. Consequence recorded honestly: the live-credential subset of PHASE-15 (fresh 141 real-Blob, §9.6 fingerprint re-pull, production DB read-only probes, runtime logs, authenticated preview smoke) is BLOCKED (A) — see the Blocked-Item Ledger in `docs/qa/FINAL_ACCEPTANCE.md`. Credential re-provision is owner-gated per DATABASE.md §9.3/§9.6 (no workaround invented).
 
 ### ISSUE-2026-09-29-057
 - Phase: PHASE_11 (browser QA, 2026-09-29)
@@ -976,3 +977,15 @@
 - Minimal fix: top-level `import { execSync } from 'node:child_process'` + direct call.
 - Verification: focused lint green, then full gate re-run (typecheck + lint + build + verify:phase14 43/43) before re-commit; CI "verify" required green on the exact new SHA.
 - Notes: ALSO the first live proof that the CI gate FAILS BLOCKED on a real regression (the PHASE-14 trigger/failure matrix's positive-failure evidence). Process note recorded: new tooling files must pass the full local gate before commit (ERROR_PROTOCOL rule 5/8 applied).
+
+### ISSUE-2026-09-30-072
+- Phase: PHASE_15 (final-acceptance browser QA round, 2026-09-30)
+- Severity: LOW (dev-mode console-only cosmetic artifact; zero functional or visual impact; production unaffected)
+- Status: OPEN (documented; non-blocking — see Notes)
+- Symptom: one React hydration attribute-mismatch console warning appears in the Next DEV server on first storefront load (client-side `<body>` gains transient `data-scroll-locked` + `style` attributes from the scroll-lock mechanism during the hydration pass, then releases them — post-hydration DOM is clean: body carries only `class`).
+- Reproduction: clean reload of `http://localhost:3000/` in dev → 1 hydration warning in console; identical clean reload of the PRODUCTION deployment → 0 warnings and clean body attributes (verified with agent-browser console sweep).
+- Root cause: a client overlay/scroll-lock consumer engages during the dev-mode hydration pass and releases before settle; not isolated to a single component within final-acceptance scope (no functional difference; the release path provably completes).
+- Affected layer/files: dev-runtime rendering only; no production surface.
+- Minimal fix: not executed in PHASE-15 — identifying the exact consumer requires dev-time bisection of overlay components, and any touch to overlay components during final acceptance risks the approved, fully-verified visual system for zero user-facing benefit (design governance: "do not redesign unless a real acceptance defect is proven").
+- Verification: production clean-reload console = 0 hydration warnings / 0 page errors; local dev = 1 warning, 0 page errors, DOM clean post-hydration; 35/35 zero-overflow matrix unaffected.
+- Final status: OPEN/LOW — documented for a future maintenance round; does not affect the launch decision (production is the user-facing surface and is clean).

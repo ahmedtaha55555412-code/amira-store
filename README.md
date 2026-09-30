@@ -64,3 +64,42 @@ This repository is the Amira Store **application** repository. The planning pack
 - Database topology, migration policy, credential re-provision protocol: `docs/ops/DATABASE.md`
 - CI: `.github/workflows/ci.yml` — check name "verify" (frozen-lockfile install → typecheck → lint → build); regression suites run per phase gate on a disposable database (`bun run verify:phase14` verifies the infrastructure contracts offline).
 - Never commit secrets: `.env*` ignored except `.env.example` (names only); the credential vault lives in the git-ignored `.auth/`.
+
+## Operator quick reference (PHASE-15 handoff)
+
+All commands run from the repository root with [Bun](https://bun.sh) 1.3.x. Real values only
+in git-ignored `.env`/`.env.local` (names in `.env.example`); production secrets live in the
+platform stores (Vercel environment variables + Vercel↔Neon integration).
+
+```bash
+bun install --frozen-lockfile     # exact dependency install (lockfile is the contract)
+
+# --- Environment (names → .env.example; values → git-ignored files / platform stores) ---
+# DATABASE_URL          PostgreSQL (Neon) pooled endpoint; migrations use the DIRECT endpoint
+# AUTH_SESSION_SECRET   strong per-environment secret (sessions + IP hashing)
+# APP_URL               http://localhost:3000 locally; the deployment origin in the cloud
+# Blob auth             OIDC pair injected by Vercel in the runtime; local runs re-provision
+#                       per docs/ops/DATABASE.md §9.3/§9.6 (owner-authorized token vault)
+
+# --- Database (PostgreSQL/Neon + Drizzle; migrations are the ONLY schema mechanism) ---
+bun run db:migrate          # apply committed migrations (never `db push` outside disposable dev)
+bun run db:bootstrap        # production-safe absent-only init: settings + 5 categories + homepage sections
+bun run db:seed             # DETERMINISTIC demo catalog — development targets ONLY, never production
+bun run db:bootstrap:admin  # one-time single-admin bootstrap (operator-provided env values; refuses if an admin exists)
+bun run db:verify:local     # fresh disposable-DB proof: migrations + seed idempotency + 29 invariant probes
+
+# --- Quality gates ---
+bun run typecheck && bun run lint && bun run build
+bun run verify:phase14      # offline infrastructure-contract suite (43 checks)
+bun run verify:e2e          # golden commerce journey (with a disposable DB + dev server running)
+#   full suite list: db:verify, verify:{auth,catalog,storefront,cart,checkout,orders,
+#   admin,reviews,homepage,tracking,security,concurrency,seo,phase13,e2e,phase14}
+#   (Blob suites require real Blob credentials and refuse honestly without them)
+
+# --- Run / deploy ---
+bun run dev                 # local dev server on :3000
+# Deployment: push to `main` (CI "verify" must be green) → Vercel Git integration builds
+# Production; non-main branches get SSO-protected Previews. Release/migration/rollback:
+# follow docs/ops/DEPLOYMENT_RUNBOOK.md (forward-only migrations; rollback = deployment
+# promote, never schema downgrade). Production bring-up procedures: docs/ops/DATABASE.md §13–§15.
+```
