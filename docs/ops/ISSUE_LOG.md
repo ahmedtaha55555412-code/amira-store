@@ -925,3 +925,38 @@
 - Verification: verify:security §2 — all 36 admin mutation routes unauthenticated → 401; §3 — forged-token GETs on the three routes → 401 (regression-guard assertions added); full suites green (security 39/39, admin 66/66).
 - Related files: `src/app/api/admin/settings/route.ts`, `src/app/api/admin/homepage/sections/route.ts`, `src/app/api/admin/homepage/banners/route.ts`, `scripts/verify-security.ts`
 - Notes: unauthenticated `POST /api/admin/auth/logout` returning 200 is INTENTIONAL (no-op success — grants nothing, changes nothing) and is excluded from the 401 matrix with a comment in the suite.
+
+### ISSUE-2026-09-30-068
+- Phase: PHASE_14 (pre-flight round, 2026-09-30)
+- Severity: HIGH (blocks the live-infrastructure subset of the phase; no security exposure — see Notes)
+- Status: OPEN — BLOCKS PHASE-14 live Vercel/Neon verification (unblock condition below)
+- Symptom: 6th documented sandbox recycle round. Between the PHASE-14 owner-unlock run and the implementation run the workspace was restored to an older snapshot: (a) one TRACKED file missing (`src/app/api/admin/media/upload/route.ts` — the established ISSUE-061 signature); (b) all git-ignored runtime artifacts lost: `.auth/vercel_token` (owner-issued Vercel PAT vault, mode 600/700), `.auth/bin/gh-cred` helper, `.vercel/project.json` (project link), `.env.local` (Neon development URL), the globally-installed vercel CLI, and `/tmp` artifacts.
+- Reproduction: `ls .auth` → missing; `git status` → ` D src/app/api/admin/media/upload/route.ts`; `vercel whoami` → CLI absent.
+- Root cause: sandbox infra recycles the workspace to a disk snapshot between runs; git-ignored (untracked) files and post-snapshot tracked-file states are not preserved.
+- Affected layer/files: workspace runtime artifacts; one tracked source file (restored).
+- Minimal fix: the tracked file was restored EXCLUSIVELY from authoritative origin/main (`git checkout origin/main -- …`) and proven byte-identical (worktree blob `6cebc016379ffa490334dcf250f1c2d6c1ce0726` == origin blob — hash equality, not eyeball). No unrelated changes introduced. `/tmp/my-project` snapshot and all alternate credential surfaces checked — the Vercel PAT is NOT recoverable in-sandbox (by design: it exists only in the git-ignored vault; DATABASE.md §9.3/§9.6 protocol).
+- Verification command/check: `git status --porcelain` empty after restore; blob-hash equality vs origin/main; `bun run db:verify:local` re-proves the tree is coherent (29/29) without any cloud credential.
+- Notes: (1) the credential lifecycle is owner-controlled BY DESIGN — no workaround was invented (standing directive); (2) nothing leaked: the vault was git-ignored and its contents never printed/committed; (3) UNBLOCK CONDITION: owner re-provisions the Vercel PAT per DATABASE.md §9.3/§9.6 (and the `.vercel` link + `.env.local` are then re-derived mechanically); live items that unblock: Vercel env-var matrix re-verification, Neon fingerprint re-verification, Preview application-level smoke (behind Vercel Deployment Protection SSO), live rollback rehearsal, Vercel runtime-log inspection.
+
+### ISSUE-2026-09-30-069
+- Phase: PHASE_14 (CI workflow-security hardening round, 2026-09-30)
+- Severity: MEDIUM (real hardening gaps: implicit workflow permissions, floating third-party action versions, unpinned runtime) — with a RECORDED FALSE-AUDIT CORRECTION (transparency note below)
+- Status: FIXED
+- Symptom (audit phase): the PHASE-14 pre-flight audit READ the CI workflow's branch filters as corrupted (`branches: ain]` instead of a main-only square-bracket list) "since the initial commit", and CI trigger behavior seemed to require fail-open semantics to explain main-push runs.
+- Root cause (of the false audit finding): the agent's command/output transport mangles square-bracket sequences beginning with a bracket+m ("[m" is swallowed as an ANSI-like sequence) in BOTH directions — displayed file contents showed `ain]` wherever the actual bytes were a main-only list (because the tail "ain]" is a SUBSTRING of the correct "[main]"), and incoming command literals containing "[main]" were corrupted before execution, turning several attempted fixes into no-ops and producing contradictory intermediate states. Byte-level verification (counted occurrences via chr()-constructed literals, cross-checked against the GitHub Contents API blob `7e1a2373f56b…`) proved the committed workflow ALWAYS had the intended main-only filters — including the initial PHASE-00 commit `c82c9d9`.
+- Real defects fixed (independent of the false finding): (1) workflow had NO explicit `permissions:` block (repo default was already "read" — verified via API — but the guarantee is now explicit and workflow-borne); (2) third-party actions were referenced by floating major tags (`@v4`/`@v2`) → both pinned to full 40-hex commit SHAs resolved via the GitHub API with source-repo verification (`actions/checkout@11d5960a…` v4 line, `oven-sh/setup-bun@0c5077e5…` v2 line); (3) `bun-version: latest` floated the CI runtime → pinned to `1.3.14` (the development runtime version, CI/local parity); (4) the environment-dependent nature of the regression suites is now documented in the workflow itself.
+- Minimal fix: `.github/workflows/ci.yml` hardened (content-only; job id/check name "verify" unchanged; triggers unchanged — they were already correct).
+- Verification: CI check "verify" = completed/success on the exact hardened SHA `9314276`; trigger-matrix evidence: a unique non-main branch push produces 0 workflow runs (negative), a PR produces the "verify" run via the pull_request event (positive, PR #1 — closed unmerged), main pushes produce "verify" (every phase push). `verify:phase14` §1 asserts the full contract (43/43).
+- Related files: `.github/workflows/ci.yml`, `scripts/verify-phase14.ts`, `docs/ops/DEPLOYMENT_RUNBOOK.md`
+- Notes: commit `9314276`'s MESSAGE contains the incorrect "corrupted branch filter" premise (authored under the same mangling illusion); its CONTENT is valid hardening. History is NOT rewritten (force-push forbidden; the audit trail records this correction instead). Lesson recorded: any future audit of bracket-containing content MUST use counted/byte-level comparisons, never display inspection.
+
+### ISSUE-2026-09-30-070
+- Phase: PHASE_14 (branch-protection round, 2026-09-30)
+- Severity: LOW (platform plan limitation, not a misconfiguration; compensating controls in place)
+- Status: OPEN — documented platform constraint (actionable on plan upgrade)
+- Symptom: required-status-check / force-push / deletion protection for `main` cannot be configured: classic branch protection API → 403; rulesets API → 403 with "Upgrade to GitHub Pro or make this repository public to enable this feature." (both attempts recorded 2026-09-30 with the intended protection bodies).
+- Root cause: repository is PRIVATE on a GitHub free plan (owner: user account).
+- Affected layer: GitHub repository settings only — no application impact.
+- Minimal fix: none possible at this plan level (per directive: configure "where available"). Compensating controls documented in DEPLOYMENT_RUNBOOK.md: CI "verify" green-SHA pinned per phase record; single collaborator (owner only — verified via API); production branch locked to `main` on the Vercel side; force-push absent from the workflow and visible in audit history.
+- Verification command/check: the two recorded 403 responses; `verify:phase14` documents the limitation (runbook contract check).
+- Notes: on plan upgrade the FIRST action must be: require the "verify" check for `main`, block force pushes and deletions, include administrators.

@@ -103,3 +103,41 @@ Known non-blocking findings: ISSUE-2026-09-27-010 (orphan Neon resource `amira-s
 | Development | **same value as production** (integration default; no dedicated branch) | GAP — ISSUE-2026-09-27-019 OPEN; standing guardrail: treated as production-equivalent (no migrate/seed/writes); remediation path documented in `docs/ops/DATABASE.md` §9 (owner console steps + compensating control + hash-only verification) |
 
 The 18 `DATABASE_*` variables are integration-store secrets (ciphertext to user tokens; single entries targeting all three environments); rebinding one environment is not exposed by the Vercel↔Neon public API and branch creation requires the Neon control plane — recorded as the exact limitation in `docs/ops/DATABASE.md` §9.2.
+
+---
+
+# PHASE-14 infrastructure baseline (2026-09-30)
+
+Live-verified identities (no secret values; fingerprints/endpoints only):
+
+## GitHub
+- Repository: `ahmedtaha55555412-code/amira-store` — PRIVATE, default branch `main`, single collaborator = owner account.
+- CI: `.github/workflows/ci.yml`, check name **"verify"** — push/PR triggers restricted to `main` (ISSUE-2026-09-30-069 fix), explicit `permissions: contents: read`, actions SHA-pinned (`actions/checkout@11d5960a…` v4, `oven-sh/setup-bun@0c5077e5…` v2), Bun pinned `1.3.14`, steps = frozen-lockfile install → typecheck → lint → build.
+- Branch protection: NOT configurable on this plan (private/free): classic protection API 403 + rulesets API 403 (attempted and recorded 2026-09-30). Compensating controls: docs/ops/DEPLOYMENT_RUNBOOK.md "Branch protection" section.
+- Repo default workflow permission: `read` (verified via API). Environments `Preview`/`Production` exist with ZERO secrets (deployments run through the Vercel Git integration; no GitHub Actions deployment jobs).
+
+## Vercel
+- Project: `amira-store` — **`prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA`** (single project; recorded in DATABASE.md §13.1, re-confirmed live 2026-09-30 pre-recycle).
+- Production branch: `main` → production alias `amira-store-opal.vercel.app`; non-main branches → Preview deployments, protected by Vercel Deployment Protection (SSO; `x-robots-tag: noindex` — proven 2026-09-30).
+- Production serving line (PHASE-13): application commit `4a99e6b` + docs-only descendants (last live-verified READY deployment built from `667c193` == origin/main; docs-only delta, zero executable change).
+
+## Neon (project `tiny-mud-82763154`, resource `neon-cobalt-globe`)
+- `main` = production — pooled endpoint `ep-cool-art-b1snfj5i-pooler`, connection-string fingerprint `a77fc2afd8ac2bd7…` (STANDING INVARIANT — re-verify after any change per DATABASE.md §9.6).
+- `development` = isolated branch — pooled endpoint `ep-dark-boat-b1fejsk4-pooler`, fingerprint `f5aa1006670416a5…` (≠ production).
+- Preview = integration-native copy-on-write per-deployment branches (ephemeral).
+- Migrations: 3 committed (`0000_init_schema`, `0001_storefront_search`, `0002`); production `__drizzle_migrations` = 3 rows (hash==file sha256 proof: DATABASE.md §13.3); rehearsal profile 23 tables / 9 enums.
+
+## Environment variable contract (names → environments; values NEVER in Git)
+| Variable | Development | Preview | Production | Sensitive | Required at | Source of truth |
+|---|---|---|---|---|---|---|
+| `DATABASE_URL` | Neon `development` pooled (project var) | integration var (per-deployment branch injection) | Neon `main` pooled (integration var) | YES | runtime + migrations (direct endpoint for migrations) | Vercel↔Neon integration (§9.6) |
+| `AUTH_SESSION_SECRET` | dev-only value in `.env.local` | per-environment secret | strong per-environment secret | YES | runtime (sessions, IP hashing) | Vercel env storage |
+| `APP_URL` | `http://localhost:3000` | preview URL (or fallback) | production origin (fixed PHASE-11, ISSUE-062) | no | metadata/canonical/robots | Vercel env storage |
+| Blob auth (OIDC pair `BLOB_STORE_ID` + `VERCEL_OIDC_TOKEN`; `BLOB_PRIVATE_READ_WRITE_TOKEN` for the private store) | injected in the Vercel runtime / re-provisioned locally per §9.3 | same mechanism | same mechanism | YES | media upload/delivery | Vercel Blob stores |
+| `ADMIN_BOOTSTRAP_USERNAME` / `ADMIN_BOOTSTRAP_PASSWORD` | one-time CLI only | n/a | one-time CLI only (refuses when admin exists) | YES | bootstrap CLI only | operator-provided, never stored |
+
+Cross-environment collision guards: production fingerprint invariant (`a77fc2afd8ac2bd7…`), development endpoint ≠ production endpoint, integration `DATABASE_URL` target scope `[preview, production]` + project-level development var (§9.6). No secret value is ever printed/committed; only sha256 prefixes + endpoint ids are quotable.
+
+## Credential vault protocol (recycle-resilient)
+- Owner-issued Vercel PAT → git-ignored `.auth/vercel_token` (mode 600/700, never printed/committed); vercel CLI 61.x via `PATH=$HOME/.bun/bin`; `.vercel/` link metadata local-only.
+- After any sandbox recycle: `.auth/`, `.vercel/`, `.env.local` are NOT restored — re-provision per DATABASE.md §9.3/§9.6 with owner authorization (recycle rounds to date: 6 — latest ISSUE-2026-09-30-068).

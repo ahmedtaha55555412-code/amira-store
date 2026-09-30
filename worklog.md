@@ -1316,3 +1316,27 @@ Work Log:
 Stage Summary:
 - Final live state: PHASE_13_STATUS=COMPLETE, LAST_COMPLETED_PHASE=PHASE_13, CURRENT_PHASE=PHASE_14, PHASE_14_STATUS=UNLOCKED, PROJECT_STATUS=IN_PROGRESS — internally consistent, no contradictory text in the active state block.
 - NO PHASE-14 implementation performed; PHASE-13 history preserved verbatim; production untouched (serving the 4a99e6b application line via docs-only descendants, latest READY from 667c193).
+
+---
+Task ID: PHASE-14-IMPLEMENTATION
+Agent: Z.ai Code (main)
+Task: PHASE-14 IMPLEMENTATION — GitHub + Neon + Vercel + CI/CD + Production Hardening (owner directive, 2026-09-30; HARD STOP after closure — no PHASE-15 work).
+
+Work Log:
+- Governance reading re-verified against the live tree (AGENTS/MASTER_PLAN/EXECUTION_STATUS/PHASE-14.md/runbook/DATABASE/ERROR_PROTOCOL/TRACEABILITY/FINAL_ACCEPTANCE/ACCESS_MATRIX/workflows/.gitignore/.env.example/package.json/drizzle).
+- Baseline: HEAD == origin/main == 2fd1ed7 reconciled from origin. Sandbox recycle round 6 at pre-flight (ISSUE-2026-09-30-068): tracked upload route missing → restored byte-identically from origin/main (blob 6cebc016… == origin blob); .auth/vercel_token (Vercel PAT), .vercel/, .env.local, vercel CLI, /tmp lost — PAT unrecoverable in-sandbox by design; live Vercel/Neon subset recorded credential-blocked with the §9.3/§9.6 unblock condition. No workaround invented.
+- CI hardening (9314276): explicit permissions contents: read; actions pinned to 40-hex SHAs (checkout 11d5960a… v4, setup-bun 0c5077e5… v2, resolved + source-verified via API); Bun pinned 1.3.14; verify job semantics unchanged. The "corrupted branch filter" audit finding was PROVEN FALSE at byte level (transport mangles "[m" both directions; "ain]" is a substring of the correct "[main]"; GitHub API blob cross-check) — ISSUE-2026-09-30-069 records the false-audit correction including the incorrect premise in the 9314276 commit message (content valid; no history rewrite). Trigger-matrix: main push → verify success; unique non-main push → 0 runs; PR → verify via pull_request event (PR #1 closed unmerged, branch deleted).
+- Branch protection: classic API 403 + rulesets API 403 (private/free plan) — ISSUE-2026-09-30-070 with compensating controls in the runbook.
+- Migration rehearsal PASSED (sanctioned disposable embedded PostgreSQL): fresh DB from committed chain alone (3/3), bootstrap+seed idempotent, 29/29 invariant probes, hashes == files, zero residue; production never a rehearsal target.
+- Regression 873/873 FRESH GREEN (db:verify 29 + auth 44 + catalog 43 + storefront 101 + cart 59 + checkout 134 + orders 100 + admin 66 + seo 105 + tracking 49 + phase13 51 + security 39 + concurrency 22 + e2e 31) on disposable PG + local server; one transient abort = the REAL login brute-force throttle tripped by the security suite's intentional probes — throttle rows cleared in the disposable DB only, suites re-run green. typecheck/lint/build PASS; bun install --frozen-lockfile clean (517 installs). 141 real-Blob checks: previously proven (PHASE-13 final gate), fresh run environment-blocked (068).
+- Preview path proven platform-level: non-main branch push → real Vercel Preview deployment ("Vercel Preview Comments" check); preview URL SSO-protected (302 → vercel.com/sso-api, noindex) — security-positive. App-level preview smoke credential-blocked.
+- Production read-only smoke: 18-route matrix green (200s / 307 admin / honest 404 / 404-405-400 API guards / robots matrix / sitemap / canonical+og:url = production origin), zero unexpected 5xx, zero mutations.
+- Secret/supply-chain audit CLEAN: zero secret patterns in full git history + tracked files; .env.example names-only; zero repo secrets; pins verified.
+- New tooling: scripts/verify-phase14.ts (verify:phase14) = 43/43 offline contract checks; its own transport-mangling false-positive found and fixed mangle-proof.
+- Browser QA: production 375/768/1440 (7 pages) + local QA-admin session 375/768/1440 (home + 10 admin pages) = 42 combos, zero horizontal overflow; screenshots in git-ignored tool-results/qa-shots/. PDP not re-captured this round (0 production products; local window closed) — covered by storefront suite + PHASE-13 visuals.
+- Docs: DEPLOYMENT_RUNBOOK.md PHASE-14 addendum (CI contract, protection limitation, preview evidence, rollback/recovery, deployment order); BASELINE.md PHASE-14 identities + env contract; DATABASE.md §15; TRACEABILITY.md (+2 revised, +8 rows); ISSUE_LOG 068/069/070; README ops section; EXECUTION_STATUS state transition.
+- State: PHASE_14_STATUS=BLOCKED (sole blocker: credential-blocked live subset, ISSUE-068), PROJECT_STATUS=BLOCKED, CURRENT_PHASE=PHASE_14, LAST_COMPLETED_PHASE=PHASE_13, PHASE_15 LOCKED.
+
+Stage Summary:
+- PHASE-14 delivered and verified EXCEPT the live Vercel/Neon subset (env matrix re-verification, Neon fingerprints, 141 real-Blob fresh run, SSO preview smoke, live rollback rehearsal, runtime-log inspection) — unblocked solely by the owner-side PAT re-provision per DATABASE.md §9.3/§9.6.
+- Zero application/business/schema/migration changes; production untouched (read-only); no secrets printed/committed; all evidence counts freshly executed and labeled.

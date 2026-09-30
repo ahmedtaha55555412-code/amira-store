@@ -56,3 +56,11 @@ This repository is the Amira Store **application** repository. The planning pack
 - Environment contract: `.env.example` (names only; real values only in platform secret stores).
 - Baseline tooling/auth verification and environment decisions: `docs/ops/BASELINE.md`.
 - Execution state: see `EXECUTION_STATUS.md`.
+
+## Operations (PHASE-14)
+
+- Deployment, CI contract, branch-protection status, preview workflow, and rollback/recovery: `docs/ops/DEPLOYMENT_RUNBOOK.md`
+- Infrastructure baseline (GitHub/Vercel/Neon identities, environment-variable contract): `docs/ops/BASELINE.md`
+- Database topology, migration policy, credential re-provision protocol: `docs/ops/DATABASE.md`
+- CI: `.github/workflows/ci.yml` — check name "verify" (frozen-lockfile install → typecheck → lint → build); regression suites run per phase gate on a disposable database (`bun run verify:phase14` verifies the infrastructure contracts offline).
+- Never commit secrets: `.env*` ignored except `.env.example` (names only); the credential vault lives in the git-ignored `.auth/`.

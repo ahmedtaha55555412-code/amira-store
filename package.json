@@ -30,7 +30,8 @@
     "verify:phase13": "bun scripts/verify-phase13.ts",
     "verify:security": "bun scripts/verify-security.ts",
     "verify:concurrency": "bun scripts/verify-concurrency.ts",
-    "verify:e2e": "bun scripts/verify-e2e.ts"
+    "verify:e2e": "bun scripts/verify-e2e.ts",
+    "verify:phase14": "bun scripts/verify-phase14.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
