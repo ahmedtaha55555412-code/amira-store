@@ -32,6 +32,7 @@
  * Run: bun run verify:phase14
  */
 
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -92,7 +93,7 @@ console.log('\n[2] Secret hygiene / ignore rules');
   check('.auth/ ignored (credential vault)', /\.auth\/?/m.test(gi));
   check('.vercel/ ignored (local link metadata)', /\.vercel\/?/m.test(gi));
 
-  const tracked = require('node:child_process').execSync('git ls-files', { encoding: 'utf8' })
+  const tracked = execSync('git ls-files', { encoding: 'utf8' })
     .split('\n')
     .filter(Boolean);
   const trackedEnv = tracked.filter((f) => /^\.env/.test(f));

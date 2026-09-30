@@ -960,3 +960,13 @@
 - Minimal fix: none possible at this plan level (per directive: configure "where available"). Compensating controls documented in DEPLOYMENT_RUNBOOK.md: CI "verify" green-SHA pinned per phase record; single collaborator (owner only — verified via API); production branch locked to `main` on the Vercel side; force-push absent from the workflow and visible in audit history.
 - Verification command/check: the two recorded 403 responses; `verify:phase14` documents the limitation (runbook contract check).
 - Notes: on plan upgrade the FIRST action must be: require the "verify" check for `main`, block force pushes and deletions, include administrators.
+
+### ISSUE-2026-09-30-071
+- Phase: PHASE_14 (CI verification round, 2026-09-30)
+- Severity: LOW (new verification tooling only; no application/runtime impact)
+- Status: FIXED
+- Symptom: CI check "verify" = FAILURE on `c9fc682` — lint step rejected `scripts/verify-phase14.ts` line 95 (`require('node:child_process')` — `@typescript-eslint/no-require-imports`). The file was created AFTER the local full-check round; only the focused `verify:phase14` run followed, so the local lint gate was not re-run before the commit.
+- Root cause: ESM-style project + ESLint rule forbids require() imports; new file used require for the git ls-files helper.
+- Minimal fix: top-level `import { execSync } from 'node:child_process'` + direct call.
+- Verification: focused lint green, then full gate re-run (typecheck + lint + build + verify:phase14 43/43) before re-commit; CI "verify" required green on the exact new SHA.
+- Notes: ALSO the first live proof that the CI gate FAILS BLOCKED on a real regression (the PHASE-14 trigger/failure matrix's positive-failure evidence). Process note recorded: new tooling files must pass the full local gate before commit (ERROR_PROTOCOL rule 5/8 applied).
