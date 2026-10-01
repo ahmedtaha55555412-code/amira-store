@@ -14,7 +14,9 @@ export function Toaster() {
   const { toasts } = useToast()
 
   return (
-    <ToastProvider>
+    // PACK-09: the viewport lives at the inline-end (left in this RTL-only
+    // product) — the dismiss swipe must exit toward that same edge.
+    <ToastProvider swipeDirection="left">
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props}>
