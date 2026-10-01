@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cairo } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { BRAND } from "@/config/brand";
@@ -7,10 +7,21 @@ import { BRAND } from "@/config/brand";
 /**
  * Single Arabic production font family (PHASE-01 decision — docs/DESIGN_SYSTEM.md).
  * Loaded weights only: 400 body · 500 UI/labels · 600 shadcn defaults · 700 headings · 800 display.
+ *
+ * MAINTENANCE FIX (post-PHASE-15 build defect): Cairo is now SELF-HOSTED from the
+ * committed variable WOFF2 (src/fonts/cairo/) instead of next/font/google. The Google
+ * path performed a mandatory live fetch of fonts.googleapis.com at build time, so any
+ * sandbox/CI network outage turned `next build` red (Turbopack "Failed to fetch
+ * `Cairo` from Google Fonts" / internal google-font module-not-found). The committed
+ * asset is the official Cairo variable font from google/fonts (SIL OFL 1.1 — license
+ * alongside the file), covering the full 400–800 weight set plus Arabic + Latin, so
+ * the design decision, typography hierarchy, and the --font-arabic CSS variable
+ * contract are preserved bit-for-bit with zero build-time network dependency.
  */
-const cairo = Cairo({
-  subsets: ["arabic", "latin"],
-  weight: ["400", "500", "600", "700", "800"],
+const cairo = localFont({
+  src: "../fonts/cairo/Cairo-VariableFont.woff2",
+  weight: "200 1000",
+  style: "normal",
   variable: "--font-arabic",
   display: "swap",
 });
