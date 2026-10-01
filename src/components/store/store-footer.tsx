@@ -51,7 +51,7 @@ export async function StoreFooter() {
               href={waHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-footer-foreground/25 px-4 py-2 text-sm font-medium transition-colors hover:bg-footer-foreground/10"
+              className="inline-flex items-center gap-2 rounded-full border border-footer-foreground/25 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-footer-foreground/10"
               aria-label={`تواصل معنا عبر واتساب على الرقم ${settings.whatsappDisplay} (يفتح في نافذة جديدة)`}
             >
               <MessageCircle aria-hidden className="size-4" />
@@ -86,7 +86,7 @@ export async function StoreFooter() {
                 <li key={department.id} className="text-sm text-footer-foreground/70">
                   <Link
                     href={`/category/${encodeURIComponent(department.slug)}`}
-                    className="transition-colors hover:text-footer-foreground"
+                    className="inline-block py-2.5 -my-2.5 transition-colors hover:text-footer-foreground"
                   >
                     {department.name}
                   </Link>
@@ -108,7 +108,7 @@ export async function StoreFooter() {
               <li className="text-sm text-footer-foreground/70">
                 <Link
                   href="/about"
-                  className="transition-colors hover:text-footer-foreground"
+                  className="inline-block py-2.5 -my-2.5 transition-colors hover:text-footer-foreground"
                 >
                   من نحن
                 </Link>
@@ -116,7 +116,7 @@ export async function StoreFooter() {
               <li className="text-sm text-footer-foreground/70">
                 <Link
                   href="/contact"
-                  className="transition-colors hover:text-footer-foreground"
+                  className="inline-block py-2.5 -my-2.5 transition-colors hover:text-footer-foreground"
                 >
                   تواصل معنا
                 </Link>
@@ -124,7 +124,7 @@ export async function StoreFooter() {
               <li className="text-sm text-footer-foreground/70">
                 <Link
                   href="/track-order"
-                  className="transition-colors hover:text-footer-foreground"
+                  className="inline-block py-2.5 -my-2.5 transition-colors hover:text-footer-foreground"
                 >
                   تتبع الطلب
                 </Link>
@@ -133,7 +133,7 @@ export async function StoreFooter() {
                 <li key={item.href}>
                   <a
                     href={item.href}
-                    className="text-sm text-footer-foreground/80 transition-colors hover:text-footer-foreground"
+                    className="inline-block py-2.5 -my-2.5 text-sm text-footer-foreground/80 transition-colors hover:text-footer-foreground"
                   >
                     {item.label}
                   </a>
@@ -153,7 +153,7 @@ export async function StoreFooter() {
                 <li key={href} className="text-sm text-footer-foreground/70">
                   <Link
                     href={href}
-                    className="transition-colors hover:text-footer-foreground"
+                    className="inline-block py-2.5 -my-2.5 transition-colors hover:text-footer-foreground"
                   >
                     {label}
                   </Link>

@@ -36,7 +36,7 @@ export async function StoreHeader() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="size-10 lg:hidden"
                 aria-label="فتح قائمة الأقسام"
               >
                 <Menu aria-hidden className="size-5" />

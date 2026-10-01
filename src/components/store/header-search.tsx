@@ -123,7 +123,7 @@ export function HeaderSearch({ className }: { className?: string }) {
           size="icon"
           variant="ghost"
           aria-label="ابدأ البحث"
-          className="absolute end-1 top-1/2 size-8 -translate-y-1/2 rounded-full text-muted-foreground hover:text-foreground"
+          className="absolute end-1 top-1/2 size-9 -translate-y-1/2 rounded-full text-muted-foreground hover:text-foreground"
         >
           <Search aria-hidden className="size-4" />
         </Button>
