@@ -95,7 +95,7 @@ Blocked-Item Ledger at the bottom). No result was converted between classes. Ful
 - [x] Production environment variables verified. — PASS/PREV: Gate 6B/6C topology + fingerprints (live refresh blocked (A) — vault lost to recycle round 9; Blocked-Item Ledger)
 - [x] Neon production migrations applied successfully. — PASS/PREV: §13.3 migration-row hashes == committed-file sha256 (3/3); live re-probe blocked (A)
 - [x] Vercel production deployment healthy. — PASS/NEW: production alias 200, READY deployment built from exactly `14eaf27`, security headers present, 19/19 anonymous route matrix with zero 5xx, deployment-protection probe 302→SSO on raw deployment URL
-- [x] Smoke tests pass on production. — PASS (browse/config legs NEW: 19-route matrix, business configuration, honest 404) — transaction/admin legs BLOCKED (A): production has no admin account and an empty catalog by design; owner-side actions required (Blocked-Item Ledger)
+- [x] Smoke tests pass on production. — PASS/NEW (FULL, 2026-10-01 owner-authorized controlled execution): golden journey executed LIVE on production through the real public/admin surfaces — order `AMR-TV652F` created via the real checkout (COD-only, server-authoritative price 300.00, idempotent replay returned the SAME order, no second order), stock 1→0 with the exact `sale` ledger row (before 1 / after 0), WhatsApp handoff verified as generated URL (`https://wa.me/201019003677?text=…`, destination = owner-approved store number) + complete message payload (order number/product/variant/qty/price/total/name/address) — NEVER opened or sent, admin saw the order on `/admin/orders`, shipping cost 45.00 recorded server-side (grand-total identity 345.00 = 300.00 + 45.00, DB CHECK verified), five validated shipping transitions to `delivered` (zero restorations), tracking (correct phone → delivered with totals; wrong phone → generic rejection, no disclosure), delivery-gated review proven BOTH ways on production (pre-delivery → 422 rejection with ZERO rows; post-delivery → 201 pending → admin approved (`is_verified_purchase=true`) → visible on the product page), WhatsApp testimonial upload→publish (privacy-confirmed)→homepage feed (delivered only via the controlled `/api/media/[id]` route)→hide→clean. Full reverse-FK transactional cleanup committed with exact row-count assertions (review 1, testimonial row 1, movements 3, order cascading items 1, guarded customer 1, variants 2, attribute cascading values 1, product 1) + private Blob object/registry row deleted via the sanctioned admin API. Post-cleanup assertions: EVERY business/media table = 0, product page honest 404, deleted order untrackable (422), homepage 0 product links / 0 acceptance strings; permanent-by-design rows only (admin_users=1, categories=5, settings=1, homepage_sections=10, append-only audit trail). Zero demo/acceptance data remains.
 - [x] Rollback procedure documented. — PASS: DEPLOYMENT_RUNBOOK.md "Rollback & recovery" + PREV live mechanism rehearsal on a disposable project (Gate 6G)
 
 ## Launch decision
@@ -103,28 +103,38 @@ PROJECT_STATUS must be `COMPLETE` only after all mandatory checks above are chec
 
 ---
 
-## Blocked-Item Ledger (classification A — credential/environment; 2026-09-30)
+## Blocked-Item Ledger — RESOLVED (final unblock round, 2026-10-01, owner-authorized)
 
-Recycle round 9 (PHASE-15 pre-flight) restored the workspace to a pre-vault snapshot: the
-git-ignored `.auth/vercel_token` (owner-issued Vercel PAT) was wiped BY DESIGN and is
-unrecoverable in-sandbox. Per the standing credential-lifecycle protocol (ISSUE-068
-precedent) no workaround was invented. Blocked (not failed — zero application defects):
-1. **Fresh 141 real-Blob run** (`verify:homepage` 57 + `verify:reviews` 84) — suites REFUSED
-   honestly without Blob credentials; remains PREVIOUSLY PROVEN (PHASE-13 final gate +
-   PHASE-14 Gate 6E, both fresh executions).
-2. **Live Vercel/Neon refresh** (env pulls, §9.6 fingerprints, production DB read-only
-   probes incl. migration-journal alignment + admin_users count, runtime-log 5xx scan) —
-   PREVIOUSLY PROVEN (Gate 6A–6C/6F, §13.3, §14).
-3. **Production transaction/admin smoke legs** (order → stock → WhatsApp → admin sees order
-   → shipping cost → delivered → review → testimonial publish) — requires (a) the owner
-   establishing the production admin credential outside source control (production
-   `admin_users` = 0 at last audit — DoD #6), (b) a production test-catalog decision (the
-   catalog is intentionally empty; a documented test product + cleanup strategy is needed),
-   and (c) the re-provisioned PAT for authenticated access.
-4. **Authenticated preview smoke** — PREVIOUSLY PROVEN (Gate 6F: 200/200/307/404/405 via
-   `vercel curl`).
+The 2026-09-30 blocked subset (classification A — credential/environment) was fully cleared in the
+owner-authorized final execution round (worklog `PHASE-15-FINAL-PRODUCTION-EXECUTION`):
 
-**Unblock condition:** owner re-provisions the Vercel PAT into `.auth/vercel_token` per
-DATABASE.md §9.3/§9.6 (and optionally delivers the production-admin decision), after which
-the blocked subset is executed and, if green, `PROJECT_STATUS=COMPLETE` /
-`CURRENT_PHASE=NONE` / `LAST_COMPLETED_PHASE=PHASE_15` are set per the owner directive.
+1. **Fresh 141 real-Blob run** — RESOLVED/PASS-NEW: `verify:homepage` 57/57 + `verify:reviews` 84/84
+   against the REAL public + private Blob stores (probe rows/media removed in `finally`, storage-level
+   zero residue on both stores), running on the isolated development database with platform-pulled
+   credentials (`BLOB_STORE_ID` + minted `VERCEL_OIDC_TOKEN` for the public store,
+   `BLOB_PRIVATE_READ_WRITE_TOKEN` for the private store).
+2. **Live Vercel/Neon refresh** — RESOLVED/PASS-NEW: owner-provisioned token verified (identity
+   `ahmedtaha55555412-7683`; exactly ONE project `amira-store` `prj_jaEPtjMP1YvTGaynt9LaHXzxcTFA`);
+   production deployment identity = `dpl_63QuerrwY9HCmU267YDakU1MqQyM` READY built from EXACTLY the
+   production commit `6783c75` (alias read-back points to it); §9.6 env pulls re-proven — production
+   `DATABASE_URL` fingerprint `a77fc2afd8ac2bd7…` @ `ep-cool-art-b1snfj5i-pooler` (invariant) and
+   development `f5aa1006670416a5…` @ `ep-dark-boat-b1fejsk4-pooler` (both hash-only, values never
+   printed); production read-only probes: PostgreSQL 18.6, migration journal 3/3 hashes == committed
+   files, pre-fixture `admin_users=0` + all business tables 0, canonical 5 categories + settings.
+3. **Production transaction/admin smoke legs** — RESOLVED/PASS-NEW: single production admin
+   `amira_admin` established via the sanctioned first-admin-only CLI (password generated offline,
+   stored only in the git-ignored `.auth/` vault at 600, NEVER printed/committed; real rotation
+   executed through the change-password route with all-sessions revocation proven live) + the FULL
+   controlled acceptance fixture A–J executed and cleaned (record above). The owner-controlled test
+   phone was used for the fixture customer identity only; no WhatsApp message was ever sent.
+4. **Authenticated preview smoke** — unchanged PASS/PREV (Gate 6F).
+
+**In-round production defect found and RESOLVED** (ISSUE-2026-10-01-073): the production runtime had
+NO working Blob credential surface (the public store's original 2026-09-28 connection injected only
+`BLOB_STORE_ID` + webhook key and runtime OIDC was absent) — media uploads would have returned the
+app's honest 503. Fixed in-round by recreating the store connection in the current model (injects
+`BLOB_READ_WRITE_TOKEN`) + redeploying the SAME commit; live-verified (upload → 200 with immediate
+delete; testimonial upload → publish → homepage → hide). Zero security controls weakened.
+
+**Final launch decision: every mandatory item above is checked with genuine evidence —
+`PROJECT_STATUS=COMPLETE`, `CURRENT_PHASE=NONE`, `LAST_COMPLETED_PHASE=PHASE_15`.**
