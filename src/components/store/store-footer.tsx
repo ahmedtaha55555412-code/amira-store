@@ -163,10 +163,18 @@ export async function StoreFooter() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-footer-foreground/15 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6 text-center text-xs text-footer-foreground/60 sm:flex-row sm:text-start">
+        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-footer-foreground/15 pt-6 text-center text-xs text-footer-foreground/60 sm:flex-row sm:text-start">
           <p>© {year} أميرة استور — جميع الحقوق محفوظة.</p>
           <p>الدفع عند الاستلام · تأكيد تكلفة الشحن عبر واتساب</p>
         </div>
+        {/* PACK-02: the fixed WhatsApp FAB (size-12/sm:size-14 + 1rem offset)
+            floats over the very bottom of the page on every route — the
+            footer reserves bottom space for its footprint (+ safe area) so no
+            copyright text or focusable item is ever obscured. */}
+        <div
+          aria-hidden
+          className="pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
+        />
       </Container>
     </footer>
   );
