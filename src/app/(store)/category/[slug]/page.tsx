@@ -13,6 +13,7 @@ import { StoreBreadcrumb } from "@/components/store/breadcrumb";
 import { EmptyState } from "@/components/store/states";
 import { Container } from "@/components/store/container";
 import { BRAND } from "@/config/brand";
+import { itemCountPhrase } from "@/lib/storefront/format";
 import {
   getStorefrontCategoryPage,
   getStorefrontFacets,
@@ -204,8 +205,7 @@ async function CategoryListing({
               </p>
             ) : null}
             <p className="text-sm text-muted-foreground" aria-live="polite">
-              {listing.total.toLocaleString("ar-EG-u-nu-latn")}{" "}
-              {listing.total === 1 ? "منتج" : listing.total === 2 ? "منتجان" : "منتج"}
+              {itemCountPhrase(listing.total)}
             </p>
           </header>
 

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import type { StorefrontFacets } from "@/lib/storefront/catalog";
 import { buildCategoryHref } from "@/lib/storefront/urls";
+import { itemCountPhrase } from "@/lib/storefront/format";
 import { cn } from "@/lib/utils";
 
 export type CategoryFilterParams = {
@@ -192,7 +193,7 @@ function FilterControls({
                 <Checkbox
                   checked={checked}
                   onCheckedChange={(next) => toggleValue(value.id, next === true)}
-                  aria-label={`${attribute.name}: ${value.value} (${value.productCount} منتج)`}
+                  aria-label={`${attribute.name}: ${value.value} (${itemCountPhrase(value.productCount)})`}
                 />
                 <span className={cn(checked && "font-semibold")}>{value.value}</span>
                 <span className="ms-auto text-[11px] text-muted-foreground">
