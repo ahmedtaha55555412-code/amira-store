@@ -1503,3 +1503,19 @@ Stage Summary:
 - Historical PHASE-15 COMPLETE record untouched; this entry documents a post-completion maintenance defect and its resolution.
 - Verification evidence: frozen-install/typecheck/lint/build PASS, zero-egress build PASS, browser RTL/Cairo/overflow/console checks PASS, 7-route smoke 200s, built-font artifact verified.
 - Pre-existing StoreHeader hydration warning flagged for the owner as a separate follow-up issue.
+
+---
+Task ID: MAINT-POSTP15-BUILD-FIX-LANDING
+Agent: Z.ai Code (main)
+Task: Landing addendum for MAINT-POSTP15-BUILD-FIX — PR, CI, merge, production deploy verification. (Worklog-only record left uncommitted per the standing pattern; folds into the next docs PR.)
+
+Work Log:
+- Git-flight note: a background harness checkout moved HEAD to main between branch creation and the fix commits, so both commits initially landed on local main; refs repaired atomically (branch -> ead0091, main -> bd52690, zero content changes), then pushed.
+- PR #8 opened (fix/turbopack-cairo-font-build -> main, commits d345b47 + ead0091). Required CI check verify = completed:success; Vercel PREVIEW deployment of the branch also built green.
+- PR #8 MERGED (merge commit 259eaf8 on origin/main). No history rewritten; PHASE-15 records untouched.
+- PRODUCTION (auto-deploy of 259eaf8, build GREEN per CI+preview before deploy per STEP-6 rule): homepage HTML now references /_next/static/media/Cairo_VariableFont-s.p.03eme6ulpdeai.woff2 (200 from the CDN); ZERO fonts.googleapis/gstatic references in production HTML; /, /category/women, /track-order, /cart, /search, /robots.txt, /sitemap.xml all 200; lang=ar dir=rtl intact; wa.me/201019003677 intact; all 5 security headers intact; browser-verified computed body font = cairo with 0 font-related console errors, no horizontal overflow.
+
+Stage Summary:
+- Defect lifecycle CLOSED: reproduced -> root-caused (network-dependent next/font/google) -> upgraded (16.3.8 LTS) -> permanently fixed (self-hosted Cairo variable WOFF2 + next/font/local) -> verified (incl. zero-egress build) -> merged -> live on production.
+- Historical PHASE-15 acceptance evidence untouched; tracked solely as a post-completion maintenance defect.
+- Open follow-up for the owner (separate issue recommended): pre-existing StoreHeader hydration-mismatch dev warning (present on production BEFORE this fix and on the local baseline; page functions; React regenerates the tree client-side).
