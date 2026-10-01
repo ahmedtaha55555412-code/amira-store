@@ -68,7 +68,7 @@ export async function StoreHeader() {
                         <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                           {department.productCount > 0
                             ? itemCountPhrase(department.productCount)
-                            : "قريبًا"}
+                            : "لا توجد منتجات بعد"}
                         </span>
                       </Link>
                       {department.children.length > 0 ? (
