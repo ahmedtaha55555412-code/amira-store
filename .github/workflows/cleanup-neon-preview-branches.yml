@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   cleanup-preview-branch:
@@ -31,6 +32,7 @@ jobs:
         shell: bash
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -61,22 +63,11 @@ jobs:
             exit 1
           fi
 
-          gh pr list --state open --repo "${{ github.repository }}" --json headRefName --limit 200 > /tmp/open-prs.json
-          export OPEN_HEAD_REF="${ref}"
-          python - <<'PY'
-          import json
-          import os
-          import sys
-
-          ref = os.environ["OPEN_HEAD_REF"]
-          with open("/tmp/open-prs.json", "r", encoding="utf-8") as fh:
-              pulls = json.load(fh)
-
-          other_matching_prs = [item for item in pulls if item.get("headRefName") == ref]
-          if other_matching_prs:
-              print(f"Open PR still depends on {ref}; skipping deletion.")
-              sys.exit(0)
-          PY
+          open_pr_count="$(gh pr list --state open --repo "${GITHUB_REPOSITORY}" --head "${ref}" --json number --jq 'length' --limit 1)"
+          if [[ "${open_pr_count}" != "0" ]]; then
+            echo "Open PR still depends on ${ref}; skipping deletion."
+            exit 0
+          fi
 
           neon branches list --project-id "${NEON_PROJECT_ID}" --output json > /tmp/neon-branches.json
           export PREVIEW_BRANCH="${preview_branch}"
