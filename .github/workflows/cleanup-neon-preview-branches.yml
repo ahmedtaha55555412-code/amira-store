@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   cleanup-preview-branch:
@@ -23,12 +24,15 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install Neon CLI
-        run: npm install --silent -g neonctl
+        run: |
+          npm install --silent -g neon@latest
+          neon --version
 
       - name: Delete exact preview branch when the closed PR is no longer active
         shell: bash
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -57,6 +61,12 @@ jobs:
           if [[ -z "${NEON_API_KEY:-}" ]]; then
             echo "NEON_API_KEY is not configured."
             exit 1
+          fi
+
+          open_pr_count="$(gh pr list --state open --repo "${GITHUB_REPOSITORY}" --head "${ref}" --json number --jq 'length' --limit 1)"
+          if [[ "${open_pr_count}" != "0" ]]; then
+            echo "Open PR still depends on ${ref}; skipping deletion."
+            exit 0
           fi
 
           neon branches list --project-id "${NEON_PROJECT_ID}" --output json > /tmp/neon-branches.json
