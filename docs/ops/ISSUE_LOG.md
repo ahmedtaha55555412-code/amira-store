@@ -1016,3 +1016,15 @@
 - Verification: frozen-lockfile install / typecheck / lint PASS; Turbopack build PASS; DECISIVE zero-egress clean build PASS (exit 0 — the exact field-failure condition now passes); built CSS shows the self-hosted `@font-face{font-family:cairo; font-weight:200 1000; font-display:swap}` + `--font-arabic:"cairo","cairo Fallback"`; browser (1280/375): lang=ar dir=rtl, computed body font = cairo, woff2 200 from /_next/static/media, no horizontal overflow, 0 font-related console errors; 7-route smoke 200.
 - Landing: PR #8 (required CI check `verify` = success; Vercel preview green) → merge commit `259eaf8724d51252459413d4872be71227d10d84` → Vercel Production deployment (id 6780667368, vercel[bot]) state `success`; production serves the committed WOFF2 byte-identically (177,732 bytes, immutable cache) with ZERO fonts.googleapis/gstatic references in HTML+CSS.
 - Final status: RESOLVED — production build path has ZERO network dependency; Cairo remains the single Arabic production family with identical visual/technical contracts. Full evidence: commit d345b47 message + worklog (MAINT-POSTP15-BUILD-FIX, MAINT-POSTP15-BUILD-FIX-LANDING). Pre-existing StoreHeader hydration warning observed during verification is tracked separately in the worklog (not part of this defect).
+
+### ISSUE-2026-10-03-075
+- Phase: POST-PHASE-15 maintenance (Neon preview-branch lifecycle workflow, 2026-10-03)
+- Severity: LOW (one preview branch remained after cleanup automation failed; no database contents or protected branches were changed)
+- Status: RESOLVED
+- Symptom: the `pull_request: closed` cleanup workflow failed before listing Neon branches, leaving the preview branch created for PR #12 in the project.
+- Reproduction: merge PR #12 while the repository has no `NEON_API_KEY` secret; Actions resolves the secret to an empty value and the workflow exits with `NEON_API_KEY is not configured.`
+- Root cause: the workflow secret required by the Neon CLI had never been configured in the GitHub repository. The workflow's fail-closed validation correctly prevented any Neon operation.
+- Minimal fix: minted a Neon API key scoped to project `tiny-mud-82763154` and stored it as the repository `NEON_API_KEY` secret via stdin. No credential value was printed, committed, or added to the workflow.
+- Verification: reran only the failed Actions job; CLI installation and the exact-branch cleanup step succeeded. Neon CLI and MCP read-only inventories both show only `main` and `development`; production remained READY and returned HTTP 200.
+- Related files: `.github/workflows/cleanup-neon-preview-branches.yml`; GitHub repository secret `NEON_API_KEY`
+- Notes: workflow safety checks are unchanged: protected refs are skipped, an open PR with the same head ref blocks deletion, and only the exact `preview/<head-ref>` name is eligible.
