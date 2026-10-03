@@ -23,7 +23,9 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install Neon CLI
-        run: npm install --silent -g neonctl
+        run: |
+          npm install --silent -g neon@latest
+          neon --version
 
       - name: Delete exact preview branch when the closed PR is no longer active
         shell: bash
@@ -58,6 +60,23 @@ jobs:
             echo "NEON_API_KEY is not configured."
             exit 1
           fi
+
+          gh pr list --state open --repo "${{ github.repository }}" --json headRefName --limit 200 > /tmp/open-prs.json
+          export OPEN_HEAD_REF="${ref}"
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          ref = os.environ["OPEN_HEAD_REF"]
+          with open("/tmp/open-prs.json", "r", encoding="utf-8") as fh:
+              pulls = json.load(fh)
+
+          other_matching_prs = [item for item in pulls if item.get("headRefName") == ref]
+          if other_matching_prs:
+              print(f"Open PR still depends on {ref}; skipping deletion.")
+              sys.exit(0)
+          PY
 
           neon branches list --project-id "${NEON_PROJECT_ID}" --output json > /tmp/neon-branches.json
           export PREVIEW_BRANCH="${preview_branch}"
