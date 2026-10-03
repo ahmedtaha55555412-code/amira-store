@@ -51,7 +51,7 @@ export function SortSelect({ value, scope }: SortSelectProps) {
         ترتيب حسب
       </label>
       <Select value={value} onValueChange={(next) => change(next as SortOption)}>
-        <SelectTrigger id="sort-select" size="sm" className="w-44 rounded-full">
+        <SelectTrigger id="sort-select" size="sm" className="w-44 max-lg:h-10! rounded-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

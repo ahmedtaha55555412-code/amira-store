@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppliedFilters } from "@/components/store/applied-filters";
 import { CategoryFilters, type CategoryFilterParams } from "@/components/store/category-filters";
 import { Pagination } from "@/components/store/pagination";
 import { ProductCard } from "@/components/store/product-card";
@@ -13,6 +14,7 @@ import { StoreBreadcrumb } from "@/components/store/breadcrumb";
 import { EmptyState } from "@/components/store/states";
 import { Container } from "@/components/store/container";
 import { BRAND } from "@/config/brand";
+import { itemCountPhrase } from "@/lib/storefront/format";
 import {
   getStorefrontCategoryPage,
   getStorefrontFacets,
@@ -204,8 +206,7 @@ async function CategoryListing({
               </p>
             ) : null}
             <p className="text-sm text-muted-foreground" aria-live="polite">
-              {listing.total.toLocaleString("ar-EG-u-nu-latn")}{" "}
-              {listing.total === 1 ? "منتج" : listing.total === 2 ? "منتجان" : "منتج"}
+              {itemCountPhrase(listing.total)}
             </p>
           </header>
 
@@ -218,6 +219,10 @@ async function CategoryListing({
               ))}
             </nav>
           ) : null}
+
+          {/* PACK-08: applied-filter overview — removable chips above the
+              list (URL-driven; renders nothing with no filters). */}
+          <AppliedFilters slug={category.slug} current={filterParams} facets={facets} />
 
           <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)]">
             <CategoryFilters

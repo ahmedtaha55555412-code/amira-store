@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Section, SectionHeading } from "./section";
 import { getStorefrontCategoryTree } from "@/lib/storefront/catalog";
+import { itemCountPhrase } from "@/lib/storefront/format";
 
 /** Department icon mapping by slug prefix — decorative fallback for new departments. */
 function departmentIcon(slug: string): LucideIcon {
@@ -64,10 +65,13 @@ export async function CategoryShowcase({
                     <Icon aria-hidden className="size-7" />
                   </span>
                   <h3 className="text-sm font-bold sm:text-base">{department.name}</h3>
+                  {/* PACK-10: one truthful narrative for an empty category — the
+                      compact form of the PLP empty-state wording (no inventory
+                      claim, no "coming soon" promise). */}
                   <span className="mt-auto rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground">
                     {department.productCount > 0
-                      ? `${department.productCount.toLocaleString("ar-EG-u-nu-latn")} منتج`
-                      : "قريبًا"}
+                      ? itemCountPhrase(department.productCount)
+                      : "لا توجد منتجات بعد"}
                   </span>
                 </Link>
               </li>

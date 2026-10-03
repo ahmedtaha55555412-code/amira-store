@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import type { StorefrontFacets } from "@/lib/storefront/catalog";
 import { buildCategoryHref } from "@/lib/storefront/urls";
+import { itemCountPhrase } from "@/lib/storefront/format";
 import { cn } from "@/lib/utils";
 
 export type CategoryFilterParams = {
@@ -103,7 +104,7 @@ function FilterControls({
             onClick={() =>
               apply({ attr: [], stock: false, sale: false, sort: current.sort })
             }
-            className="flex items-center gap-1 rounded-sm text-xs font-semibold text-destructive transition-colors hover:text-destructive/80"
+            className="-my-2 flex min-h-10 items-center gap-1 rounded-sm px-2 text-xs font-semibold text-destructive transition-colors hover:text-destructive/80"
           >
             <X aria-hidden className="size-3.5" />
             مسح التصفية
@@ -144,7 +145,7 @@ function FilterControls({
             aria-label="أقل سعر"
             value={priceFrom}
             onChange={(event) => setPriceFrom(event.target.value)}
-            className="h-9"
+            className="h-10 lg:h-9"
           />
           <span aria-hidden className="text-muted-foreground">–</span>
           <Input
@@ -155,7 +156,7 @@ function FilterControls({
             aria-label="أعلى سعر"
             value={priceTo}
             onChange={(event) => setPriceTo(event.target.value)}
-            className="h-9"
+            className="h-10 lg:h-9"
           />
         </div>
         {!priceValid ? (
@@ -175,7 +176,7 @@ function FilterControls({
               pmax: priceTo === "" ? undefined : priceTo,
             })
           }
-          className="self-start"
+          className="max-lg:h-10 self-start"
         >
           تطبيق السعر
         </Button>
@@ -192,7 +193,7 @@ function FilterControls({
                 <Checkbox
                   checked={checked}
                   onCheckedChange={(next) => toggleValue(value.id, next === true)}
-                  aria-label={`${attribute.name}: ${value.value} (${value.productCount} منتج)`}
+                  aria-label={`${attribute.name}: ${value.value} (${itemCountPhrase(value.productCount)})`}
                 />
                 <span className={cn(checked && "font-semibold")}>{value.value}</span>
                 <span className="ms-auto text-[11px] text-muted-foreground">
@@ -240,7 +241,7 @@ export function CategoryFilters(props: FiltersPanelProps) {
       <div className="lg:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="h-10 gap-2">
               <SlidersHorizontal aria-hidden className="size-4" />
               تصفية
               {activeFilterCount > 0 ? (

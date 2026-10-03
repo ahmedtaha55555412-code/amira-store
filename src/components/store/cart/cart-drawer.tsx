@@ -68,7 +68,7 @@ export function CartDrawer() {
           variant="ghost"
           size="icon"
           aria-label={`سلة التسوق${count > 0 ? ` — ${cartCountPhrase(count)}` : ''}`}
-          className="relative text-muted-foreground hover:bg-blush/60 hover:text-foreground"
+          className="relative max-lg:size-10 text-muted-foreground hover:bg-blush/60 hover:text-foreground"
         >
           <ShoppingBag aria-hidden className="size-5" />
           {count > 0 ? (

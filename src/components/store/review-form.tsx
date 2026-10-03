@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { normalizeEgyptianPhone } from "@/lib/storefront/whatsapp";
 import { cn } from "@/lib/utils";
 
 type LookupItem = {
@@ -122,6 +123,29 @@ export function ReviewForm() {
   async function handleLookup(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+
+    /**
+     * PACK-07 (UX-08) request gate — mirrors reviewLookupSchema's local
+     * checks (order number format, Egyptian phone) with the SAME messages
+     * the API returns, so invalid local input shows the existing validation
+     * WITHOUT firing the POST lookup. Valid input continues to the existing
+     * lookup path unchanged (no validation-rule/rate-limit/contract change).
+     */
+    const normalizedOrder = orderNumber.trim().toUpperCase();
+    const normalizedPhone = phone.trim();
+    if (!/^AMR-[A-Z0-9]{6}$/.test(normalizedOrder)) {
+      setError("رقم الطلب غير صحيح — مثال: AMR-4KP7QX.");
+      return;
+    }
+    if (
+      normalizedPhone.length < 8 ||
+      normalizedPhone.length > 25 ||
+      normalizeEgyptianPhone(normalizedPhone) === null
+    ) {
+      setError("برجاء كتابة رقم موبايل مصري صحيح (مثال: 01012345678).");
+      return;
+    }
+
     setPending(true);
     try {
       const response = await fetch("/api/storefront/reviews/lookup", {

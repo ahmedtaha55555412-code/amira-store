@@ -13,6 +13,7 @@ import { BrandLogo } from "@/components/brand/brand-logo";
 import { CartDrawer } from "@/components/store/cart/cart-drawer";
 import { WishlistDrawer } from "@/components/store/wishlist/wishlist-drawer";
 import { getStorefrontCategoryTree } from "@/lib/storefront/catalog";
+import { itemCountPhrase } from "@/lib/storefront/format";
 import { HeaderSearch } from "./header-search";
 import { Container } from "./container";
 
@@ -36,7 +37,7 @@ export async function StoreHeader() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="size-10 lg:hidden"
                 aria-label="فتح قائمة الأقسام"
               >
                 <Menu aria-hidden className="size-5" />
@@ -65,7 +66,9 @@ export async function StoreHeader() {
                       >
                         <span>{department.name}</span>
                         <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          {department.productCount > 0 ? `${department.productCount} منتج` : "قريبًا"}
+                          {department.productCount > 0
+                            ? itemCountPhrase(department.productCount)
+                            : "لا توجد منتجات بعد"}
                         </span>
                       </Link>
                       {department.children.length > 0 ? (

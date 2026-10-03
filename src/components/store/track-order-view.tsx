@@ -222,7 +222,7 @@ export function TrackOrderView() {
             {error}
           </p>
         ) : null}
-        <Button type="submit" disabled={pending} className="w-full sm:w-auto sm:self-start">
+        <Button type="submit" disabled={pending} className="min-h-11 w-full sm:w-auto sm:self-start">
           {pending ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <PackageSearch aria-hidden className="size-4" />}
           تتبع الطلب
         </Button>
