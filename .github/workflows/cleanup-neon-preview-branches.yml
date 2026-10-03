@@ -1,0 +1,88 @@
+name: Cleanup stale Neon preview branches
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup-preview-branch:
+    if: >
+      github.event.pull_request.state == 'closed'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.head.ref != 'main'
+      && github.event.pull_request.head.ref != 'development'
+    runs-on: ubuntu-latest
+    env:
+      NEON_PROJECT_ID: tiny-mud-82763154
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install Neon CLI
+        run: npm install --silent -g neonctl
+
+      - name: Delete exact preview branch when the closed PR is no longer active
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+
+          ref="${HEAD_REF}"
+          if [[ -z "${ref}" ]]; then
+            echo "No pull request head ref available."
+            exit 0
+          fi
+
+          if [[ "${ref}" == "main" || "${ref}" == "development" ]]; then
+            echo "Skipping protected branch '${ref}'."
+            exit 0
+          fi
+
+          preview_branch="preview/${ref}"
+          if [[ "${preview_branch}" == "preview/main" || "${preview_branch}" == "preview/development" ]]; then
+            echo "Skipping protected preview branch '${preview_branch}'."
+            exit 0
+          fi
+
+          if [[ -z "${NEON_PROJECT_ID:-}" ]]; then
+            echo "NEON_PROJECT_ID is not configured."
+            exit 1
+          fi
+
+          if [[ -z "${NEON_API_KEY:-}" ]]; then
+            echo "NEON_API_KEY is not configured."
+            exit 1
+          fi
+
+          neon branches list --project-id "${NEON_PROJECT_ID}" --output json > /tmp/neon-branches.json
+          export PREVIEW_BRANCH="${preview_branch}"
+
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          target = os.environ["PREVIEW_BRANCH"]
+          with open("/tmp/neon-branches.json", "r", encoding="utf-8") as fh:
+              branches = json.load(fh)
+
+          names = {item["name"] for item in branches if isinstance(item, dict) and "name" in item}
+          if target not in names:
+              print(f"No exact Neon branch match for '{target}'. Nothing to delete.")
+              sys.exit(0)
+
+          protected = {"main", "development", "preview/main", "preview/development"}
+          if target in protected:
+              print(f"Protected branch '{target}' detected; skipping.")
+              sys.exit(0)
+
+          print(f"Exact safe preview branch match found: {target}")
+          PY
+
+          echo "Deleting exact Neon preview branch: ${preview_branch}"
+          neon branches delete "${preview_branch}" --project-id "${NEON_PROJECT_ID}"
