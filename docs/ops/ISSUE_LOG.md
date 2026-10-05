@@ -1453,3 +1453,15 @@
 - Exact fix: none in application or infrastructure; DNS later resolved successfully and the read-only browser check was repeated.
 - Verification: `Resolve-DnsName` returned the endpoint's CNAME/A records; three consecutive local route requests returned 200 and the final browser flow rendered the men category without page/console errors.
 - Related files: none; environment-only verification incident.
+
+### ISSUE-2026-10-05-023
+- Phase: PHASE-05 documentation-only main publication / protection restoration (STEP-031)
+- Severity: P4 (GitHub rejected the first protection-restoration payload)
+- Status: RESOLVED — corrected restoration succeeded and the full original protection contract was read back.
+- Symptom: after the authorized docs-only commit `87c6d70181c85b03cebaf6ec4b064a56bdd115ab` reached `main`, the first full protection `PUT` returned HTTP 422 because optional protection fields were submitted as `{ "enabled": false }`.
+- Evidence: GitHub rejected the payload with schema errors stating those fields must be booleans. The next full `PUT` sent boolean `false` values and GET read-back confirmed required `verify` (app 15368), the PR rule (zero required approvals), enforced admins, disabled force-push/deletion/optional rules, and null restrictions.
+- Expected: restore the complete prior protection contract immediately after the authorized fast-forward push.
+- Actual: the first restoration request failed; PR and required-check gates remained absent until the corrected request succeeded. Admin enforcement and force-push/deletion restrictions remained enabled throughout.
+- Root cause: the full-protection update API expects booleans for the optional protection flags, not the `{ enabled: false }` shape returned by GET.
+- Exact fix: retry the full-protection `PUT` with boolean values and independently read back every setting.
+- Related resources: GitHub `main`, docs commit `87c6d70181c85b03cebaf6ec4b064a56bdd115ab`, STEP-031, AUDIT-024.
