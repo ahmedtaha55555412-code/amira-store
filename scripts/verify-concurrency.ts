@@ -158,7 +158,7 @@ async function ledgerConsistent(variantId: string): Promise<{ ok: boolean; detai
     }
     let valid = false;
     for (const permutation of permutations(group)) {
-      let cursor = head;
+      let cursor: number | null = head;
       let chainOk = true;
       for (const row of permutation) {
         if (cursor !== null && row.before !== cursor) {

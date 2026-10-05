@@ -8,7 +8,19 @@ Allowed project states:
 - `READY_FOR_NEXT_PHASE`
 - `COMPLETE`
 
-## Current state
+## Current recovery status — authoritative as of 2026-10-05
+PROJECT_STATUS=IN_PROGRESS — the owner has authorized full recovery using the connected GitHub, Neon, and Vercel integrations; no phase completion is claimed.
+CURRENT_PHASE=PHASE_00
+LAST_COMPLETED_PHASE=NONE for the restarted recovery sequence; historical phase records below are retained unchanged.
+PHASE_00_STATUS=IN_PROGRESS — PHASE-00 Definition of Done and integration checks have not been re-established for this recovery; do not advance based on historical records.
+RECOVERY_SCOPE=OWNER_AUTHORIZED_FULL — use the existing project resources in official phase order; protect production data, do not expose or commit secrets, and do not claim a phase gate without evidence.
+LATEST_STEP=STEP-029 VERIFIED — STEP-028 restored the owner-authorized PUBLIC visibility and prior `main` protection after a temporary visibility transition; STEP-029 rechecked Vercel↔GitHub linkage and Vercel/Neon Development/Production/Preview target metadata without reading values or writing data. Provider secret scanning/push protection are enabled with zero open/resolved alerts. No source commit/push, deployment, or database write occurred. The owner authorized temporarily removing only the PR requirement at the verified direct-main publish step, then restoring the exact protections; no exception is active now (AUDIT-030). PHASE-00 remains in progress; non-provider secret-pattern scanning is disabled and live Vercel Preview trigger/runtime behavior is not verified.
+
+The prior local-only restriction recorded in STEP-026 has been superseded by the owner’s 2026-10-05 authorization. External operations are not blockers solely because they are external; execute them only as required by the controlling official phase and record any genuine access limitation as a deferred external gate.
+
+The following prior-execution status and completion narratives are historical evidence only. They do not describe or complete the current recovery sequence.
+
+## Historical state from prior execution
 PROJECT_STATUS=COMPLETE — owner-authorized final production execution 2026-10-01 ("PHASE 15 — FINAL PRODUCTION EXECUTION") completed the last blocked subset with live evidence: fresh 141/141 real-Blob (homepage 57 + reviews 84, zero residue on both real stores), live Vercel/Neon verification (token identity + exactly-one-project + deployment dpl_63QuerrwY9HCmU267YDakU1MqQyM READY from exactly 6783c75 + §9.6 fingerprints a77fc2afd8ac2bd7…/f5aa1006670416a5… + read-only probes incl. migration journal 3/3 == committed files), single production admin `amira_admin` established via the sanctioned first-admin-only CLI (password generated offline in the git-ignored `.auth/` vault at 600, never printed/committed; real rotation with all-sessions revocation proven live; full battery green: login/dashboard/307-guards/401-mutations/logout), and the FULL controlled production transaction fixture A–J executed and cleaned (order AMR-TV652F via the real checkout — server-authoritative price, idempotent replay, COD-only; stock 1→0 exact `sale` ledger row; WhatsApp URL+payload verified as strings, never sent; admin order visibility; shipping cost 45.00 with grand-total identity 345.00; five validated shipping transitions to delivered; tracking correct-phone/wrong-phone; delivery-gated review proven both ways + verified-purchase approval visible; WhatsApp testimonial upload→publish→homepage→hide via the controlled delivery route; reverse-FK transactional cleanup with exact row-count assertions; post-cleanup every business/media table = 0, no demo/acceptance data, public surfaces clean). In-round production defect ISSUE-2026-10-01-073 (production runtime lacked any Blob credential surface) found and RESOLVED in-round (store connection recreated in the current model + same-commit redeploy; live-verified). Final state set per the directive's completion branch; FINAL_ACCEPTANCE.md Blocked-Item Ledger RESOLVED; full evidence: worklog `PHASE-15-FINAL-PRODUCTION-EXECUTION`
 CURRENT_PHASE=NONE
 LAST_COMPLETED_PHASE=PHASE_15

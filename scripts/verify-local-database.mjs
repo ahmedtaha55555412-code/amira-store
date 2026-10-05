@@ -35,6 +35,7 @@ const pg = new EmbeddedPostgres({
   password: PASSWORD,
   port: PORT,
   persistent: false,
+  initdbFlags: ['--encoding=UTF8', '--locale=C'],
 });
 
 let exitCode = 1;
@@ -44,11 +45,15 @@ try {
   await pg.start();
   await pg.createDatabase(MIGRATE_DB);
   await pg.createDatabase(SEED_DB);
-  const version = execSync(
-    `node -e "const{Client}=require('pg');(async()=>{const c=new Client({connectionString:'postgresql://${USER}:${PASSWORD}@127.0.0.1:${PORT}/postgres'});await c.connect();const r=await c.query('SHOW server_version');console.log(r.rows[0].server_version);await c.end();})()"`,
+  const metadataJson = execSync(
+    `node -e "const{Client}=require('pg');(async()=>{const c=new Client({connectionString:'postgresql://${USER}:${PASSWORD}@127.0.0.1:${PORT}/postgres'});await c.connect();const v=await c.query('SHOW server_version');const e=await c.query('SHOW server_encoding');console.log(JSON.stringify({version:v.rows[0].server_version,encoding:e.rows[0].server_encoding}));await c.end();})()"`,
     { encoding: 'utf8', env: process.env },
   ).trim();
-  console.log(`PostgreSQL ${version} ready on 127.0.0.1:${PORT}`);
+  const { version, encoding } = JSON.parse(metadataJson);
+  if (encoding !== 'UTF8') {
+    throw new Error(`Expected UTF8 server encoding, received ${encoding}`);
+  }
+  console.log(`PostgreSQL ${version} (${encoding}) ready on 127.0.0.1:${PORT}`);
 
   /* ------------------------------------------------------------------ */
   step('Test 1 — fresh database builds from migrations ALONE');
