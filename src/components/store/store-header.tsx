@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronDown, Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -12,6 +12,7 @@ import {
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { CartDrawer } from "@/components/store/cart/cart-drawer";
 import { WishlistDrawer } from "@/components/store/wishlist/wishlist-drawer";
+import { cn } from "@/lib/utils";
 import { getStorefrontCategoryTree } from "@/lib/storefront/catalog";
 import { itemCountPhrase } from "@/lib/storefront/format";
 import { HeaderSearch } from "./header-search";
@@ -33,15 +34,15 @@ export async function StoreHeader() {
       <Container className="flex h-16 items-center justify-between gap-2 lg:gap-4">
         <div className="flex items-center gap-1">
           <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-10 lg:hidden"
-                aria-label="فتح قائمة الأقسام"
-              >
-                <Menu aria-hidden className="size-5" />
-              </Button>
+            <SheetTrigger
+              data-slot="button"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                "size-10 lg:hidden"
+              )}
+              aria-label="فتح قائمة الأقسام"
+            >
+              <Menu aria-hidden className="size-5" />
             </SheetTrigger>
             <SheetContent side="right" className="flex w-80 flex-col">
               <SheetHeader className="text-start">
