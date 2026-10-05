@@ -220,8 +220,15 @@ try {
   );
   createdProductIds.push(product.id);
   assert('draft created', product.status === 'draft');
-  const activated = await setProductStatus(product.id, 'active', TEST_ADMIN_ID);
-  assert('status transition to active', activated.status === 'active');
+  await expectServiceError('activation without active variant rejected', () =>
+    setProductStatus(product.id, 'active', TEST_ADMIN_ID),
+  );
+  const [stillDraft] = await db
+    .select({ status: products.status })
+    .from(products)
+    .where(eq(products.id, product.id))
+    .limit(1);
+  assert('rejected activation preserves draft status', stillDraft?.status === 'draft');
 
   /* ----------------------------------------------- 4) aggregate variants */
   console.log('\n[4] aggregate save — variant shapes');
@@ -257,6 +264,45 @@ try {
     aggregate?.variants.length === 1 && aggregate.variants[0].currentPrice === '199.50',
   );
   const defaultVariantId = aggregate!.variants[0].id;
+  const activated = await setProductStatus(product.id, 'active', TEST_ADMIN_ID);
+  assert('status transition succeeds with active default variant', activated.status === 'active');
+
+  await expectServiceError('active product cannot lose its last active variant', () =>
+    saveProductAggregate(
+      product.id,
+      {
+        name: 'منتج تحقق كتالوج',
+        categoryId: root.id,
+        attributeIds: [],
+        variants: [
+          {
+            clientKey: 'default',
+            id: defaultVariantId,
+            sku: aggregate!.variants[0]!.sku,
+            originalPrice: aggregate!.variants[0]!.originalPrice,
+            currentPrice: aggregate!.variants[0]!.currentPrice,
+            stockQuantity: aggregate!.variants[0]!.stockQuantity,
+            lowStockThreshold: aggregate!.variants[0]!.lowStockThreshold,
+            isActive: false,
+            attributeValueIds: [],
+          },
+        ],
+        images: [],
+        sizeGuide: null,
+      },
+      TEST_ADMIN_ID,
+    ),
+  );
+  aggregate = await getProductAggregate(product.id);
+  const [afterRejectedSave] = await db
+    .select({ status: products.status })
+    .from(products)
+    .where(eq(products.id, product.id))
+    .limit(1);
+  assert(
+    'rejected save preserves active product and variant',
+    afterRejectedSave?.status === 'active' && aggregate?.variants[0]?.isActive === true,
+  );
 
   // 4b. size-only explicit subset
   const sizeOnlySkuBase = `VC-S-${Date.now().toString(36).toUpperCase()}`;

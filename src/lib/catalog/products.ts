@@ -380,10 +380,26 @@ export async function setProductStatus(
   status: 'draft' | 'active' | 'archived',
   adminUserId: string,
 ): Promise<Product> {
-  const [existing] = await db.select().from(products).where(eq(products.id, id)).limit(1);
-  if (!existing) throw new ProductServiceError('المنتج غير موجود.', 404);
-
   return db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ status: products.status })
+      .from(products)
+      .where(eq(products.id, id))
+      .for('update')
+      .limit(1);
+    if (!existing) throw new ProductServiceError('المنتج غير موجود.', 404);
+
+    if (status === 'active') {
+      const [activeVariant] = await tx
+        .select({ id: productVariants.id })
+        .from(productVariants)
+        .where(and(eq(productVariants.productId, id), eq(productVariants.isActive, true)))
+        .limit(1);
+      if (!activeVariant) {
+        throw new ProductServiceError('لا يمكن تفعيل منتج دون متغير نشط واحد على الأقل.');
+      }
+    }
+
     const [row] = await tx
       .update(products)
       .set({ status, updatedAt: new Date() })
@@ -608,10 +624,25 @@ export async function saveProductAggregate(
 
   /* ---------------- transactional apply ---------------- */
   const result = await db.transaction(async (tx) => {
+    const [lockedProduct] = await tx
+      .select({
+        status: products.status,
+        slug: products.slug,
+        canonicalSlug: products.canonicalSlug,
+      })
+      .from(products)
+      .where(eq(products.id, productId))
+      .for('update')
+      .limit(1);
+    if (!lockedProduct) throw new ProductServiceError('المنتج غير موجود.', 404);
+    if (lockedProduct.status === 'active' && !parsedVariants.some((variant) => variant.isActive)) {
+      throw new ProductServiceError('لا يمكن إلغاء تفعيل جميع متغيرات منتج نشط.');
+    }
+
     /* product basics + slug */
     const base = input.slug?.trim() ? slugify(input.slug) : slugify(name);
-    let slug = existing.slug;
-    if (base !== existing.slug) {
+    let slug = lockedProduct.slug;
+    if (base !== lockedProduct.slug) {
       if (!isSlugValid(base)) {
         throw new ProductServiceError('الرابط (slug) يجب أن يحتوي حروفًا أو أرقامًا فقط.');
       }
@@ -636,7 +667,7 @@ export async function saveProductAggregate(
           'الرابط الأساسي (canonical) يجب أن يحتوي حروفًا أو أرقامًا وشرطات فقط.',
         );
       }
-      if (canonicalInput !== (existing.canonicalSlug ?? null)) {
+      if (canonicalInput !== (lockedProduct.canonicalSlug ?? null)) {
         const [canonicalConflict] = await tx
           .select({ id: products.id })
           .from(products)

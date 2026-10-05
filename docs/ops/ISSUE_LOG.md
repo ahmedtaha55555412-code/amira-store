@@ -1479,3 +1479,129 @@
 - Exact fix: none applied pending safe determination of the deployment's effective branch.
 - Verification required: use a secret-safe runtime identity check or the plan's approved integration binding to prove the Preview deployment's effective Neon branch. Do not run DB-backed Preview writes until proven isolated; do not mutate Production as a test.
 - Related resources: Vercel deployment `dpl_8t5mqJRQJteC7ZeWVP8NSM2FoQDy`, Neon project `tiny-mud-82763154`, STEP-032, AUDIT-031.
+
+### ISSUE-2026-10-05-025
+- Phase: PHASE-04 regression verification setup (STEP-033)
+- Severity: P4 (test precondition; recovered)
+- Status: RESOLVED — the local app was started with Vercel Development settings and the complete SEO suite passed on retry.
+- Symptom: the first `verify:seo` run failed at `[A) robots.txt]` with `Unable to connect. Is the computer able to access the url?` for `http://localhost:3000`.
+- Evidence: the local port had no listening process; the script's default `BASE_URL` is localhost:3000 and it expects an app server to be running.
+- Expected: the test target serves the robots/sitemap/page requests before the suite starts.
+- Actual: no local app server was running for the first attempt; no DB mutation occurred in that failed attempt.
+- Root cause: test precondition not met (server absent), not an application or SEO regression.
+- Impact: initial verification attempt did not execute the suite; no product/production state changed.
+- Exact fix: start `bun run dev` under Vercel Development environment, confirm Next Ready, then rerun `verify:seo`; observed 105 passed, 0 failed.
+- Related resources: `scripts/verify-seo.ts`, local Development server, STEP-033.
+
+### ISSUE-2026-10-05-026
+- Phase: PHASE-04 active-product Admin flow verification (STEP-033, AUDIT-032)
+- Severity: P2 (verification gap; no application defect or unauthorized access)
+- Status: RESOLVED — authenticated Development Admin API/browser and responsive visual verification completed in STEP-033/034.
+- Symptom: the active-variant service invariant can be tested through `verify:catalog`, but the Admin product status flow cannot be exercised in a browser.
+- Evidence: Vercel CLI access is authenticated for the project. Initially, its Development variable-name listing and `.env.local` lacked `ADMIN_QA_USERNAME` and `ADMIN_QA_PASSWORD`; no values were retrieved from existing variables. A read-only Neon Development query found exactly one active admin (`amira_admin`). A cryptographically generated QA password was then saved as a Vercel Development Secret, with the existing username stored as a Development config variable. Using Vercel Development environment injection, a guarded one-off command verified the Neon Development host/database, updated only the existing admin's bcrypt hash, revoked that admin's existing sessions, and wrote an `auth.password_changed` audit event with the source recorded; the plaintext/hash were not emitted or written to a file. Catalog service suite passed 47/47, storefront regression 101/101, SEO regression 105/105; Development test fixtures were cleaned and independently counted as zero.
+- Expected: authenticated Admin UI/API rejects activation without an active variant and rejects deactivating the last active variant, shows Arabic error feedback, preserves state after refresh, and works across responsive viewports.
+- Actual: both invalid transitions returned HTTP 422 with Arabic feedback and unchanged state after refresh; valid variant save and product activation returned HTTP 200 and persisted. The shared header's separate responsive clipping was found and fixed in STEP-034.
+- Root cause: the existing admin password was unavailable, and the Development database already had one admin. The official `db:bootstrap:admin` command (PHASE-03 task 8) creates only the first admin and explicitly refuses to run when any admin exists; the official change-password flow requires an authenticated session and the current password (PHASE-03 task 9 / MASTER_PLAN §16). The owner then explicitly authorized provisioning the QA credential and updating the existing Development admin record; no additional admin was created.
+- Impact: no remaining authenticated-flow blocker for STEP-033; separate catalog eligibility defects remain under AUDIT-003.
+- Exact fix: completed the explicitly authorized Development-only setup: stored generated QA credentials in Vercel Development Secret Management and updated the existing Neon Development admin hash through a guarded in-memory command; revoked existing sessions and recorded a redacted audit event. This setup is not an application password-recovery feature or a replacement for the authenticated Admin password-change flow. No Production credential/data, extra admin, or first-admin bootstrap was used.
+- Related resources: `/admin/login`, `src/app/api/admin/products/[id]/status/route.ts`, STEP-033/034, AUDIT-032/033.
+
+### ISSUE-2026-10-05-027
+- Phase: PHASE-04 active-product Admin flow verification (STEP-033)
+- Severity: P4 (verification command invocation; recovered)
+- Status: RESOLVED — no database connection or mutation occurred on the failed attempt.
+- Symptom: several read-only `vercel env run` checks exited with `missing_command`.
+- Evidence: invoking the CLI directly through PowerShell returned `No command provided. Use -- to separate Vercel flags from your command.` before launching the requested process. A harmless `node --version` probe through `cmd.exe` successfully loaded the Development environment and ran.
+- Root cause: PowerShell's native-command argument parsing did not preserve the Vercel CLI command delimiter/child command in this invocation.
+- Impact: no app request or database operation was made; Development state is unchanged.
+- Exact fix: invoke `vercel env run -- <command>` through `cmd.exe`, then verify the database hostname and expected admin-row shape before any permitted operation.
+- Related resources: Vercel CLI 62.2.0, STEP-033.
+
+### ISSUE-2026-10-05-028
+- Phase: PHASE-04 active-product Admin flow verification (STEP-033)
+- Severity: P4 (read-only inspection query; recovered)
+- Status: RESOLVED — corrected read-only query returned Development product/variant state; no data changed.
+- Symptom: the first read-only Development product inventory query failed.
+- Evidence: PostgreSQL returned `column p.is_active does not exist` for the requested product columns.
+- Root cause: the query assumed products had an `is_active` column; the schema uses `status` for product lifecycle.
+- Impact: the query returned no inventory rows and made no data changes.
+- Exact fix: removed the nonexistent product `is_active` projection and reran against product `status` plus variant `is_active`; verified the returned rows matched the Drizzle schema.
+- Related resources: `src/db/schema/catalog.ts`, STEP-033.
+
+### ISSUE-2026-10-05-029
+- Phase: PHASE-04 authenticated Admin browser verification (STEP-033)
+- Severity: P4 (browser test synchronization; under investigation)
+- Status: RESOLVED — the retry waited for network idle and successfully authenticated in the real browser.
+- Symptom: the first automated browser login attempt timed out waiting for the login API response.
+- Evidence: the first attempt started interaction at `DOMContentLoaded` and logged no POST. The retry waited for `networkidle`; the real browser then received HTTP 200 from `POST /api/admin/auth/login` and reached `/admin` with an authenticated session.
+- Root cause: the test proceeded from `DOMContentLoaded` directly to form interaction without waiting for the client-side React handler to hydrate.
+- Impact: the first attempt established no session; the retry established a Development-only session, confirming the credential and login flow.
+- Exact fix: wait for the page's client/network idle state before entering the Development-only credential and clicking submit; assert the actual login POST and authenticated route.
+- Related resources: `src/app/admin/login/login-form.tsx`, local Development app, STEP-033.
+
+### ISSUE-2026-10-05-030
+- Phase: PHASE-04 authenticated Admin UI regression (STEP-033)
+- Severity: P4 (browser harness character encoding; recovered)
+- Status: RESOLVED — the ASCII-only harness reached the Admin products list and opened the status menu without character corruption.
+- Symptom: a browser-flow harness failed while compiling an Arabic regex, and a subsequent run could not locate an Arabic-named link after login.
+- Evidence: source piped through the Windows command boundary replaced literal Arabic characters with `?`; the login API itself returned HTTP 200 and the browser reached `/admin`.
+- Root cause: the harness source crossed a Windows native-process stdin code-page boundary without UTF-8 preservation.
+- Impact: login is verified; product UI assertions then reached the independent selector issue recorded in ISSUE-2026-10-05-032.
+- Exact fix: represented Arabic selectors/expected text with JavaScript Unicode escapes so the transient harness source is ASCII-only.
+- Related resources: local Development Edge/Playwright harness, STEP-033.
+
+### ISSUE-2026-10-05-031
+- Phase: PHASE-04 authenticated Admin UI regression (STEP-033)
+- Severity: P4 (browser harness module format; recovered)
+- Status: RESOLVED — the harness was wrapped in an async IIFE and proceeded through authenticated navigation.
+- Symptom: the ASCII-only browser harness failed before opening the browser.
+- Evidence: Node.js 24 reported `ERR_AMBIGUOUS_MODULE_SYNTAX` because stdin code used CommonJS `require()` together with top-level `await`.
+- Root cause: the transient harness mixed CommonJS and ESM top-level syntax.
+- Impact: no browser request, database query, or fixture cleanup ran in the initial attempt; subsequent run proved the harness now parses and reaches the Admin list.
+- Exact fix: place the harness body in an async IIFE so CommonJS imports and awaited Playwright operations use one module format.
+- Related resources: local Development Edge/Playwright harness, STEP-033.
+
+### ISSUE-2026-10-05-032
+- Phase: PHASE-04 authenticated Admin UI regression (STEP-033)
+- Severity: P4 (browser harness selector; under investigation)
+- Status: RESOLVED — selecting the accessible `role=option` by its Arabic name triggered the intended status API request.
+- Symptom: the test harness opened the product status menu but failed to trigger the status API.
+- Evidence: the menu rendered three visible `role=option` elements, none with the queried `data-value` attribute; the fixture remained `draft` with zero active variants. The browser did not submit a product status request.
+- Root cause: the test harness assumed Radix Select items expose `data-value`, which is not present in this rendered component.
+- Impact: no product state changed; the harness session was cleaned from the Development database.
+- Exact fix: select the `role=option` whose accessible name is the Arabic active label (provided as Unicode escapes), then wait for the API response concurrently with the click.
+- Related resources: `src/components/ui/select.tsx`, `src/app/admin/(protected)/products/product-status-action.tsx`, STEP-033.
+
+### ISSUE-2026-10-05-033
+- Phase: PHASE-04 authenticated Admin UI regression (STEP-033)
+- Severity: P4 (browser console assertion; under investigation)
+- Status: RESOLVED — the final three-viewport run matched all six generic resource errors to the expected 422 validation responses; no unrelated browser errors remained.
+- Symptom: the first full three-viewport browser run reached its final console check and failed because the console contained six generic `Failed to load resource` messages.
+- Evidence: each of the six messages reported HTTP 422; the run had already asserted the six corresponding Admin validation responses and Arabic error toasts. It also reached refresh/database checks and confirmed cleanup removed both temporary products and left no new QA sessions.
+- Root cause: the harness treated expected non-2xx responses from deliberately invalid product mutations as unexpected console errors.
+- Impact: no application defect was found; authenticated UI behavior and final console classification were verified.
+- Exact fix: capture response paths/statuses, require the expected six 422 responses for the two guarded flows, classify only their matching generic console entries as expected, and fail on any other console/page/network error.
+- Related resources: local Development Edge/Playwright harness, Admin catalog API routes, STEP-033.
+
+### ISSUE-2026-10-05-034
+- Phase: PHASE-01 responsive foundation / STEP-034 Admin navigation visual regression
+- Severity: P2 (Admin navigation controls clipped on common phone/tablet widths)
+- Status: RESOLVED — navigation wraps and remains in bounds on phone, tablet, and desktop.
+- Symptom: authenticated Admin header links were partially clipped at 390px and 768px; global `overflow-x: clip` prevented horizontal scrolling.
+- Evidence: pre-fix authenticated screenshots showed clipped links. After the fix, browser geometry showed all visible links fully inside the header and viewport, with document width equal to viewport width at 390/768/1440. Products↔Categories clicks and logout succeeded at each viewport; actual screenshots were reviewed; zero page/console/failed-request diagnostics.
+- Root cause: the navigation flex row preserved its max-content width instead of wrapping within the responsive header.
+- Impact: Admin destinations could be inaccessible on mobile/tablet.
+- Exact fix: `src/app/admin/(protected)/layout.tsx` navigation container now uses a shrinkable wrapping flex basis, taking a full line below the brand on narrow screens and flexing from `sm` upward.
+- Verification: focused ESLint, `bun run typecheck`, `git diff --check`, `verify:catalog` 47/47 against Neon Development, and authenticated browser/visual QA at 390×844, 768×1024, and 1440×1000.
+- Related resources: MASTER_PLAN §§1,5,22; PHASE-01 tasks 7/11; PHASE-13 Visual QA; AUDIT-033; STEP-034.
+
+### ISSUE-2026-10-05-035
+- Phase: PHASE-04/PHASE-01 authenticated Admin verification harness (STEP-033/034)
+- Severity: P4 (verification harness invocation; resolved)
+- Status: RESOLVED — a UTF-8-safe inline harness completed; failed attempts were terminated by exact process IDs.
+- Symptom: an initial inline JavaScript command failed at Node parsing because Windows command quoting removed path escapes; a retry selected both the password textbox and its visibility button because the accessible label was ambiguous, leaving Edge child processes running.
+- Evidence: Node reported a `SyntaxError` for the first command and Playwright strict-mode ambiguity for the second. The failed attempts made no app-data changes. The successful harness used UTF-8/base64 command transport, selected the textbox role, used `finally` to close the browser, and completed responsive navigation QA.
+- Root cause: Windows command-boundary escaping and a broad accessible-name locator.
+- Impact: two QA attempts did not execute the viewport assertions. The subsequent successful test logged in once without logout, creating one temporary Development session.
+- Exact fix/cleanup: corrected command transport/locator and added browser-finally cleanup; the final run logged out successfully. After explicit owner approval, deleted only Development `admin_sessions.id=468d13b5-04b5-47fe-a536-66a1349a9900`; exact-ID `DELETE ... RETURNING` returned one row. Read-only verification confirmed the target and all session rows are absent, the sole admin remains, and Development category/product/variant/image counts are 13/7/18/13. No Production resource was accessed.
+- Related resources: Vercel Development env injection, local Next app, `admin_sessions`, STEP-033/034.

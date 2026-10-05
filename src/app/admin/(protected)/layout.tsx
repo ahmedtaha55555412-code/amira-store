@@ -43,7 +43,7 @@ export default async function ProtectedAdminLayout({
             لوحة التحكم
           </span>
 
-          <div className="ms-auto flex items-center gap-2">
+          <div className="ms-auto flex min-w-0 flex-wrap basis-full items-center justify-end gap-2 sm:basis-0 sm:flex-1">
             <span
               className="hidden rounded-full border bg-surface-subtle px-3 py-1.5 text-xs font-medium text-foreground-muted sm:inline"
               dir="ltr"
