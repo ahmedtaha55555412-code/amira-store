@@ -1605,3 +1605,15 @@
 - Impact: two QA attempts did not execute the viewport assertions. The subsequent successful test logged in once without logout, creating one temporary Development session.
 - Exact fix/cleanup: corrected command transport/locator and added browser-finally cleanup; the final run logged out successfully. After explicit owner approval, deleted only Development `admin_sessions.id=468d13b5-04b5-47fe-a536-66a1349a9900`; exact-ID `DELETE ... RETURNING` returned one row. Read-only verification confirmed the target and all session rows are absent, the sole admin remains, and Development category/product/variant/image counts are 13/7/18/13. No Production resource was accessed.
 - Related resources: Vercel Development env injection, local Next app, `admin_sessions`, STEP-033/034.
+
+### ISSUE-2026-10-05-036
+- Phase: PHASE-00/PHASE-14 GitHub protection restoration after STEP-033/034 publication
+- Severity: P2 (temporary incomplete `main` protection; resolved)
+- Status: RESOLVED — full protection restored and independently read back.
+- Symptom: after the owner-authorized direct-main publication of `466bae370a9b7c5f77a2c7c49e144c72c52e03b3`, the required status-check and PR-review rules were absent. A `PUT` to the child `required_status_checks` endpoint returned HTTP 404, so the first restore attempt did not reinstate the rules.
+- Evidence: before restoration, `GET /branches/main/protection` still showed admin enforcement and force-push/deletion restrictions, but `required_status_checks` and `required_pull_request_reviews` were null. The documented full parent endpoint accepted the original `verify` check (`app_id=15368`, `strict=false`), PR rule (zero approvals), and unchanged optional settings. A separate GET confirmed all values.
+- Root cause: the child-endpoint restore request returned 404; the precise reason for that response was not established. The full parent protection endpoint is the verified recovery path.
+- Impact: required-check and PR-review protection were temporarily absent after the authorized push until restoration. Admin enforcement remained enabled; force-push and deletion remained disabled. CI for the published commit succeeded.
+- Exact fix: update the complete branch protection through `PUT /repos/ahmedtaha55555412-code/amira-store/branches/main/protection`, then independently read back the full protection contract.
+- Verification: required `verify` check bound to app 15368; PR review rule with zero approvals; admin enforcement on; force-push/deletion off; all optional restrictions unchanged. CI run `37312311374` passed, and the commit's Production deployment status is success.
+- Related resources: `main`, AUDIT-029/AUDIT-030, STEP-033/034, commit `466bae370a9b7c5f77a2c7c49e144c72c52e03b3`.
