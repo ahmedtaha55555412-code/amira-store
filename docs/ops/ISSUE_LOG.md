@@ -1249,14 +1249,15 @@
 ### ISSUE-2026-10-05-007
 - Phase: PHASE-01 browser-console / hydration verification (AUDIT-024)
 - Severity: P3
-- Status: OPEN — root cause is unconfirmed; no source fix attempted.
+- Status: RESOLVED for the StoreHeader mismatch covered by STEP-031; other Radix hydration reports are not covered by this resolution.
 - Symptom: local `vercel dev` emits a React hydration mismatch in `StoreHeader`; React reports that a `SheetTrigger` button is present on the client where the server tree contains the brand-home anchor. The development issue badge appears in the rendered page.
-- Evidence: reproduced while loading the local development server at mobile width. The reported component location is `src/components/store/store-header.tsx:36-44` (`SheetTrigger asChild` and the category-menu `Button`). A production-mode standalone build served on localhost was then tested at mobile, tablet, and desktop sizes and did not emit a hydration/page error. This comparison does not establish the root cause or prove the mismatch is specific to development.
+- Evidence: the mismatch was reproduced before STEP-031 at the composed `SheetTrigger asChild` + custom `Button` boundary. After replacing it with the direct trigger, local Development and the READY Production deployment were loaded and exercised on `/` and `/category/men`; menu operation and category navigation passed at mobile/tablet, desktop navigation rendered, and final browser checks had no hydration/page/console errors. GitHub CI `37299271660` passed.
 - Expected: server and client produce matching storefront header markup with no hydration recovery/error overlay.
-- Actual: the dev runtime reports a mismatch and regenerates the affected React tree; the production-mode local runtime tested in STEP-027 did not reproduce it.
-- Root cause: unknown. The source location is reported by React, but available evidence does not establish whether the mismatch comes from application rendering, the dev runtime, or another client-side factor.
-- Impact: noisy/inaccurate development UI and hydration recovery may conceal other browser issues; no production manifestation has been demonstrated.
-- Verification required: fresh dev reproduction at fixed viewport before navigation/hydration, compare server HTML with the first client render, and isolate `StoreHeader`/Radix trigger children without changing unrelated header behavior.
+- Actual: the specific header hydration mismatch was not reproduced after the trigger composition change in the tested fresh local and Production routes/viewports.
+- Root cause: the `asChild` + custom `Button`/Radix Slot composition at the reported StoreHeader boundary. A direct trigger with the existing button variants aligned the rendered host element in the tested flow; unrelated Radix hydration findings remain separate.
+- Impact: resolved for this StoreHeader defect; no Production data or database state changed.
+- Minimal fix: render the Radix `SheetTrigger` as the actual button and apply the existing `buttonVariants`/classes directly, preserving its accessible name and children.
+- Verification: STEP-031; commit `7c0417101b3f3bda6e646891c8749f5f46c1d0b5`; local/Production mobile, tablet, and desktop QA; CI `37299271660`; exact protection restored and read back.
 - Related files: `src/components/store/store-header.tsx`, `src/components/ui/sheet.tsx`, `src/components/ui/button.tsx`, `docs/qa/IMPLEMENTATION_AUDIT.md` (AUDIT-024).
 
 ### ISSUE-2026-10-05-008
@@ -1394,12 +1395,61 @@
 ### ISSUE-2026-10-05-018
 - Phase: PHASE-00 direct-main publication / required-check gate (STEP-030)
 - Severity: P2 (remote publication blocked by required CI policy)
-- Status: AUTHORIZED ONE-TIME RETRY — protections are currently restored; no exception is active and no second push attempt has occurred.
+- Status: RESOLVED for the one-time owner-authorized publication; the original protections are restored and read back.
 - Symptom: after temporarily removing only the PR requirement as authorized, `git push origin main` was rejected with `GH006: Protected branch update failed ... Required status check "verify" is expected.`
-- Evidence: local commit `5686130c6c8532a477fd116fd85a717506b3a809` is on local `main`; remote `main` remains `8f93ccfba2a7d0cebccc7fc229a501c49afae092`. Post-attempt read-back confirms PR reviews restored (zero approvals), `verify` required, admins enforced, force pushes/deletions disabled, branch `protected=true`.
+- Evidence: local commit `5686130c6c8532a477fd116fd85a717506b3a809` and audit follow-up `285b61adc72b065d7129641c41088818757600db` reached remote `main`. `verify` run `37294002143` passed. Post-attempt read-back confirms PR reviews restored (zero approvals), `verify` required, admins enforced, force pushes/deletions disabled, branch `protected=true`.
 - Expected: publish the locally verified PHASE-00 commit to GitHub `main` under the owner-authorized direct-main-only workflow.
-- Actual: GitHub required a successful `verify` result for the new SHA before accepting the push. The initial authorization covered only PR; no CI-status bypass was attempted at that time.
+- Actual: the initial PR-only attempt failed as described. After the owner explicitly authorized the one-time PR+`verify` bypass, the push succeeded; the CI check then passed and the full protection contract was restored.
 - Root cause: the owner-authorized exception covered only the PR requirement; required status checks remained active and no `verify` result existed for the unpushed commit.
-- Impact: remote code and Vercel deployment remain unchanged; PHASE-00 publication/closure is incomplete.
-- Authorized resolution: owner has now explicitly authorized one direct push with both PR and `verify` temporarily removed, then immediate exact restoration. Keep every other protection unchanged; no exception is active until the retry.
+- Impact: PHASE-00 publication is verified, but other phase requirements and gates remain incomplete.
+- Authorized resolution: owner-authorized one-time direct push removed only PR and required `verify`, then restored and verified the full original policy. No additional bypass is authorized by this resolution.
 - Related resources: GitHub branch `main`, commit `5686130c6c8532a477fd116fd85a717506b3a809`, AUDIT-030, STEP-030.
+
+### ISSUE-2026-10-05-019
+- Phase: PHASE-00 authorized main-protection restoration after STEP-030 push
+- Severity: P4 (GitHub API request rejected during protection restoration; transient control-state gap)
+- Status: RESOLVED — corrected request restored the full policy and independent GET read-back matched the prior contract.
+- Symptom: the first restoration `PUT` returned HTTP 422: `{ "enabled": false } is not a boolean` for `required_linear_history` and `block_creations`.
+- Evidence: the owner-authorized push had succeeded, but the first restoration request was rejected. The corrected `PUT` passed those settings as booleans; GET confirmed required `verify` (app 15368), PR review requirement with zero approvals, admin enforcement, disabled force-push/deletion, null restrictions, and all previously disabled optional protections/signatures unchanged.
+- Expected: immediately restore the complete branch protection after the single authorized push.
+- Actual: the first restore request failed validation; the corrective request succeeded immediately afterward. No force-push, deletion, visibility, admin-enforcement, or unrelated protection setting was changed.
+- Root cause: GitHub's REST schema expects booleans for these optional protection fields, not nested `{enabled: false}` objects.
+- Impact: the required check and PR controls remained absent until the corrective PUT completed; this was a brief, explicitly authorized window. The final state is verified protected.
+- Exact fix: retry the restoration endpoint with the documented boolean field shapes, then validate every protection field by GET.
+- Related resources: GitHub `main`, STEP-030, AUDIT-030, ISSUE-2026-10-05-018.
+
+### ISSUE-2026-10-05-020
+- Phase: PHASE-05 StoreHeader publication (STEP-031)
+- Severity: P2 (authorized branch-protection transition required correction)
+- Status: RESOLVED — the failed first push made no remote change; the authorized push then succeeded and the full original policy was restored/read back.
+- Symptom: removing only the required `verify` check still caused `git push origin main` to fail with `GH006: Changes must be made through a pull request`. The first attempt's status-check subresource restoration returned 404; a full-protection PUT with both `contexts` and `checks` returned 422.
+- Reproduction: attempted non-force direct push of `7c0417101b3f3bda6e646891c8749f5f46c1d0b5` while only `verify` had been temporarily removed. Remote `main` remained at `285b61adc72b065d7129641c41088818757600db`.
+- Root cause: the protected branch required both the PR gate and required status check; restoring a deleted check through the subresource PUT was not supported, and the full endpoint accepts either `checks` or `contexts`, not both.
+- Impact: the first push was rejected. The required status check was temporarily absent during correction; admin enforcement, force-push prohibition, and deletion prohibition remained enabled. The complete original policy is now restored.
+- Exact fix: under the owner's explicit one-time authorization, temporarily remove both PR and `verify`, perform a normal fast-forward push, then restore the full branch-protection payload with `checks:[{"context":"verify","app_id":15368}]` and read back every setting.
+- Verification: commit `7c0417101b3f3bda6e646891c8749f5f46c1d0b5` is on `main`; CI passed; protection read-back matches required `verify`, PR rule, enforced admins, no force-push/deletion, and disabled optional rules.
+- Related files: GitHub branch `main`, STEP-031, AUDIT-024.
+
+### ISSUE-2026-10-05-021
+- Phase: PHASE-05 local browser verification (STEP-031)
+- Severity: P3 (local test environment was missing required configuration)
+- Status: RESOLVED — verification reran successfully using the project's Development environment.
+- Symptom: starting `bun run dev` without injected project variables returned HTTP 500 on `/` and `/category/men` with `DATABASE_URL is not set`.
+- Reproduction: run the local dev script without Vercel environment injection; server logs show the explicit missing-variable error from `src/db/client.ts`.
+- Root cause: the standalone local shell had no `DATABASE_URL`; this was a test-environment configuration gap, not a source-code change.
+- Impact: initial local route checks were invalid; no database or application state was modified.
+- Exact fix: run the local app with `vercel env run -- bun run dev`, which injects the Development-only environment. The endpoint host was checked against the previously verified Development endpoint; no credential value was displayed or persisted.
+- Verification: local `/` and `/category/men` returned 200; browser menu navigation and rendering passed at mobile/tablet/desktop using read-only Development queries.
+- Related files: none; local runtime only.
+
+### ISSUE-2026-10-05-022
+- Phase: PHASE-05 local browser verification (STEP-031)
+- Severity: P3 (transient local DNS resolution failure)
+- Status: RESOLVED for this verification cycle; no infrastructure or code change was made.
+- Symptom: one local Development query failed with `getaddrinfo ENOTFOUND` for the Neon Development endpoint, and the app rendered its generic category error state.
+- Reproduction: local `/category/men` while the host lookup for `ep-dark-boat-b1fejsk4-pooler.c-5.eu-central-1.aws.neon.tech` failed.
+- Root cause: transient DNS resolution failure in the local environment; the underlying resolver/network cause was not established.
+- Impact: that individual local browser attempt could not verify the route; no database write or Production operation occurred.
+- Exact fix: none in application or infrastructure; DNS later resolved successfully and the read-only browser check was repeated.
+- Verification: `Resolve-DnsName` returned the endpoint's CNAME/A records; three consecutive local route requests returned 200 and the final browser flow rendered the men category without page/console errors.
+- Related files: none; environment-only verification incident.
