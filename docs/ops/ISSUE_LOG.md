@@ -1354,15 +1354,15 @@
 
 ### ISSUE-2026-10-05-015
 - Phase: PHASE-00 source-push continuity gate / retained PHASE-14 protection
-- Severity: P2 (owner instruction conflict; no protected write attempted)
-- Status: OWNER DECISION RECEIVED — temporary removal of the PR requirement for direct-main publishing is authorized, but no settings have yet been changed and local source remains unpushed.
+- Severity: P2 (owner instruction conflict; direct push denied)
+- Status: RETRY AUTHORIZED — the owner explicitly authorized one temporary bypass of both PR and required `verify` for a direct-main push, followed by immediate exact restoration. No exception is active yet; local PHASE-00 commit remains unpushed.
 - Symptom: the owner directed direct work on `main` with no feature/PR branches, while the active verified protection requires a pull request even though it requires zero approvals.
-- Evidence: `GET /branches/main/protection` reports `required_pull_request_reviews` present with `required_approving_review_count=0`, `required_status_checks.contexts=["verify"]`, `enforce_admins.enabled=true`, `allow_force_pushes.enabled=false`, and `allow_deletions.enabled=false`. Current main CI `verify` is successful. The no-op dry-run found no pending source commit and did not exercise a protected update.
+- Evidence: `GET /branches/main/protection` reports `required_pull_request_reviews` present with `required_approving_review_count=0`, `required_status_checks.contexts=["verify"]`, `enforce_admins.enabled=true`, `allow_force_pushes.enabled=false`, and `allow_deletions.enabled=false`. Current remote main CI `verify` is successful. After the owner authorized a temporary PR-only bypass, direct push of local commit `5686130c6c8532a477fd116fd85a717506b3a809` was rejected by GH006 because `verify` was expected. The PR requirement was restored; independent read-back confirms all original controls are active. Remote main did not move.
 - Expected: publish verified changes to main while preserving the owner's chosen branch policy and the existing protection contract.
-- Actual: direct push conflicts with PR-required protection; weakening protection or creating a PR/branch would violate one of the current instructions. No actual push or protection change was made to work around this.
+- Actual: direct push still conflicts with the required `verify` status after the authorized PR-only exception; no CI-check bypass or PR/branch was attempted.
 - Root cause: conflicting execution constraints, not a GitHub authentication failure.
-- Impact: PHASE-00 cannot be closed as currently written; local changes are not published. No source push, deployment, or branch-rule weakening occurred.
-- Authorized resolution: the owner selected a temporary direct-main push exception by bypassing only the PR requirement, followed by exact restoration of the protection contract. This exception must not be enacted until the source commit is fully verified and ready to publish. Required CI `verify`, administrator enforcement, force-push/deletion restrictions, and other settings are not authorized to be weakened.
+- Impact: PHASE-00 cannot be closed; local commit is not published. The failed push caused no deployment or remote code change; the previously authorized PR exception was restored.
+- Authorized resolution: after the PR-only attempt failed, the owner authorized bypassing both the PR requirement and required `verify` check for this single direct-main push only. Admin enforcement, force-push/deletion restrictions, and every other protection must remain unchanged. Immediately restore and read back the complete original protection contract after the one attempt; do not retry if it fails without new authorization.
 - Related resources: GitHub repository `ahmedtaha55555412-code/amira-store`, branch `main`, AUDIT-030, `EXECUTION_STATUS.md`.
 
 ### ISSUE-2026-10-05-016
@@ -1377,3 +1377,29 @@
 - Impact: delayed the metadata check; no project or secret state was modified.
 - Exact fix: omit the project name and run `vercel env ls` in the linked workspace.
 - Related resources: Vercel project `amira-store`, STEP-029, `docs/ops/DATABASE.md` §9.6.
+
+### ISSUE-2026-10-05-017
+- Phase: PHASE-00 authorized direct-main publication exception (STEP-030)
+- Severity: P4 (GitHub API request error; no settings changed)
+- Status: RESOLVED — retried with the dedicated endpoint, then restored the original policy.
+- Symptom: a PUT to the complete branch-protection endpoint intended to omit `required_pull_request_reviews` returned HTTP 422: “required_pull_request_reviews wasn't supplied.”
+- Evidence: the rejected PUT was followed by independent GETs confirming the branch remained protected, PR reviews still required, `verify` still required, admins enforced, and force pushes/deletions disabled.
+- Expected: remove only the PR-review requirement under the owner's narrow authorization.
+- Actual: the full protection endpoint rejected the incomplete payload and made no change; the dedicated `DELETE .../protection/required_pull_request_reviews` endpoint was then used for the authorized temporary exception.
+- Root cause: this GitHub PUT endpoint requires the `required_pull_request_reviews` field.
+- Impact: no remote setting or data changed; the direct push had not yet been attempted at the time of this 422.
+- Exact fix: use the dedicated reviews subresource endpoint; immediately restore/read back the full prior policy after the push attempt.
+- Related resources: branch `main` in `ahmedtaha55555412-code/amira-store`, AUDIT-030, STEP-030.
+
+### ISSUE-2026-10-05-018
+- Phase: PHASE-00 direct-main publication / required-check gate (STEP-030)
+- Severity: P2 (remote publication blocked by required CI policy)
+- Status: AUTHORIZED ONE-TIME RETRY — protections are currently restored; no exception is active and no second push attempt has occurred.
+- Symptom: after temporarily removing only the PR requirement as authorized, `git push origin main` was rejected with `GH006: Protected branch update failed ... Required status check "verify" is expected.`
+- Evidence: local commit `5686130c6c8532a477fd116fd85a717506b3a809` is on local `main`; remote `main` remains `8f93ccfba2a7d0cebccc7fc229a501c49afae092`. Post-attempt read-back confirms PR reviews restored (zero approvals), `verify` required, admins enforced, force pushes/deletions disabled, branch `protected=true`.
+- Expected: publish the locally verified PHASE-00 commit to GitHub `main` under the owner-authorized direct-main-only workflow.
+- Actual: GitHub required a successful `verify` result for the new SHA before accepting the push. The initial authorization covered only PR; no CI-status bypass was attempted at that time.
+- Root cause: the owner-authorized exception covered only the PR requirement; required status checks remained active and no `verify` result existed for the unpushed commit.
+- Impact: remote code and Vercel deployment remain unchanged; PHASE-00 publication/closure is incomplete.
+- Authorized resolution: owner has now explicitly authorized one direct push with both PR and `verify` temporarily removed, then immediate exact restoration. Keep every other protection unchanged; no exception is active until the retry.
+- Related resources: GitHub branch `main`, commit `5686130c6c8532a477fd116fd85a717506b3a809`, AUDIT-030, STEP-030.
