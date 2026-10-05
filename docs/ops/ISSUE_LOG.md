@@ -1315,14 +1315,14 @@
 ### ISSUE-2026-10-05-012
 - Phase: PHASE-00 GitHub/Vercel connection verification (AUDIT-028)
 - Severity: P3 (integration-verification gap)
-- Status: DEFERRED EXTERNAL GATE — Vercel's project-to-GitHub binding is now independently verified; only live trigger/deployment behavior remains unverified.
+- Status: RESOLVED for the PHASE-00 trigger verification; the endpoint-specific metadata 401 remains documented but is not a deployment blocker.
 - Symptom: read-only `GET /repos/ahmedtaha55555412-code/amira-store/installation` returned HTTP 401, “A JSON web token could not be decoded.”
-- Evidence: `gh auth status`, ordinary GitHub repository API reads, authenticated Git remote reads, and Vercel project/deployment reads succeed. Vercel `GET /v9/projects/{projectId}` reports `link.type=github`, `link.org=ahmedtaha55555412-code`, `link.repo=amira-store`, and `productionBranch=main`. The specific installation endpoint does not.
-- Expected: establish the intended Vercel GitHub repository link and prove current push-trigger behavior through an authorized supported path.
-- Actual: the project is linked to the expected repo/main branch, but the installation endpoint and actual trigger behavior remain unverified; no Vercel setting or deployment was changed.
+- Evidence: ordinary GitHub repository/remote reads and Vercel project reads succeed; the Vercel project reports the expected repo and `productionBranch=main`. Subsequent owner-authorized `main` commits received successful Vercel statuses and READY Production deployments (STEP-030/031). STEP-032 also verified read-only access to both routes on an existing READY Preview deployment using Vercel CLI.
+- Expected: establish the intended Vercel GitHub repository link and prove push-trigger behavior through an authorized supported path.
+- Actual: the installation endpoint still returns 401, but actual main push/deployment behavior is proven; no integration settings were changed to work around the endpoint response.
 - Root cause: unknown; endpoint-specific authentication failure is not explained by successful ordinary API access.
-- Impact: cannot claim a main push will trigger a deployment, although the persisted project binding is correct.
-- Verification required: prove a Git-triggered deployment during the official deployment phase; do not retry using raw or exposed tokens.
+- Impact: endpoint-specific installation metadata remains unavailable; the project link and trigger flow are independently verified. Preview database isolation is a separate open issue (AUDIT-031).
+- Verification required: none for the trigger gate; do not retry using raw or exposed tokens. Continue to track Preview DB isolation under ISSUE-2026-10-05-024.
 - Related resources: GitHub repository `ahmedtaha55555412-code/amira-store`, Vercel project `amira-store`, AUDIT-028.
 
 ### ISSUE-2026-10-05-013
@@ -1465,3 +1465,17 @@
 - Root cause: the full-protection update API expects booleans for the optional protection flags, not the `{ enabled: false }` shape returned by GET.
 - Exact fix: retry the full-protection `PUT` with boolean values and independently read back every setting.
 - Related resources: GitHub `main`, docs commit `87c6d70181c85b03cebaf6ec4b064a56bdd115ab`, STEP-031, AUDIT-024.
+
+### ISSUE-2026-10-05-024
+- Phase: PHASE-00 Vercel Preview and Neon environment separation (STEP-032, AUDIT-031)
+- Severity: P2 (verification gap with potential Production-data risk; no unsafe write demonstrated)
+- Status: OPEN — no Preview database mutation is permitted until the effective branch is established.
+- Symptom: the existing Preview application routes respond, but the Preview environment's static `DATABASE_URL` host probe resolves to the Neon `main` endpoint.
+- Evidence: READY Preview deployment `dpl_8t5mqJRQJteC7ZeWVP8NSM2FoQDy`; Vercel CLI read-only GETs to `/` and `/category/men` returned HTTP 200. Secret-safe Preview environment inspection printed only hostname `ep-cool-art-b1snfj5i-pooler.c-5.eu-central-1.aws.neon.tech`, matching the documented Neon main endpoint. Read-only Neon branch listing showed `main` and `development`, with no Preview branch visible.
+- Expected: Preview deployment runtime receives its own isolated copy-on-write Neon branch as required by `docs/ops/DATABASE.md` §§9.1, 9.6.
+- Actual: the CLI-visible Preview environment fallback points at main, but deployment-specific environment injection could differ; the runtime's effective database branch is unknown. No SQL query, seed, migration, or data mutation was performed.
+- Root cause: unestablished; available environment metadata and branch listing cannot prove the deployed runtime override.
+- Impact: a Preview write could affect Production if it uses the fallback; this is a potential risk, not an observed write or confirmed production-data exposure.
+- Exact fix: none applied pending safe determination of the deployment's effective branch.
+- Verification required: use a secret-safe runtime identity check or the plan's approved integration binding to prove the Preview deployment's effective Neon branch. Do not run DB-backed Preview writes until proven isolated; do not mutate Production as a test.
+- Related resources: Vercel deployment `dpl_8t5mqJRQJteC7ZeWVP8NSM2FoQDy`, Neon project `tiny-mud-82763154`, STEP-032, AUDIT-031.
