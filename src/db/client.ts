@@ -22,13 +22,40 @@ import { Pool, type PoolConfig } from 'pg';
 import * as schema from './schema';
 
 function isLocalHost(host: string | undefined): boolean {
-  if (!host) return true;
+  if (!host) return false;
   return (
     host === 'localhost' ||
     host === '127.0.0.1' ||
     host === '::1' ||
     host.endsWith('.sock')
   );
+}
+
+function assertVerificationDatabaseIsNonProduction(
+  host: string | undefined,
+  databaseName: string | undefined,
+): void {
+  const entrypoint = process.argv[1]?.replace(/\\/g, '/').split('/').pop() ?? '';
+  if (!/^verify-/.test(entrypoint) || entrypoint === 'verify-local-database.mjs') return;
+  if (isLocalHost(host)) return;
+
+  const productionHosts = (process.env.PRODUCTION_DATABASE_HOSTS ?? '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  const productionDatabase = process.env.PRODUCTION_DATABASE_NAME?.trim();
+  if (!host || !databaseName || productionHosts.length === 0 || !productionDatabase) {
+    throw new Error(
+      'Stateful verification requires parseable DATABASE_URL plus PRODUCTION_DATABASE_HOSTS and PRODUCTION_DATABASE_NAME fingerprints.',
+    );
+  }
+
+  if (
+    productionHosts.includes(host.toLowerCase()) &&
+    databaseName.toLowerCase() === productionDatabase.toLowerCase()
+  ) {
+    throw new Error('Stateful verification refused: DATABASE_URL matches the configured Production database fingerprint.');
+  }
 }
 
 function buildPoolConfig(): PoolConfig {
@@ -40,15 +67,18 @@ function buildPoolConfig(): PoolConfig {
   }
 
   let host: string | undefined;
+  let databaseName: string | undefined;
   let hasSslMode = false;
   try {
     const parsed = new URL(connectionString);
     host = parsed.hostname;
+    databaseName = decodeURIComponent(parsed.pathname.slice(1));
     hasSslMode = parsed.searchParams.has('sslmode');
   } catch {
-    // Non-URL connection strings (e.g. libpq key=value form) — treat as remote-safe.
+    // Unparseable connection strings fail closed in stateful verification below.
     hasSslMode = connectionString.includes('sslmode=');
   }
+  assertVerificationDatabaseIsNonProduction(host, databaseName);
 
   const config: PoolConfig = {
     connectionString,

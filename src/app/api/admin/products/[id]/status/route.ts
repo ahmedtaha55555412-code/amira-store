@@ -4,10 +4,17 @@
  * Products are archived, NEVER hard-deleted (order history stays referential).
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import { errorResponse, guardJsonMutation, jsonOk, readJson } from '@/lib/api/admin';
+import { errorResponse,
+  guardJsonMutation,
+  jsonOk,
+  readJson,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { setProductStatus } from '@/lib/catalog/products';
 
@@ -29,7 +36,7 @@ export async function POST(
     const session = await requireAdminMutation();
     const { id } = await context.params;
     if (!/^[0-9a-f-]{36}$/i.test(id)) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
     const body = bodySchema.parse(await readJson(request));
     await setProductStatus(id, body.status, session.admin.id);

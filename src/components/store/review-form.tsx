@@ -180,8 +180,8 @@ export function ReviewForm() {
     if (!allowed.includes(candidate.type)) {
       return "صيغة الصورة غير مدعومة — المسموح: JPG أو PNG أو WebP أو AVIF.";
     }
-    if (candidate.size > 8 * 1024 * 1024) {
-      return "حجم الصورة يتجاوز ٨ ميغابايت.";
+    if (candidate.size > 4 * 1024 * 1024) {
+      return "حجم الصورة يتجاوز ٤ ميغابايت.";
     }
     return null;
   }
@@ -406,7 +406,7 @@ export function ReviewForm() {
               className="flex min-h-14 w-fit items-center gap-2 rounded-xl border border-dashed px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-surface-subtle/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               <ImagePlus aria-hidden className="size-5" />
-              إرفاق صورة للمنتج (حتى ٨ ميغابايت)
+              إرفاق صورة للمنتج (حتى ٤ ميغابايت)
             </button>
           )}
           <input

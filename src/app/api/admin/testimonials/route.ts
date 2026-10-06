@@ -9,11 +9,17 @@
  * creation. Admin-only: same-origin → session → provider/file validation.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 
-import { errorResponse, guardMutation } from '@/lib/api/admin';
+import { errorResponse,
+  guardMutation,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { createTestimonial } from '@/lib/admin/testimonials';
+import { MAX_UPLOAD_BYTES, ImageValidationError } from '@/lib/media/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,7 +41,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const form = await request.formData().catch(() => null);
     const file = form?.get('file');
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'لم يتم إرفاق صورة.' }, { status: 400 });
+      return jsonNoStore({ error: 'لم يتم إرفاق صورة.' }, { status: 400 });
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      throw new ImageValidationError(
+        `حجم الصورة يتجاوز الحد الأقصى (${Math.floor(MAX_UPLOAD_BYTES / (1024 * 1024))} ميغابايت).`,
+      );
     }
 
     const productRaw = optionalString(form?.get('productId') ?? null, 64);
@@ -55,7 +66,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       adminUserId: session.admin.id,
     });
 
-    return NextResponse.json({ ok: true as const, id: result.id }, { status: 201 });
+    return jsonNoStore({ ok: true as const, id: result.id }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }

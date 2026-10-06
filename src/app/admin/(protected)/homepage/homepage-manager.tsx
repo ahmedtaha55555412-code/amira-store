@@ -504,6 +504,13 @@ function BannersPanel({
       toast({ title: 'اختر صورة البانر أولًا.', variant: 'destructive' });
       return;
     }
+    if (file.size > 4 * 1024 * 1024) {
+      toast({
+        title: 'حجم الصورة يتجاوز الحد الأقصى (٤ ميغابايت).',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (!form.title.trim()) {
       toast({ title: 'عنوان البانر مطلوب.', variant: 'destructive' });
       return;
@@ -686,6 +693,7 @@ function BannersPanel({
               accept="image/*"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
+            <p className="text-xs text-muted-foreground">حتى ٤ ميغابايت.</p>
           </div>
         </div>
         <div className="mt-4">

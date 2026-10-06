@@ -8,10 +8,17 @@
  * deltas, media-reference integrity).
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import { errorResponse, guardJsonMutation, jsonOk, readJson } from '@/lib/api/admin';
+import { errorResponse,
+  guardJsonMutation,
+  jsonOk,
+  readJson,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { saveProductAggregate } from '@/lib/catalog/products';
 
@@ -88,7 +95,7 @@ export async function PUT(
     const session = await requireAdminMutation();
     const { id } = await context.params;
     if (!/^[0-9a-f-]{36}$/i.test(id)) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
     const body = bodySchema.parse(await readJson(request));
     const product = await saveProductAggregate(id, body, session.admin.id);

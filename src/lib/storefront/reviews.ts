@@ -42,6 +42,7 @@ import {
   type MediaAsset,
 } from '@/db/schema';
 import { uploadImage, publicDeliveryUrlSql } from '@/lib/media/service';
+import { MAX_UPLOAD_BYTES } from '@/lib/media/validation';
 
 import { normalizeEgyptianPhone } from './whatsapp';
 
@@ -60,7 +61,7 @@ export class ReviewServiceError extends Error {
 
 export const REVIEW_COMMENT_MIN = 10;
 export const REVIEW_COMMENT_MAX = 1000;
-export const REVIEW_MAX_IMAGE_BYTES = 8 * 1024 * 1024; // mirrors media validation
+export const REVIEW_MAX_IMAGE_BYTES = MAX_UPLOAD_BYTES;
 
 /** AMR-XXXXXX (checkout alphabet); case-insensitive on input, stored uppercase. */
 export const orderNumberSchema = z
@@ -443,7 +444,12 @@ export async function getPublishedTestimonials(limit = 6): Promise<PublicTestimo
     .from(whatsappTestimonials)
     .innerJoin(mediaAssets, eq(mediaAssets.id, whatsappTestimonials.mediaAssetId))
     .leftJoin(products, eq(products.id, whatsappTestimonials.productId))
-    .where(eq(whatsappTestimonials.status, 'published'))
+    .where(
+      and(
+        eq(whatsappTestimonials.status, 'published'),
+        eq(mediaAssets.accessMode, 'public'),
+      ),
+    )
     .orderBy(whatsappTestimonials.sortOrder, desc(whatsappTestimonials.createdAt))
     .limit(limit);
   return rows;
@@ -476,6 +482,7 @@ export async function getProductTestimonials(
       and(
         eq(whatsappTestimonials.status, 'published'),
         eq(whatsappTestimonials.productId, productId),
+        eq(mediaAssets.accessMode, 'public'),
       ),
     )
     .orderBy(whatsappTestimonials.sortOrder, desc(whatsappTestimonials.createdAt))

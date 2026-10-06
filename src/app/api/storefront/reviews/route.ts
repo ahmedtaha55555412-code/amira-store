@@ -22,6 +22,7 @@ import { createHash } from 'node:crypto';
 import { isSameOriginRequest, withNoStore } from '@/lib/auth/origin';
 import { ImageValidationError } from '@/lib/media/validation';
 import {
+  REVIEW_MAX_IMAGE_BYTES,
   ReviewServiceError,
   reviewSubmissionSchema,
   submitReview,
@@ -72,6 +73,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (image !== null && !(image instanceof File)) {
     return withNoStore(
       NextResponse.json({ error: 'ملف الصورة غير صالح.' }, { status: 400 }),
+    );
+  }
+  if (image instanceof File && image.size > REVIEW_MAX_IMAGE_BYTES) {
+    return withNoStore(
+      NextResponse.json(
+        { error: 'حجم الصورة يتجاوز الحد الأقصى (٤ ميغابايت).' },
+        { status: 422 },
+      ),
     );
   }
 

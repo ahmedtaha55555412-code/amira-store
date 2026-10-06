@@ -255,7 +255,7 @@ section('§4 media validation — hostile uploads rejected BEFORE storage');
   const huge = await validateImageUpload({ bytes: oversized, declaredContentType: 'image/png' })
     .then(() => null)
     .catch((e) => e);
-  assert('oversized (>8MB) rejected before decode', huge instanceof ImageValidationError);
+  assert('oversized (>4MB) rejected before decode', huge instanceof ImageValidationError);
 
   const tiny = await validateImageUpload({ bytes: png, declaredContentType: 'image/png' })
     .then(() => null)

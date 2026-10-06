@@ -65,7 +65,11 @@ export function TestimonialsManager({
     const fileInput = form.elements.namedItem('file') as HTMLInputElement | null;
     const file = fileInput?.files?.[0];
     if (!file) {
-      setUploadError('برجاء اختيار صورة (JPG / PNG / WebP / AVIF — حتى ٨ ميغابايت).');
+      setUploadError('برجاء اختيار صورة (JPG / PNG / WebP / AVIF — حتى ٤ ميغابايت).');
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setUploadError('حجم الصورة يتجاوز الحد الأقصى (٤ ميغابايت).');
       return;
     }
 
@@ -167,7 +171,7 @@ export function TestimonialsManager({
         </h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           تُحفظ الصورة كمسودة خاصة — لا يمكن لأي زائر الوصول إليها حتى النشر
-          المؤكد بمراجعة الخصوصية.
+          المؤكد بمراجعة الخصوصية. الحد الأقصى لحجم الصورة ٤ ميغابايت.
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">

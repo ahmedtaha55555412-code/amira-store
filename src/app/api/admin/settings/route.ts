@@ -7,12 +7,15 @@
  * Admin-only: same-origin → session → zod → service. no-store everywhere.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 
 import {
   errorResponse,
   guardJsonMutation,
   jsonOk,
+  jsonNoStore
 } from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import {
@@ -30,7 +33,7 @@ export async function GET(): Promise<NextResponse> {
 
     const row = await getStoreSettings();
     if (!row) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: 'إعدادات المتجر غير مهيأة.' },
         { status: 503 },
       );

@@ -9,7 +9,7 @@
  * - slug uniqueness with automatic -2/-3 suffixes.
  */
 
-import { and, asc, eq, ne } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import {
@@ -58,30 +58,6 @@ export async function getCategoryTree(includeInactive = true): Promise<CategoryT
 export async function getCategoryById(id: string): Promise<Category | null> {
   const [row] = await db.select().from(categories).where(eq(categories.id, id)).limit(1);
   return row ?? null;
-}
-
-/** Collect a subtree's ids (cycle guard helper). */
-async function collectDescendantIds(rootId: string): Promise<Set<string>> {
-  const all = await db.select({ id: categories.id, parentId: categories.parentId }).from(categories);
-  const childrenOf = new Map<string | null, string[]>();
-  for (const row of all) {
-    const key = row.parentId ?? '__root__';
-    const list = childrenOf.get(key) ?? [];
-    list.push(row.id);
-    childrenOf.set(key, list);
-  }
-  const result = new Set<string>([rootId]);
-  const queue = [rootId];
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    for (const child of childrenOf.get(current) ?? []) {
-      if (!result.has(child)) {
-        result.add(child);
-        queue.push(child);
-      }
-    }
-  }
-  return result;
 }
 
 export type CategorySaveInput = {
@@ -154,19 +130,6 @@ export async function updateCategory(
     throw new CategoryServiceError('اسم القسم يجب أن يكون بين ٢ و ١٢٠ حرفًا.');
   }
 
-  // Reparenting: cycle guard — a parent cannot be inside its own subtree.
-  if (input.parentId !== undefined && input.parentId !== null) {
-    if (input.parentId === id) {
-      throw new CategoryServiceError('لا يمكن جعل القسم أبًا لنفسه.');
-    }
-    const descendants = await collectDescendantIds(id);
-    if (descendants.has(input.parentId)) {
-      throw new CategoryServiceError('لا يمكن نقل القسم تحت أحد أقسامه الفرعية.');
-    }
-    const parent = await getCategoryById(input.parentId);
-    if (!parent) throw new CategoryServiceError('القسم الأب غير موجود.', 404);
-  }
-
   const desiredSlug = input.slug?.trim() ? slugify(input.slug) : slugify(name);
   let slug = existing.slug;
   if (desiredSlug !== existing.slug) {
@@ -185,15 +148,62 @@ export async function updateCategory(
   }
 
   const row = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended('amira:category-tree', 0))`,
+    );
+
+    const [lockedCategory] = await tx
+      .select()
+      .from(categories)
+      .where(eq(categories.id, id))
+      .for('update')
+      .limit(1);
+    if (!lockedCategory) throw new CategoryServiceError('القسم غير موجود.', 404);
+
+    if (input.parentId !== undefined && input.parentId !== null) {
+      if (input.parentId === id) {
+        throw new CategoryServiceError('لا يمكن جعل القسم أبًا لنفسه.');
+      }
+
+      const tree = await tx
+        .select({ id: categories.id, parentId: categories.parentId })
+        .from(categories);
+      if (!tree.some((category) => category.id === input.parentId)) {
+        throw new CategoryServiceError('القسم الأب غير موجود.', 404);
+      }
+
+      const childrenByParent = new Map<string, string[]>();
+      for (const category of tree) {
+        if (category.parentId) {
+          const children = childrenByParent.get(category.parentId) ?? [];
+          children.push(category.id);
+          childrenByParent.set(category.parentId, children);
+        }
+      }
+      const descendants = new Set<string>([id]);
+      const queue = [id];
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        for (const child of childrenByParent.get(current) ?? []) {
+          if (descendants.has(child)) continue;
+          descendants.add(child);
+          queue.push(child);
+        }
+      }
+      if (descendants.has(input.parentId)) {
+        throw new CategoryServiceError('لا يمكن نقل القسم تحت أحد أقسامه الفرعية.');
+      }
+    }
+
     const [updated] = await tx
       .update(categories)
       .set({
         name,
         slug,
-        parentId: input.parentId === undefined ? existing.parentId : input.parentId,
-        description: input.description === undefined ? existing.description : input.description?.trim() || null,
-        sortOrder: input.sortOrder ?? existing.sortOrder,
-        isActive: input.isActive ?? existing.isActive,
+        parentId: input.parentId === undefined ? lockedCategory.parentId : input.parentId,
+        description: input.description === undefined ? lockedCategory.description : input.description?.trim() || null,
+        sortOrder: input.sortOrder ?? lockedCategory.sortOrder,
+        isActive: input.isActive ?? lockedCategory.isActive,
         updatedAt: new Date(),
       })
       .where(eq(categories.id, id))

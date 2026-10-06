@@ -104,7 +104,11 @@ export async function deleteMediaAsset(mediaAssetId: string): Promise<MediaRefer
 
 /** List assets newest-first for the admin media library. */
 export async function listMediaAssets(limit = 120): Promise<MediaAsset[]> {
-  return db.select().from(mediaAssets).limit(limit);
+  return db
+    .select()
+    .from(mediaAssets)
+    .orderBy(desc(mediaAssets.createdAt), desc(mediaAssets.id))
+    .limit(limit);
 }
 
 /* -------------------------------------------------------------------------- */
