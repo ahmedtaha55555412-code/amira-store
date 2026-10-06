@@ -289,14 +289,24 @@ export async function listStorefrontProducts(
   const groupEntries = Object.entries(options.attributeValueIdsByAttribute ?? {}).filter(
     ([, valueIds]) => valueIds.length > 0,
   );
-  for (const [, valueIds] of groupEntries) {
+  if (groupEntries.length > 0) {
+    const sameVariantMatch = groupEntries.map(([attributeId, valueIds]) =>
+      sql`exists(
+        select 1
+        from ${variantAttributeValues}
+        where ${variantAttributeValues.variantId} = pv.id
+          and ${variantAttributeValues.attributeId} = ${attributeId}
+          and ${inArray(variantAttributeValues.attributeValueId, valueIds)}
+      )`,
+    );
+
     conditions.push(
       sql`exists(
-        select 1 from ${productVariants}
-        join ${variantAttributeValues} on ${variantAttributeValues.variantId} = ${productVariants.id}
-        where ${productVariants.productId} = ${products.id}
-          and ${productVariants.isActive} = true
-          and ${inArray(variantAttributeValues.attributeValueId, valueIds)}
+        select 1
+        from ${productVariants} pv
+        where pv.productId = ${products.id}
+          and pv.isActive = true
+          and ${and(...sameVariantMatch)}
       )`,
     );
   }

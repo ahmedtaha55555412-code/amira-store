@@ -2,6 +2,7 @@ import { Banknote, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/brand/logo-mark";
+import { isExternalCtaHref } from "@/lib/cta";
 import { Container } from "./container";
 
 export type HeroCopy = {
@@ -43,7 +44,7 @@ export function Hero({ copy, banners = [] }: HeroProps) {
   const ctaLabel = copy?.ctaLabel || "استكشف الأقسام";
   const ctaHref = copy?.ctaHref || "#categories";
 
-  const isExternalCta = ctaHref.startsWith("https://");
+  const isExternalCta = isExternalCtaHref(ctaHref);
   const CtaIcon = isExternalCta ? MessageCircle : undefined;
 
   return (
@@ -160,7 +161,7 @@ export function Hero({ copy, banners = [] }: HeroProps) {
                     {banner.ctaHref ? (
                       <a
                         href={banner.ctaHref}
-                        {...(banner.ctaHref.startsWith("https://")
+                        {...(isExternalCtaHref(banner.ctaHref)
                           ? { target: "_blank", rel: "noopener noreferrer" }
                           : {})}
                         className="absolute inset-0 z-10 rounded-[2rem] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"

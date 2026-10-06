@@ -30,6 +30,7 @@ import {
   type HomepageSection,
 } from '@/db/schema';
 import { recordAdminActivity } from '@/lib/auth/activity';
+import { isSafeCtaHref } from '@/lib/cta';
 
 export class HomepageServiceError extends Error {
   readonly status: number;
@@ -83,7 +84,7 @@ const ctaHref = z
   .min(1)
   .max(300)
   .refine(
-    (v) => v.startsWith('/') || /^https:\/\/wa\.me\/\d{8,15}$/.test(v),
+    (v) => isSafeCtaHref(v),
     'رابط CTA غير صالح — استخدم مسارًا داخليًا أو رابط واتساب.',
   );
 
