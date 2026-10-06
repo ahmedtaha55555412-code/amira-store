@@ -22,6 +22,13 @@
       "when": 1790700000001,
       "tag": "0002_cute_frightful_four",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791218590927,
+      "tag": "0003_durable_request_rate_limits",
+      "breakpoints": true
     }
   ]
 }

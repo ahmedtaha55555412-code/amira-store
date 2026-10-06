@@ -96,25 +96,31 @@ export async function createTestimonial(input: {
   });
 
   try {
-    const [row] = await db
-      .insert(whatsappTestimonials)
-      .values({
-        productId: input.productId,
-        displayName: input.displayName,
-        city: input.city,
-        caption: input.caption,
-        mediaAssetId: asset.id,
-        status: 'draft',
-        sortOrder: 0,
-      })
-      .returning({ id: whatsappTestimonials.id });
+    const row = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(whatsappTestimonials)
+        .values({
+          productId: input.productId,
+          displayName: input.displayName,
+          city: input.city,
+          caption: input.caption,
+          mediaAssetId: asset.id,
+          status: 'draft',
+          sortOrder: 0,
+        })
+        .returning({ id: whatsappTestimonials.id });
 
-    await recordAdminActivity({
-      adminUserId: input.adminUserId,
-      action: 'testimonials.create',
-      entityType: 'whatsapp_testimonial',
-      entityId: row.id,
-      metadata: { status: 'draft', mediaAccessMode: 'private' },
+      await recordAdminActivity(
+        {
+          adminUserId: input.adminUserId,
+          action: 'testimonials.create',
+          entityType: 'whatsapp_testimonial',
+          entityId: inserted.id,
+          metadata: { status: 'draft', mediaAccessMode: 'private' },
+        },
+        tx,
+      );
+      return inserted;
     });
 
     return { id: row.id };

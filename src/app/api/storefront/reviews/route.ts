@@ -10,7 +10,7 @@
  * materializes public if/when moderation approves the review.
  *
  * Security posture (checkout pattern): same-origin + multipart BEFORE any
- * parsing; per-instance rate limit keyed by HASHED client IP; no-store;
+ * parsing; durable DB-backed rate limit keyed by HASHED client IP; no-store;
  * server derives product/verified/status facts from the matched order rows —
  * client identifiers only; duplicate verified reviews → 409; malformed or
  * oversized images → 422 with the media service's Arabic message.
@@ -24,9 +24,9 @@ import { ImageValidationError } from '@/lib/media/validation';
 import {
   ReviewServiceError,
   reviewSubmissionSchema,
-  reviewSubmissionRateLimit,
   submitReview,
 } from '@/lib/storefront/reviews';
+import { consumeDurableRateLimit } from '@/lib/storefront/durable-rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,11 +46,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  if (!reviewSubmissionRateLimit(clientIpHash(request))) {
+  const rate = await consumeDurableRateLimit({
+    scope: 'storefront:review-submit',
+    keyHash: clientIpHash(request),
+    windowMs: 30 * 60_000,
+    maxAttempts: 8,
+  });
+  if (!rate.allowed) {
     return withNoStore(
       NextResponse.json(
         { error: 'محاولات كثيرة جدًا — برجاء المحاولة بعد قليل.' },
-        { status: 429, headers: { 'Retry-After': '300' } },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } },
       ),
     );
   }

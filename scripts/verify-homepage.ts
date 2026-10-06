@@ -145,8 +145,6 @@ async function main(): Promise<void> {
   assert('all 10 canonical keys exist', HOMESECTION_KEYS.every((k) => sections.some((s) => s.key === k)), `${sections.length} enabled`);
   const allRows = await db.execute<{ n: number }>(sql`select count(*)::int as n from homepage_sections`);
   assert('no extra/unknown rows', (allRows.rows[0]?.n ?? 0) === HOMESECTION_KEYS.length);
-  const sorts = sections.map((s) => s.config === undefined ? -1 : 0); // placeholder to avoid unused
-  void sorts;
   const sortRows = await db.execute<{ min: number; max: number; uniq: number }>(
     sql`select min(sort_order)::int as min, max(sort_order)::int as max, count(distinct sort_order)::int as uniq from homepage_sections`,
   );

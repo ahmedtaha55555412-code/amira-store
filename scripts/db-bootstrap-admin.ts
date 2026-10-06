@@ -81,36 +81,47 @@ try {
 }
 console.log('[admin-bootstrap] connectivity ✔');
 
-const existing = await db.select({ id: adminUsers.id }).from(adminUsers).limit(1);
-if (existing.length > 0) {
-  console.error(
-    '[admin-bootstrap] REFUSED: an admin account already exists — this command creates the FIRST admin only. Change the password from inside the admin dashboard instead.',
-  );
-  await getPool().end();
-  process.exit(1);
-}
-
 const passwordHash = await hashPassword(password);
 
-const inserted = await db
-  .insert(adminUsers)
-  .values({ username, passwordHash, isActive: true })
-  .returning({ id: adminUsers.id, username: adminUsers.username });
+const created = await db.transaction(async (tx) => {
+  // Serialize FIRST-admin creation across concurrent CLI processes. The lock is
+  // transaction-scoped, so it is released automatically on commit/rollback.
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended('amira:first-admin-bootstrap', 0))`);
 
-const created = inserted[0];
+  const existing = await tx.select({ id: adminUsers.id }).from(adminUsers).limit(1);
+  if (existing.length > 0) {
+    console.error(
+      '[admin-bootstrap] REFUSED: an admin account already exists — this command creates the FIRST admin only. Change the password from inside the admin dashboard instead.',
+    );
+    return null;
+  }
+
+  const inserted = await tx
+    .insert(adminUsers)
+    .values({ username, passwordHash, isActive: true })
+    .returning({ id: adminUsers.id, username: adminUsers.username });
+
+  const row = inserted[0];
+  if (!row) throw new Error('first-admin insert returned no row');
+
+  await recordAdminActivity(
+    {
+      adminUserId: row.id,
+      action: 'auth.bootstrap',
+      entityType: 'admin_user',
+      entityId: row.id,
+      metadata: { source: 'cli-bootstrap', username: row.username },
+    },
+    tx,
+  );
+
+  return row;
+});
+
 if (!created) {
-  console.error('[admin-bootstrap] FAILED: insert returned no row.');
   await getPool().end();
   process.exit(1);
 }
-
-await recordAdminActivity({
-  adminUserId: created.id,
-  action: 'auth.bootstrap',
-  entityType: 'admin_user',
-  entityId: created.id,
-  metadata: { source: 'cli-bootstrap', username: created.username },
-});
 
 console.log(`[admin-bootstrap] admin created ✔ (username: ${created.username})`);
 console.log('[admin-bootstrap] the password was NOT printed, logged, or stored in plain text.');

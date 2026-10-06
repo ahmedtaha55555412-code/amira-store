@@ -122,7 +122,7 @@ console.log('\n[4] Migration chain (committed files ↔ journal)');
 {
   const dir = path.join(process.cwd(), 'drizzle');
   const sql = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
-  check('3 committed migrations', sql.length === 3, sql.join(', '));
+  check('4 committed migrations', sql.length === 4, sql.join(', '));
   const journal = JSON.parse(read('drizzle/meta/_journal.json'));
   const journalTags = journal.entries.map((e: { tag: string }) => e.tag);
   check('journal entries == migration files (order included)', journalTags.length === sql.length && journalTags.every((t: string, i: number) => sql[i]?.startsWith(t)));

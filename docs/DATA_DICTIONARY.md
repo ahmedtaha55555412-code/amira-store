@@ -353,10 +353,17 @@ verified by `scripts/verify-migrations.ts` (see `docs/ops/DATABASE.md`):
 
 ---
 
+## 2026-10-05 forensic repair additions
+
+### `request_rate_limits`
+
+Durable fixed-window admission state for public abuse controls. `scope` identifies the endpoint class; `key_hash` contains only a one-way/HMAC-derived caller key; `window_started_at` identifies the fixed window; `attempts` is incremented atomically with PostgreSQL `ON CONFLICT DO UPDATE`; `updated_at` records the last mutation. Old windows are pruned opportunistically by the active scope. The table contains no raw IP, phone, order, or credential data.
+
+This table was introduced by migration `0003_durable_request_rate_limits.sql` and is used by checkout, review submit/lookup, and order tracking API admission.
+
 ## PHASE_10 implementation notes (2026-09-29)
 
-The homepage content + settings tables above were activated in PHASE-10 with ZERO schema changes
-(no migration; count stays 3). Justified decisions recorded here:
+The homepage content + settings tables above were activated in PHASE-10. The original PHASE-10 implementation made ZERO schema changes at that time; the later 2026-10-05 forensic repair adds migration 0003 for durable request throttling. Justified decisions recorded here:
 
 1. **`homepage_sections.section_key` vocabulary is code-limited** (`HOMESECTION_KEYS` in
    `src/lib/admin/homepage.ts`, mirrored as a literal by `scripts/db-bootstrap.ts`): announcement,

@@ -5,7 +5,7 @@
  * phone and returns its DELIVERED, not-yet-reviewed items (no PII echo).
  *
  * Security posture (checkout pattern): same-origin + JSON before any parsing;
- * per-instance rate limit keyed by HASHED client IP; no-store; wrong number
+ * durable DB-backed rate limit keyed by HASHED client IP; no-store; wrong number
  * and wrong phone return the IDENTICAL generic error — no order-existence
  * oracle (MASTER_PLAN §14 discipline carried into the review flow).
  */
@@ -18,8 +18,8 @@ import {
   ReviewServiceError,
   lookupReviewableOrder,
   reviewLookupSchema,
-  reviewSubmissionRateLimit,
 } from '@/lib/storefront/reviews';
+import { consumeDurableRateLimit } from '@/lib/storefront/durable-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,11 +38,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  if (!reviewSubmissionRateLimit(clientIpHash(request))) {
+  const rate = await consumeDurableRateLimit({
+    scope: 'storefront:review-lookup',
+    keyHash: clientIpHash(request),
+    windowMs: 30 * 60_000,
+    maxAttempts: 8,
+  });
+  if (!rate.allowed) {
     return withNoStore(
       NextResponse.json(
         { error: 'محاولات كثيرة جدًا — برجاء المحاولة بعد قليل.' },
-        { status: 429, headers: { 'Retry-After': '300' } },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } },
       ),
     );
   }

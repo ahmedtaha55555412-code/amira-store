@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ProductDetailClient } from "@/components/store/product-detail-client";
 import { ProductReviews } from "@/components/store/product-reviews";
 import {
@@ -12,7 +12,6 @@ import { Container } from "@/components/store/container";
 import { BRAND } from "@/config/brand";
 import {
   getStorefrontProductDetail,
-  hasStorefrontProductBySlug,
 } from "@/lib/storefront/catalog";
 import { getProductTestimonials } from "@/lib/storefront/reviews";
 import { buildProductJsonLd, serializeJsonLd } from "@/lib/storefront/metadata";
@@ -38,18 +37,19 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     detail.product.metaDescription ??
     detail.product.shortDescription ??
     `اطلبي «${detail.product.name}» من أميرة استور — الدفع عند الاستلام.`;
+  const canonicalSlug = detail.product.canonicalSlug ?? detail.product.slug;
   return {
     title: detail.product.metaTitle ?? detail.product.name,
     description,
     alternates: {
-      canonical: `/product/${detail.product.canonicalSlug ?? detail.product.slug}`,
+      canonical: `/product/${encodeURIComponent(canonicalSlug)}`,
     },
     openGraph: {
       title: detail.product.metaTitle ?? detail.product.name,
       description,
       type: "website",
       locale: "ar_EG",
-      url: `/product/${detail.product.slug}`,
+      url: `/product/${encodeURIComponent(canonicalSlug)}`,
       images: [
         detail.gallery[0]?.url
           ? { url: detail.gallery[0].url, alt: detail.product.name }
@@ -74,23 +74,21 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
   const decoded = safeDecode(slug);
 
-  if (!(await hasStorefrontProductBySlug(decoded))) notFound();
+  const detail = await getStorefrontProductDetail(decoded);
+  if (!detail) notFound();
+
+  const canonicalSlug = detail.product.canonicalSlug ?? detail.product.slug;
+  if (decoded !== canonicalSlug) redirect(`/product/${encodeURIComponent(canonicalSlug)}`);
 
   return (
     <Suspense fallback={<ProductSkeleton />}>
-      <ProductDetail slug={decoded} />
+      <ProductDetail detail={detail} />
     </Suspense>
   );
 }
 
-/** Heavy aggregate + full UI — streamed inside the page's Suspense boundary. */
-async function ProductDetail({ slug }: { slug: string }) {
-  const detail = await getStorefrontProductDetail(slug);
-
-  // Defense-in-depth (ISSUE-045): the existence probe and this aggregate are
-  // separate queries — if the aggregate misses anyway (e.g. concurrent admin
-  // change), still render the honest not-found UI.
-  if (!detail) notFound();
+/** Heavy UI — streamed inside the page's Suspense boundary. */
+async function ProductDetail({ detail }: { detail: NonNullable<Awaited<ReturnType<typeof getStorefrontProductDetail>>> }) {
 
   const { product, category, ancestors, attributes, variants, gallery, variantImages, sizeGuide, reviews } = detail;
   // PHASE-09: WhatsApp testimonials linked to this product (published only).
@@ -114,7 +112,7 @@ async function ProductDetail({ slug }: { slug: string }) {
     name: product.name,
     description: product.shortDescription ?? product.description,
     imageUrl: gallery[0]?.url ?? null,
-    url: `/product/${encodeURIComponent(product.slug)}`,
+    url: `/product/${encodeURIComponent(product.canonicalSlug ?? product.slug)}`,
     variants: variants.map((variant) => ({
       sku: variant.sku,
       currentPrice: variant.currentPrice,

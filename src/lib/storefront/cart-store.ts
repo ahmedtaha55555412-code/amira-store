@@ -66,6 +66,8 @@ export type CartState = {
   count: number;
   subtotalCents: number;
   excludedLineCount: number;
+  /** Durable localStorage write status; false means the browser rejected persistence. */
+  persistenceStatus: 'ok' | 'failed';
 };
 
 const EMPTY_STATE: CartState = {
@@ -77,6 +79,7 @@ const EMPTY_STATE: CartState = {
   count: 0,
   subtotalCents: 0,
   excludedLineCount: 0,
+  persistenceStatus: 'ok',
 };
 
 class CartStore {
@@ -141,8 +144,8 @@ class CartStore {
 
   private commit(document: CartDocument): void {
     this.document = document;
-    saveCartDocument(this.storage, document);
-    this.updateState({ entries: document.entries });
+    const persisted = saveCartDocument(this.storage, document);
+    this.updateState({ entries: document.entries, persistenceStatus: persisted ? 'ok' : 'failed' });
   }
 
   /* -------------------------------- hydration ------------------------------ */
@@ -156,9 +159,13 @@ class CartStore {
       // missing/corrupt/version/shape → graceful fresh cart (task 8). For
       // everything except `missing` we also overwrite the bad payload.
       this.document = createEmptyCartDocument();
-      if (result.reason !== 'missing') saveCartDocument(this.storage, this.document);
+      if (result.reason !== 'missing') {
+        const repaired = saveCartDocument(this.storage, this.document);
+        this.updateState({ hydrated: true, entries: this.document.entries, persistenceStatus: repaired ? 'ok' : 'failed' });
+        return;
+      }
     }
-    this.updateState({ hydrated: true, entries: this.document.entries });
+    this.updateState({ hydrated: true, entries: this.document.entries, persistenceStatus: 'ok' });
   }
 
   /* --------------------------------- actions ------------------------------- */

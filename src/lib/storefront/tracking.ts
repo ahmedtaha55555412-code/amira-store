@@ -67,7 +67,8 @@ const TRACKING_MAX_BUCKETS = 5000;
 const trackingBuckets = new Map<string, number[]>();
 
 /**
- * Sliding-window limiter (same shape as checkout/reviews limiters).
+ * Deterministic in-process limiter kept for service-level tests. Production
+ * routes use durable-rate-limit.ts so admission is shared across instances.
  * Lookup is read-only but order numbers are enumerable — a hostile client
  * must not be able to brute-force (number, phone) pairs cheaply.
  */

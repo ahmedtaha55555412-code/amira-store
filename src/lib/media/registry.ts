@@ -11,7 +11,7 @@
  *   no operation can orphan or silently re-point rows (PHASE-04 task 11).
  */
 
-import { count, desc, eq, or } from 'drizzle-orm';
+import { and, count, desc, eq, or, sql } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import {
@@ -150,4 +150,19 @@ export async function findUnreferencedMediaIds(limit = 200): Promise<string[]> {
   }
 
   return assetRows.map((row) => row.id).filter((id) => !referenced.has(id));
+}
+
+/** List only media that is safe to assign to product imagery. */
+export async function listProductImageMediaAssets(limit = 120): Promise<MediaAsset[]> {
+  return db
+    .select()
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.accessMode, 'public'),
+        sql`${mediaAssets.pathname} not like 'reviews/%' and ${mediaAssets.pathname} not like 'testimonials/%'`,
+      ),
+    )
+    .orderBy(desc(mediaAssets.createdAt))
+    .limit(limit);
 }

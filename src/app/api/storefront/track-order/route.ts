@@ -6,7 +6,7 @@
  * from the CURRENT order/shipping states per MASTER_PLAN §14).
  *
  * Security posture (reviews-lookup pattern): same-origin + JSON before any
- * parsing; per-instance rate limit keyed by HASHED client IP; no-store;
+ * parsing; durable DB-backed rate limit keyed by HASHED client IP; no-store;
  * unknown number, wrong phone and empty order return the IDENTICAL generic
  * error — no order-existence oracle; no internal IDs, address or phone in
  * the response.
@@ -19,9 +19,9 @@ import { isJsonRequest, isSameOriginRequest, withNoStore } from '@/lib/auth/orig
 import {
   TrackingServiceError,
   lookupOrderForTracking,
-  trackingLookupRateLimit,
   trackingLookupSchema,
 } from '@/lib/storefront/tracking';
+import { consumeDurableRateLimit } from '@/lib/storefront/durable-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,11 +40,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  if (!trackingLookupRateLimit(clientIpHash(request))) {
+  const rate = await consumeDurableRateLimit({
+    scope: 'storefront:track-order',
+    keyHash: clientIpHash(request),
+    windowMs: 5 * 60_000,
+    maxAttempts: 12,
+  });
+  if (!rate.allowed) {
     return withNoStore(
       NextResponse.json(
         { error: 'محاولات كثيرة جدًا — برجاء المحاولة بعد قليل.' },
-        { status: 429, headers: { 'Retry-After': '300' } },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } },
       ),
     );
   }

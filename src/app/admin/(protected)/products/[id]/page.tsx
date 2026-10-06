@@ -5,7 +5,7 @@ import { requireAdminPage } from '@/lib/auth/guard';
 import { getCategoryTree } from '@/lib/catalog/categories';
 import { getProductAggregate } from '@/lib/catalog/products';
 import { listAttributesWithValues } from '@/lib/catalog/attributes';
-import { listMediaAssets } from '@/lib/media/registry';
+import { listProductImageMediaAssets } from '@/lib/media/registry';
 import { isMediaUploadConfigured } from '@/lib/media/service';
 
 import { ProductEditor } from './product-editor';
@@ -36,7 +36,7 @@ export default async function AdminProductEditorPage({
     getProductAggregate(id),
     getCategoryTree(true),
     listAttributesWithValues(),
-    listMediaAssets(200),
+    listProductImageMediaAssets(200),
   ]);
   if (!aggregate) notFound();
 

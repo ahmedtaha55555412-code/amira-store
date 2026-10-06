@@ -11,7 +11,7 @@
  * Security posture (mirrors the PHASE-03 storefront/admin pattern):
  * - explicit same-origin CSRF control (Origin/Referer attestation) + JSON
  *   content-type enforcement BEFORE any parsing/database work;
- * - per-instance sliding-window rate limit keyed by a HASHED client IP
+ * - durable DB-backed fixed-window rate limit keyed by a HASHED client IP
  *   (MASTER_PLAN §24: rate-limit checkout; raw addresses never stored);
  * - `Cache-Control: no-store` on every response;
  * - error responses log the error NAME only (no internals, no secrets);
@@ -29,10 +29,10 @@ import { createHash } from 'node:crypto';
 
 import { isJsonRequest, isSameOriginRequest, withNoStore } from '@/lib/auth/origin';
 import {
-  checkoutRateLimit,
   checkoutRequestSchema,
   createOrderFromCart,
 } from '@/lib/storefront/checkout';
+import { consumeDurableRateLimit } from '@/lib/storefront/durable-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,12 +53,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // Baseline per-instance rate limit — protects stock and WhatsApp noise.
-  if (!checkoutRateLimit(clientIpHash(request))) {
+  // Durable DB-backed rate limit shared across deployed instances — protects stock and WhatsApp noise.
+  const rate = await consumeDurableRateLimit({
+    scope: 'storefront:checkout',
+    keyHash: clientIpHash(request),
+    windowMs: 5 * 60_000,
+    maxAttempts: 12,
+  });
+  if (!rate.allowed) {
     return withNoStore(
       NextResponse.json(
         { error: 'محاولات كثيرة جدًا — برجاء المحاولة بعد قليل.' },
-        { status: 429, headers: { 'Retry-After': '120' } },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } },
       ),
     );
   }

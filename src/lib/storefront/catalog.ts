@@ -29,6 +29,11 @@ import { and, asc, desc, eq, inArray, like, or, sql, type SQL } from 'drizzle-or
 import { db } from '@/db/client';
 import { publicDeliveryUrlSql } from '@/lib/media/service';
 import {
+  getReachableActiveCategoryIds,
+  restrictToReachableCategoryIds,
+  hasActiveVariantSql,
+} from './eligibility';
+import {
   attributeValues,
   attributes,
   categories,
@@ -112,14 +117,23 @@ export async function getStorefrontCategoryTree(): Promise<StorefrontCategoryNod
     .where(eq(categories.isActive, true))
     .orderBy(asc(categories.sortOrder), asc(categories.name));
 
-  const counts = await db
-    .select({
-      categoryId: products.categoryId,
-      n: sql<number>`count(*)::int`,
-    })
-    .from(products)
-    .where(eq(products.status, 'active'))
-    .groupBy(products.categoryId);
+  const reachableIds = await getReachableActiveCategoryIds();
+  const counts = reachableIds.size
+    ? await db
+        .select({
+          categoryId: products.categoryId,
+          n: sql<number>`count(*)::int`,
+        })
+        .from(products)
+        .where(
+          and(
+            eq(products.status, 'active'),
+            inArray(products.categoryId, [...reachableIds]),
+            hasActiveVariantSql,
+          ),
+        )
+        .groupBy(products.categoryId)
+    : [];
 
   const ownCount = new Map<string, number>();
   for (const row of counts) ownCount.set(row.categoryId, row.n);
@@ -183,8 +197,11 @@ export async function getStorefrontCategoryPage(
 
   // Active ancestor chain — the branch must be fully reachable.
   const ancestors: Category[] = [];
+  const visitedAncestors = new Set<string>();
   let parentId = category.parentId;
   while (parentId) {
+    if (visitedAncestors.has(parentId)) return null;
+    visitedAncestors.add(parentId);
     const [parent] = await db
       .select()
       .from(categories)
@@ -203,6 +220,7 @@ export async function getStorefrontCategoryPage(
 
   // Active descendants (BFS over active rows).
   const subtreeIds: string[] = [category.id];
+  const seenSubtreeIds = new Set<string>(subtreeIds);
   const queue = [category.id];
   while (queue.length > 0) {
     const current = queue.shift()!;
@@ -211,6 +229,8 @@ export async function getStorefrontCategoryPage(
       .from(categories)
       .where(and(eq(categories.parentId, current), eq(categories.isActive, true)));
     for (const kid of kids) {
+      if (seenSubtreeIds.has(kid.id)) continue;
+      seenSubtreeIds.add(kid.id);
       subtreeIds.push(kid.id);
       queue.push(kid.id);
     }
@@ -258,12 +278,13 @@ export async function listStorefrontProducts(
   const page = Math.max(1, Math.floor(options.page ?? 1));
   const pageSize = Math.min(48, Math.max(1, Math.floor(options.pageSize ?? PAGE_SIZE_DEFAULT)));
   const sort = options.sort ?? 'newest';
-
-  const conditions: SQL[] = [eq(products.status, 'active'), sql`${hasActiveVariantExpr}`];
-
-  if (options.categoryIds && options.categoryIds.length > 0) {
-    conditions.push(inArray(products.categoryId, options.categoryIds));
+  const reachableCategoryIds = await getReachableActiveCategoryIds();
+  const scopedCategoryIds = restrictToReachableCategoryIds(options.categoryIds, reachableCategoryIds);
+  if (scopedCategoryIds.length === 0) {
+    return { items: [], total: 0, page, pageSize, pageCount: 1 };
   }
+
+  const conditions: SQL[] = [eq(products.status, 'active'), sql`${hasActiveVariantExpr}`, inArray(products.categoryId, scopedCategoryIds)];
 
   const groupEntries = Object.entries(options.attributeValueIdsByAttribute ?? {}).filter(
     ([, valueIds]) => valueIds.length > 0,
@@ -400,6 +421,8 @@ async function withPrimaryImages(rows: ListingRow[]): Promise<StorefrontProductC
           inArray(productImages.productId, ids),
           eq(productImages.isPrimary, true),
           sql`${productImages.variantId} is null`,
+          eq(mediaAssets.accessMode, 'public'),
+          sql`${mediaAssets.pathname} not like 'reviews/%' and ${mediaAssets.pathname} not like 'testimonials/%'`,
         ),
       )
       .orderBy(asc(productImages.sortOrder));
@@ -594,12 +617,21 @@ export type StorefrontProductDetail = {
 export async function getStorefrontProductDetail(
   slug: string,
 ): Promise<StorefrontProductDetail | null> {
-  const [product] = await db
+  const reachableCategoryIds = await getReachableActiveCategoryIds();
+  const productsByRoute = await db
     .select()
     .from(products)
-    .where(and(eq(products.slug, slug), eq(products.status, 'active')))
-    .limit(1);
-  if (!product) return null;
+    .where(
+      and(
+        eq(products.status, 'active'),
+        or(eq(products.slug, slug), eq(products.canonicalSlug, slug)),
+        hasActiveVariantSql,
+      ),
+    )
+    .limit(2);
+  if (productsByRoute.length !== 1) return null;
+  const product = productsByRoute[0]!;
+  if (!reachableCategoryIds.has(product.categoryId)) return null;
 
   const [category] = await db
     .select()
@@ -675,7 +707,13 @@ export async function getStorefrontProductDetail(
     })
     .from(productImages)
     .innerJoin(mediaAssets, eq(productImages.mediaAssetId, mediaAssets.id))
-    .where(eq(productImages.productId, product.id))
+    .where(
+      and(
+        eq(productImages.productId, product.id),
+        eq(mediaAssets.accessMode, 'public'),
+        sql`${mediaAssets.pathname} not like 'reviews/%' and ${mediaAssets.pathname} not like 'testimonials/%'`,
+      ),
+    )
     .orderBy(asc(productImages.sortOrder), asc(productImages.id));
 
   const gallery: StorefrontProductImage[] = [];
@@ -797,16 +835,21 @@ export async function getStorefrontProductDetail(
  * the aggregate's own `notFound()` defense-in-depth.
  */
 export async function hasStorefrontProductBySlug(slug: string): Promise<boolean> {
-  const [row] = await db
-    .select({ id: products.id })
+  const reachableCategoryIds = await getReachableActiveCategoryIds();
+  if (reachableCategoryIds.size === 0) return false;
+  const rows = await db
+    .select({ id: products.id, categoryId: products.categoryId })
     .from(products)
-    .innerJoin(
-      categories,
-      and(eq(categories.id, products.categoryId), eq(categories.isActive, true)),
+    .where(
+      and(
+        eq(products.status, 'active'),
+        or(eq(products.slug, slug), eq(products.canonicalSlug, slug)),
+        hasActiveVariantSql,
+        inArray(products.categoryId, [...reachableCategoryIds]),
+      ),
     )
-    .where(and(eq(products.slug, slug), eq(products.status, 'active')))
-    .limit(1);
-  return row !== undefined;
+    .limit(2);
+  return rows.length === 1;
 }
 
 /**
@@ -814,10 +857,18 @@ export async function hasStorefrontProductBySlug(slug: string): Promise<boolean>
  * {@link hasStorefrontProductBySlug}) — active category by its unique slug.
  */
 export async function hasStorefrontCategoryBySlug(slug: string): Promise<boolean> {
+  const reachableCategoryIds = await getReachableActiveCategoryIds();
+  if (reachableCategoryIds.size === 0) return false;
   const [row] = await db
     .select({ id: categories.id })
     .from(categories)
-    .where(and(eq(categories.slug, slug), eq(categories.isActive, true)))
+    .where(
+      and(
+        eq(categories.slug, slug),
+        eq(categories.isActive, true),
+        inArray(categories.id, [...reachableCategoryIds]),
+      ),
+    )
     .limit(1);
   return row !== undefined;
 }
@@ -894,28 +945,33 @@ export async function searchStorefrontProducts(options: {
   const page = Math.max(1, Math.floor(options.page ?? 1));
   const pageSize = Math.min(48, Math.max(1, Math.floor(options.pageSize ?? PAGE_SIZE_DEFAULT)));
 
-  const matchedCategories = await db
-    .select({ id: categories.id, name: categories.name, slug: categories.slug })
-    .from(categories)
-    .where(
-      and(
-        eq(categories.isActive, true),
-        like(normalizeSqlExpr(categories.name), `%${escapeLikePattern(normalized)}%`),
-      ),
-    )
-    .orderBy(asc(categories.sortOrder), asc(categories.name))
-    .limit(4);
+  const reachableCategoryIds = await getReachableActiveCategoryIds();
+  const matchedCategories = reachableCategoryIds.size
+    ? await db
+        .select({ id: categories.id, name: categories.name, slug: categories.slug })
+        .from(categories)
+        .where(
+          and(
+            eq(categories.isActive, true),
+            inArray(categories.id, [...reachableCategoryIds]),
+            like(normalizeSqlExpr(categories.name), `%${escapeLikePattern(normalized)}%`),
+          ),
+        )
+        .orderBy(asc(categories.sortOrder), asc(categories.name))
+        .limit(4)
+    : [];
+
+  const scopedCategoryIds = restrictToReachableCategoryIds(options.categoryIds, reachableCategoryIds);
 
   const runQuery = async (fuzzyEnabled: boolean): Promise<{ rows: ListingRow[]; total: number; fuzzy: boolean }> => {
+    if (scopedCategoryIds.length === 0) return { rows: [], total: 0, fuzzy: fuzzyEnabled };
     const matchConditions = buildSearchMatchCondition(normalized, fuzzyEnabled);
     const conditions: SQL[] = [
       eq(products.status, 'active'),
       sql`${hasActiveVariantExpr}`,
+      inArray(products.categoryId, scopedCategoryIds),
       or(...matchConditions) as SQL,
     ];
-    if (options.categoryIds && options.categoryIds.length > 0) {
-      conditions.push(inArray(products.categoryId, options.categoryIds));
-    }
     const where = and(...conditions);
 
     const sort = options.sort ?? 'newest';
@@ -1095,22 +1151,9 @@ export async function getSitemapEntries(): Promise<{
     .from(categories)
     .where(eq(categories.isActive, true));
 
-  // Reachability over the (small) category tree: keep only fully-active branches.
-  const reachableIds = new Set<string>();
-  const byId = new Map(activeCategories.map((c) => [c.id, c]));
-  for (const category of activeCategories) {
-    let reachable = true;
-    let parentId = category.parentId;
-    while (parentId) {
-      const parent = byId.get(parentId);
-      if (!parent) {
-        reachable = false; // inactive or missing ancestor → unreachable branch
-        break;
-      }
-      parentId = parent.parentId;
-    }
-    if (reachable) reachableIds.add(category.id);
-  }
+  // Single source of truth: keep only fully-active branches, including a
+  // defensive cycle guard for malformed category graphs.
+  const reachableIds = await getReachableActiveCategoryIds();
 
   const categoryEntries = activeCategories
     .filter((c) => reachableIds.has(c.id))
@@ -1123,16 +1166,21 @@ export async function getSitemapEntries(): Promise<{
   const productRows = await db
     .select({
       slug: products.slug,
+      canonicalSlug: products.canonicalSlug,
       categoryId: products.categoryId,
       updatedAt: products.updatedAt,
     })
     .from(products)
     .where(
-      and(eq(products.status, 'active'), inArray(products.categoryId, [...reachableIds])),
+      and(
+        eq(products.status, 'active'),
+        inArray(products.categoryId, [...reachableIds]),
+        hasActiveVariantSql,
+      ),
     );
 
   const productEntries = productRows.map((p) => ({
-    path: `/product/${encodeURIComponent(p.slug)}`,
+    path: `/product/${encodeURIComponent(p.canonicalSlug ?? p.slug)}`,
     updatedAt: p.updatedAt,
   }));
 

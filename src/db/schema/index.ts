@@ -14,6 +14,7 @@ export * from './customers-orders';
 export * from './inventory';
 export * from './reviews';
 export * from './settings';
+export * from './rate-limit';
 export * from './relations';
 
 import {
@@ -33,6 +34,7 @@ import {
   variantAttributeValues,
 } from './catalog';
 import { customers, orderItems, orders } from './customers-orders';
+import { requestRateLimits } from './rate-limit';
 import { inventoryMovements } from './inventory';
 import { mediaAssets } from './media';
 import { reviewImages, reviews, whatsappTestimonials } from './reviews';
@@ -70,4 +72,5 @@ export const schema = {
   storeSettings,
   homepageSections,
   homepageBanners,
+  requestRateLimits,
 };

@@ -50,7 +50,9 @@ import {
 import {
   LOGIN_FAILURE_WINDOW_MINUTES,
   LOGIN_MAX_FAILURES,
+  beginLoginAttempt,
   clearLoginFailures,
+  completeLoginAttemptSuccess,
   getLoginThrottleState,
   recordLoginFailure,
 } from '../src/lib/auth/throttle';
@@ -212,6 +214,19 @@ try {
   console.log('\n[9] login throttling');
   const initialThrottle = await getLoginThrottleState(THROTTLE_PROBE_USERNAME);
   assert('initial state not throttled', !initialThrottle.throttled);
+  const reservation = await beginLoginAttempt(THROTTLE_PROBE_USERNAME);
+  assert('login admission reserves one throttle slot atomically', reservation !== null);
+  const reservedThrottle = await getLoginThrottleState(THROTTLE_PROBE_USERNAME);
+  assert(
+    'active reservation is visible to throttle state',
+    reservedThrottle.recentFailures === 1 && !reservedThrottle.throttled,
+  );
+  if (reservation) await completeLoginAttemptSuccess(reservation.id, THROTTLE_PROBE_USERNAME);
+  const postReservationThrottle = await getLoginThrottleState(THROTTLE_PROBE_USERNAME);
+  assert(
+    'successful reservation release restores clear state',
+    postReservationThrottle.recentFailures === 0 && !postReservationThrottle.throttled,
+  );
   for (let i = 0; i < LOGIN_MAX_FAILURES; i += 1) {
     await recordLoginFailure({ usernameAttempted: THROTTLE_PROBE_USERNAME });
   }

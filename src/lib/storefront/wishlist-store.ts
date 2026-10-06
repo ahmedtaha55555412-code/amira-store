@@ -25,9 +25,11 @@ export type WishlistState = {
   /** True after the first client hydration from durable storage. */
   hydrated: boolean;
   items: WishlistItem[];
+  /** Durable localStorage write status; false means the browser rejected persistence. */
+  persistenceStatus: 'ok' | 'failed';
 };
 
-const EMPTY_STATE: WishlistState = { hydrated: false, items: [] };
+const EMPTY_STATE: WishlistState = { hydrated: false, items: [], persistenceStatus: 'ok' };
 
 class WishlistStore {
   private storage: WishlistStorage;
@@ -62,8 +64,8 @@ class WishlistStore {
 
   private commit(document: WishlistDocument): void {
     this.document = document;
-    saveWishlistDocument(this.storage, document);
-    this.state = { hydrated: true, items: document.items };
+    const persisted = saveWishlistDocument(this.storage, document);
+    this.state = { hydrated: true, items: document.items, persistenceStatus: persisted ? 'ok' : 'failed' };
     this.emit();
   }
 
@@ -73,9 +75,14 @@ class WishlistStore {
       this.document = result.document;
     } else {
       this.document = createEmptyWishlistDocument();
-      if (result.reason !== 'missing') saveWishlistDocument(this.storage, this.document);
+      if (result.reason !== 'missing') {
+        const repaired = saveWishlistDocument(this.storage, this.document);
+        this.state = { hydrated: true, items: this.document.items, persistenceStatus: repaired ? 'ok' : 'failed' };
+        this.emit();
+        return;
+      }
     }
-    this.state = { hydrated: true, items: this.document.items };
+    this.state = { hydrated: true, items: this.document.items, persistenceStatus: 'ok' };
     this.emit();
   }
 

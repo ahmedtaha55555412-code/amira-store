@@ -650,7 +650,7 @@ async function attemptOrderTransaction(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Per-instance checkout rate limiting (MASTER_PLAN §24 "where appropriate")   */
+/* Deterministic service-test rate limiting. Production API admission uses durable-rate-limit.ts. */
 /* -------------------------------------------------------------------------- */
 
 const RATE_LIMIT_WINDOW_MS = 5 * 60_000;

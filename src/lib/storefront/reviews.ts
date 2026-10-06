@@ -483,7 +483,7 @@ export async function getProductTestimonials(
   return rows;
 }
 
-/** Per-instance review-submission rate limiting (§24) — checkout pattern. */
+/** Deterministic in-process rate-limit helper for service tests only; production routes use durable-rate-limit.ts. */
 const REVIEW_RATE_WINDOW_MS = 30 * 60_000;
 const REVIEW_RATE_MAX_ATTEMPTS = 8;
 const REVIEW_RATE_MAX_KEYS = 5_000;

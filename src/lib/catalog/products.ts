@@ -553,6 +553,10 @@ export async function saveProductAggregate(
     };
   });
 
+  // The editor submits the whole aggregate. Re-check the persisted product state
+  // under the same transaction lock used for status changes, so an active product
+  // can never be left with zero active variants by a stale concurrent save.
+
   // Duplicate combination detection (explicit variants only — task 4).
   const seenCombinations = new Map<string, number>();
   for (const [index, variant] of parsedVariants.entries()) {
@@ -582,12 +586,21 @@ export async function saveProductAggregate(
   const requestedAssetIds = [...new Set(input.images.map((image) => image.mediaAssetId))];
   const assetRows = requestedAssetIds.length
     ? await db
-        .select({ id: mediaAssets.id })
+        .select({ id: mediaAssets.id, accessMode: mediaAssets.accessMode, pathname: mediaAssets.pathname })
         .from(mediaAssets)
         .where(inArray(mediaAssets.id, requestedAssetIds))
     : [];
   if (assetRows.length !== requestedAssetIds.length) {
     throw new ProductServiceError('إحدى الصور المرفقة غير موجودة في مكتبة الوسائط.');
+  }
+  const invalidProductMedia = assetRows.find(
+    (asset) =>
+      asset.accessMode !== 'public' ||
+      asset.pathname.startsWith('reviews/') ||
+      asset.pathname.startsWith('testimonials/'),
+  );
+  if (invalidProductMedia) {
+    throw new ProductServiceError('صور المنتجات يجب أن تكون صورًا عامة من مكتبة المنتجات، ولا يجوز استخدام صور التقييمات أو واتساب.');
   }
   const keyedImages = input.images.map((image) => ({
     ...image,
@@ -625,18 +638,14 @@ export async function saveProductAggregate(
   /* ---------------- transactional apply ---------------- */
   const result = await db.transaction(async (tx) => {
     const [lockedProduct] = await tx
-      .select({
-        status: products.status,
-        slug: products.slug,
-        canonicalSlug: products.canonicalSlug,
-      })
+      .select({ status: products.status, slug: products.slug, canonicalSlug: products.canonicalSlug })
       .from(products)
       .where(eq(products.id, productId))
       .for('update')
       .limit(1);
     if (!lockedProduct) throw new ProductServiceError('المنتج غير موجود.', 404);
     if (lockedProduct.status === 'active' && !parsedVariants.some((variant) => variant.isActive)) {
-      throw new ProductServiceError('لا يمكن إلغاء تفعيل جميع متغيرات منتج نشط.');
+      throw new ProductServiceError('لا يمكن إبقاء منتج نشط بدون متغير نشط واحد على الأقل.');
     }
 
     /* product basics + slug */
@@ -671,7 +680,12 @@ export async function saveProductAggregate(
         const [canonicalConflict] = await tx
           .select({ id: products.id })
           .from(products)
-          .where(and(eq(products.canonicalSlug, canonicalInput), ne(products.id, productId)))
+          .where(
+            and(
+              ne(products.id, productId),
+              or(eq(products.slug, canonicalInput), eq(products.canonicalSlug, canonicalInput)),
+            ),
+          )
           .limit(1);
         if (canonicalConflict) {
           throw new ProductServiceError('الرابط الأساسي (canonical) مستخدم بالفعل لمنتج آخر.');
@@ -900,18 +914,21 @@ export async function saveProductAggregate(
       await tx.delete(sizeGuides).where(eq(sizeGuides.productId, productId));
     }
 
-    await recordAdminActivity({
-      adminUserId,
-      action: 'catalog.product.saved',
-      entityType: 'product',
-      entityId: productId,
-      metadata: {
-        variants: parsedVariants.length,
-        images: keyedImages.length,
-        attributes: attributeIds.length,
-        hasSizeGuide: sizeGuide !== null,
+    await recordAdminActivity(
+      {
+        adminUserId,
+        action: 'catalog.product.saved',
+        entityType: 'product',
+        entityId: productId,
+        metadata: {
+          variants: parsedVariants.length,
+          images: keyedImages.length,
+          attributes: attributeIds.length,
+          hasSizeGuide: sizeGuide !== null,
+        },
       },
-    });
+      tx,
+    );
 
     return product;
   });

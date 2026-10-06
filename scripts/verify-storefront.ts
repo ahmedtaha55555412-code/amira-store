@@ -221,7 +221,12 @@ async function main(): Promise<void> {
       await db.delete(products).where(eq(products.id, probe!.id));
       void probeVariant;
     }
-    assert('probe cleaned up', true);
+    const [probeAfterCleanup] = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(eq(products.id, probe!.id))
+      .limit(1);
+    assert('probe cleaned up', !probeAfterCleanup);
   }
 
   /* ------------------------------------------------------------------------ */

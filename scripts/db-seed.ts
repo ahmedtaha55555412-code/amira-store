@@ -15,7 +15,7 @@
  * Run: bun run db:seed
  */
 
-import { inArray, sql } from 'drizzle-orm';
+import { asc, eq, inArray, sql } from 'drizzle-orm';
 
 import { db, getPool } from '../src/db/client';
 import {
@@ -239,7 +239,7 @@ const demoMediaSlugs = [
 ];
 const mediaIds = new Map<string, string>();
 for (const slug of demoMediaSlugs) {
-  const pathname = `demo/${slug}.png`;
+  const pathname = `demo/${slug}.svg`;
   // PHASE-05: distinct per-product placeholder assets so the storefront's
   // variant-image switching is visually verifiable in development QA
   // (previously every demo asset pointed at og-default.png).
@@ -388,7 +388,27 @@ const catalog: ProductSeed[] = [
       { sku: 'AMR-WSD-M', originalPrice: '650.00', currentPrice: '589.00', stock: 3, attrs: ['size:m'] },
     ],
   },
+  // Additional realistic Arabic demo catalog entries — the acceptance seed is
+  // exactly 20 products total, while still retaining the verification-shape
+  // products above. Each active demo product owns one sellable variant.
+  { slug: 'women-linen-abaya', name: 'عباية كتان عملية', category: 'women-abayas', short: 'عباية يومية بخامة خفيفة وقصة مريحة', status: 'active', media: ['abaya'], variants: [{ sku: 'AMR-WLA-001', originalPrice: '780.00', currentPrice: '699.00', stock: 9, attrs: [] }] },
+  { slug: 'women-basic-dress', name: 'فستان نسائي أساسي', category: 'women-dresses', short: 'فستان بسيط مناسب للخروج اليومي', status: 'active', media: ['abaya'], variants: [{ sku: 'AMR-WBD-001', originalPrice: '590.00', currentPrice: '499.00', stock: 11, attrs: ['size:m'] }] },
+  { slug: 'women-soft-hijab', name: 'طرحة شيفون ناعمة', category: 'women-abayas', short: 'طرحة شيفون سهلة التنسيق وثابتة في الارتداء', status: 'active', media: ['shirt'], variants: [{ sku: 'AMR-WSH-001', originalPrice: '180.00', currentPrice: '149.00', stock: 18, attrs: ['color:black'] }] },
+  { slug: 'men-polo-shirt', name: 'تيشيرت بولو رجالي', category: 'men-shirts', short: 'بولو قطني عملي للاستخدام اليومي', status: 'active', media: ['shirt'], variants: [{ sku: 'AMR-MPS-001', originalPrice: '360.00', currentPrice: '299.00', stock: 16, attrs: ['size:l'] }] },
+  { slug: 'men-casual-tshirt', name: 'تيشيرت رجالي كاجوال', category: 'men-shirts', short: 'تيشيرت قطني خفيف بقصة عصرية', status: 'active', media: ['shirt'], variants: [{ sku: 'AMR-MCT-001', originalPrice: '280.00', currentPrice: '229.00', stock: 21, attrs: ['size:m'] }] },
+  { slug: 'kids-girl-dress', name: 'فستان بناتي للعيد', category: 'kids-girls', short: 'فستان بناتي لطيف للمناسبات والخروجات', status: 'active', media: ['kids-tshirt'], variants: [{ sku: 'AMR-KGD-001', originalPrice: '430.00', currentPrice: '379.00', stock: 7, attrs: ['size:m'] }] },
+  { slug: 'kids-hoodie', name: 'هودي أطفال دافئ', category: 'kids-boys', short: 'هودي مريح للمدرسة والخروج في الجو البارد', status: 'active', media: ['kids-tshirt'], variants: [{ sku: 'AMR-KHD-001', originalPrice: '420.00', currentPrice: '349.00', stock: 8, attrs: ['size:l'] }] },
+  { slug: 'kids-cotton-shorts', name: 'شورت أطفال قطني', category: 'kids-boys', short: 'شورت عملي وخفيف للحركة واللعب', status: 'active', media: ['kids-tshirt'], variants: [{ sku: 'AMR-KCS-001', originalPrice: '220.00', currentPrice: '179.00', stock: 14, attrs: ['color:sky'] }] },
+  { slug: 'baby-bodysuit', name: 'بادي مواليد قطني', category: 'baby-clothing', short: 'بادي ناعم مناسب للبشرة الحساسة', status: 'active', media: ['baby-towel'], variants: [{ sku: 'AMR-BBD-001', originalPrice: '210.00', currentPrice: '179.00', stock: 20, attrs: ['size:s'] }] },
+  { slug: 'baby-warm-blanket', name: 'بطانية مواليد ناعمة', category: 'baby-clothing', short: 'بطانية خفيفة ودافئة للاستخدام اليومي', status: 'active', media: ['baby-towel'], variants: [{ sku: 'AMR-BWB-001', originalPrice: '360.00', currentPrice: '319.00', stock: 10, attrs: [] }] },
+  { slug: 'baby-cap-set', name: 'طقم كاب وشرابات للمواليد', category: 'baby-clothing', short: 'طقم عملي وناعم للأيام الأولى', status: 'active', media: ['baby-towel'], variants: [{ sku: 'AMR-BCS-001', originalPrice: '170.00', currentPrice: '139.00', stock: 13, attrs: [] }] },
+  { slug: 'lipstick-soft-rose', name: 'أحمر شفاه وردي ناعم', category: 'cosmetics-makeup', short: 'درجة وردية ناعمة مناسبة للاستخدام اليومي', status: 'active', media: ['foundation'], variants: [{ sku: 'AMR-LSR-001', originalPrice: '240.00', currentPrice: '199.00', stock: 17, attrs: ['shade:light'] }] },
+  { slug: 'gentle-face-cleanser', name: 'غسول وجه لطيف', category: 'cosmetics-skincare', short: 'غسول يومي لطيف لتنظيف البشرة دون جفاف', status: 'active', media: ['cream'], variants: [{ sku: 'AMR-GFC-001', originalPrice: '290.00', currentPrice: '249.00', stock: 12, attrs: ['volume:100ml'] }] },
 ];
+
+if (catalog.length !== 20) {
+  throw new Error(`[db-seed] Acceptance seed drifted: expected exactly 20 products, found ${catalog.length}.`);
+}
 
 for (const p of catalog) {
   const [productRow] = await db
@@ -552,17 +572,43 @@ const testimonialSeeds = [
 ];
 
 for (const [i, t] of testimonialSeeds.entries()) {
-  await db
-    .insert(whatsappTestimonials)
-    .values({
-      mediaAssetId: mediaIds.get(t.media)!,
+  const mediaAssetId = mediaIds.get(t.media)!;
+  const existing = await db
+    .select({ id: whatsappTestimonials.id })
+    .from(whatsappTestimonials)
+    .where(eq(whatsappTestimonials.mediaAssetId, mediaAssetId))
+    .orderBy(asc(whatsappTestimonials.createdAt), asc(whatsappTestimonials.id));
+
+  const keepId = existing[0]?.id;
+  if (keepId) {
+    // Repair any duplicates left by older seed versions before updating the
+    // canonical demo row. Only rows tied to the deterministic demo media are
+    // touched; real/admin-authored testimonials use different media ids.
+    const duplicateIds = existing.slice(1).map((row) => row.id);
+    if (duplicateIds.length > 0) {
+      await db.delete(whatsappTestimonials).where(inArray(whatsappTestimonials.id, duplicateIds));
+    }
+    await db
+      .update(whatsappTestimonials)
+      .set({
+        displayName: t.name,
+        city: t.city,
+        caption: t.caption,
+        status: t.status,
+        sortOrder: i,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(whatsappTestimonials.id, keepId));
+  } else {
+    await db.insert(whatsappTestimonials).values({
+      mediaAssetId,
       displayName: t.name,
       city: t.city,
       caption: t.caption,
       status: t.status,
       sortOrder: i,
-    })
-    .onConflictDoNothing();
+    });
+  }
 }
 console.log('[db-seed] WhatsApp testimonials ✔ (1 published + 1 draft)');
 

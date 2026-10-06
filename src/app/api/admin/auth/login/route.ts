@@ -38,9 +38,11 @@ import {
   sessionCookieOptions,
 } from '@/lib/auth/session';
 import {
-  clearLoginFailures,
+  beginLoginAttempt,
+  completeLoginAttemptSuccess,
+  finalizeLoginFailure,
   getLoginThrottleState,
-  recordLoginFailure,
+  releaseLoginAttempt,
 } from '@/lib/auth/throttle';
 
 export const runtime = 'nodejs';
@@ -77,13 +79,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const username = parsed.data.username.trim();
   const password = parsed.data.password;
 
+  let loginAttemptId: string | null = null;
   try {
     const ipHash = await getClientIpHash();
     const userAgent = request.headers.get('user-agent')?.slice(0, 300) ?? null;
 
-    // 1) Throttle before any credential work.
-    const throttle = await getLoginThrottleState(username, ipHash);
-    if (throttle.throttled) {
+    // 1) Atomic throttle admission BEFORE credential work. The reservation is
+    // counted immediately, so concurrent requests cannot all pass the same
+    // threshold before their failures are recorded.
+    const attempt = await beginLoginAttempt(username, ipHash);
+    if (!attempt) {
+      const throttle = await getLoginThrottleState(username, ipHash);
       return withNoStore(
         NextResponse.json(
           {
@@ -94,6 +100,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ),
       );
     }
+    loginAttemptId = attempt.id;
 
     // 2) Single lookup; a missing admin still burns a bcrypt comparison.
     const matched = await db
@@ -109,12 +116,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
 
     if (!user || !passwordOk) {
-      await recordLoginFailure({ usernameAttempted: username, ipHash });
+      await finalizeLoginFailure({ attemptId: loginAttemptId, usernameAttempted: username, ipHash });
       return withNoStore(NextResponse.json({ error: GENERIC_INVALID }, { status: 401 }));
     }
 
     if (!user.isActive) {
-      await recordLoginFailure({
+      await finalizeLoginFailure({
+        attemptId: loginAttemptId,
         usernameAttempted: username,
         ipHash,
         adminUserId: user.id,
@@ -123,8 +131,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return withNoStore(NextResponse.json({ error: GENERIC_INVALID }, { status: 401 }));
     }
 
-    // 3) Success: clear transient failure state, create the session.
-    await clearLoginFailures(username);
+    // 3) Success: clear the transient admission + failure state, then create the session.
+    await completeLoginAttemptSuccess(loginAttemptId, username);
     try {
       await purgeExpiredSessions();
     } catch {
@@ -158,6 +166,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
     return response;
   } catch (error) {
+    if (loginAttemptId) {
+      await releaseLoginAttempt(loginAttemptId).catch(() => undefined);
+    }
     // No tokens/passwords/usernames in server logs (PHASE-03 task 11).
     console.error('[auth/login] handler failure', typeof error, (error as Error)?.name);
     return withNoStore(NextResponse.json({ error: GENERIC_ERROR }, { status: 500 }));

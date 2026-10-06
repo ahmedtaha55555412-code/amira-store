@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { AlertTriangle, Heart, Image as ImageIcon, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -54,6 +54,16 @@ export function WishlistDrawer() {
         role="dialog"
         aria-label="قائمة المفضلة"
       >
+        {state.persistenceStatus === 'failed' ? (
+          <div
+            role="alert"
+            className="mx-4 mt-3 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs leading-relaxed text-destructive"
+          >
+            <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <p>تعذر حفظ المفضلة في المتصفح. يمكنك المتابعة الآن، لكن قد تضيع التغييرات بعد تحديث الصفحة أو إغلاقها.</p>
+          </div>
+        ) : null}
+
         <SheetHeader className="space-y-1 border-b border-border/70 p-4 text-start">
           <SheetTitle className="flex items-center gap-2 text-base font-bold">
             <Heart aria-hidden className="size-4 text-destructive" />

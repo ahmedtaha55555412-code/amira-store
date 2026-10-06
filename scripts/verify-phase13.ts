@@ -25,6 +25,7 @@ import {
   products,
   reviews,
   customers,
+  requestRateLimits,
 } from '../src/db/schema';
 import { adminUsers } from '../src/db/schema';
 import { createProduct, setProductStatus } from '../src/lib/catalog/products';
@@ -395,13 +396,31 @@ let xssCategoryId: string | null = null;
       .from(sql`media_assets`);
     assert('failed upload leaves NO registry row (no orphan metadata)', afterCount.n === beforeCount.n);
   } else {
-    console.log('  ! media storage IS configured — unavailable-storage injection not applicable here.');
-    assert('media storage configured → 503 injection skipped by design', true);
+    console.log('  - SKIP media-unavailable injection: storage is configured in this environment; no false PASS is recorded.');
   }
 }
 
 /* -------------------------------------------------------------------------- */
-/* §7 independent DB invariant recomputation (after all hostile operations)     */
+/* §7 durable abuse-control admission (atomic across serverless instances)   */
+
+{
+  const { consumeDurableRateLimit } = await import('../src/lib/storefront/durable-rate-limit');
+  const scope = `qa:durable-rate:${STAMP}`;
+  const keyHash = `qa-${STAMP}`;
+  const now = 1_800_000_000_000;
+  const first = await consumeDurableRateLimit({ scope, keyHash, windowMs: 60_000, maxAttempts: 3 }, now);
+  const second = await consumeDurableRateLimit({ scope, keyHash, windowMs: 60_000, maxAttempts: 3 }, now + 1);
+  const third = await consumeDurableRateLimit({ scope, keyHash, windowMs: 60_000, maxAttempts: 3 }, now + 2);
+  const blocked = await consumeDurableRateLimit({ scope, keyHash, windowMs: 60_000, maxAttempts: 3 }, now + 3);
+  const nextWindow = await consumeDurableRateLimit({ scope, keyHash, windowMs: 60_000, maxAttempts: 3 }, now + 60_000);
+  assert('durable limiter allows attempts through configured cap', first.allowed && second.allowed && third.allowed);
+  assert('durable limiter blocks the next concurrent-equivalent attempt', !blocked.allowed && blocked.attempts === 4);
+  assert('durable limiter re-allows in the next fixed window', nextWindow.allowed && nextWindow.attempts === 1);
+  await db.delete(requestRateLimits).where(eq(requestRateLimits.scope, scope));
+}
+
+/* -------------------------------------------------------------------------- */
+/* §8 independent DB invariant recomputation (after all hostile operations)     */
 /* -------------------------------------------------------------------------- */
 
 {

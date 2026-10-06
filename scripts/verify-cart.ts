@@ -269,9 +269,23 @@ function suitePersistence(): void {
   const storage = createMemoryStorage();
   let doc = loadCartDocument(storage);
   assert('fresh storage loads empty', doc.ok === false);
-  saveCartDocument(storage, addCartEntry(createEmptyCartDocument(), draft({ quantity: 2 })).document);
+  const persistedDocument = addCartEntry(createEmptyCartDocument(), draft({ quantity: 2 })).document;
+  saveCartDocument(storage, persistedDocument);
   const reloaded = loadCartDocument(storage);
   assert('saved cart survives storage round-trip', reloaded.ok && reloaded.document.entries[0]!.quantity === 2);
+
+  const failingStorage: CartStorage = {
+    getItem: () => null,
+    setItem: () => { throw new Error('quota'); },
+    removeItem: () => undefined,
+  };
+  assert('cart save reports storage rejection', saveCartDocument(failingStorage, persistedDocument) === false);
+  const failingWishlistStorage = {
+    getItem: () => null,
+    setItem: () => { throw new Error('quota'); },
+    removeItem: () => undefined,
+  };
+  assert('wishlist save reports storage rejection', saveWishlistDocument(failingWishlistStorage, createEmptyWishlistDocument()) === false);
   saveCartDocument(storage, clearCart(reloaded.ok ? reloaded.document : createEmptyCartDocument()));
   const afterClear = loadCartDocument(storage);
   assert('cleared cart persists as missing/empty', !afterClear.ok || afterClear.document.entries.length === 0);
@@ -290,11 +304,16 @@ function suiteRouteAudit(): void {
       existsSync(join(apiDir, 'storefront')) &&
       !existsSync(join(apiDir, 'route.ts')),
   );
-  const storefrontRoutes = existsSync(join(apiDir, 'storefront'))
-    ? readFileSync(join(apiDir, 'storefront', 'cart-availability', 'route.ts'), 'utf8').length > 0 &&
-      readFileSync(join(apiDir, 'storefront', 'search', 'suggestions', 'route.ts'), 'utf8').length > 0
-    : false;
-  assert('storefront endpoints are availability + search (read-only) + checkout', storefrontRoutes || true);
+  const storefrontRoutePaths = [
+    join(apiDir, 'storefront', 'cart-availability', 'route.ts'),
+    join(apiDir, 'storefront', 'search', 'suggestions', 'route.ts'),
+    join(apiDir, 'storefront', 'checkout', 'route.ts'),
+  ];
+  assert(
+    'storefront endpoints are availability + search + checkout',
+    storefrontRoutePaths.every(existsSync),
+    storefrontRoutePaths.join(', '),
+  );
   // The definitive audit: no route directory carries account/login/register semantics.
   const suspicious = ['register', 'account', 'customer-auth', 'forgot-password'];
   const found = suspicious.filter((name) => existsSync(join(apiDir, name)));

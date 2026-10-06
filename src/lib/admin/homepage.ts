@@ -224,24 +224,33 @@ export async function updateHomepageSection(
     patch.config = validateSectionConfig(section.sectionKey, input.config ?? null);
   }
 
-  const [updated] = await db
-    .update(homepageSections)
-    .set(patch)
-    .where(eq(homepageSections.id, sectionId))
-    .returning();
+  return db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(homepageSections)
+      .set(patch)
+      .where(eq(homepageSections.id, sectionId))
+      .returning();
 
-  await recordAdminActivity({
-    adminUserId,
-    action: 'update',
-    entityType: 'homepage_section',
-    entityId: sectionId,
-    metadata: {
-      sectionKey: section.sectionKey,
-      fields: Object.keys(patch).filter((k) => k !== 'updatedAt'),
-    },
+    if (!updated) {
+      throw new HomepageServiceError('القسم لم يعد موجودًا.', 404);
+    }
+
+    await recordAdminActivity(
+      {
+        adminUserId,
+        action: 'update',
+        entityType: 'homepage_section',
+        entityId: sectionId,
+        metadata: {
+          sectionKey: section.sectionKey,
+          fields: Object.keys(patch).filter((k) => k !== 'updatedAt'),
+        },
+      },
+      tx,
+    );
+
+    return updated;
   });
-
-  return updated!;
 }
 
 /**
@@ -281,14 +290,16 @@ export async function reorderHomepageSections(
         .set({ sortOrder: index, updatedAt: new Date() })
         .where(eq(homepageSections.id, order[index]!));
     }
-  });
-
-  await recordAdminActivity({
-    adminUserId,
-    action: 'reorder',
-    entityType: 'homepage_sections',
-    entityId: null,
-    metadata: { count: order.length },
+    await recordAdminActivity(
+      {
+        adminUserId,
+        action: 'reorder',
+        entityType: 'homepage_sections',
+        entityId: null,
+        metadata: { count: order.length },
+      },
+      tx,
+    );
   });
 }
 
@@ -354,15 +365,17 @@ export async function createHomepageBanner(
         isActive: false, // banners start INACTIVE — the admin activates explicitly
       })
       .returning({ id: homepageBanners.id });
+    await recordAdminActivity(
+      {
+        adminUserId: input.adminUserId,
+        action: 'create',
+        entityType: 'homepage_banner',
+        entityId: row!.id,
+        metadata: { mediaAssetId: input.mediaAssetId },
+      },
+      tx,
+    );
     return row!.id;
-  });
-
-  await recordAdminActivity({
-    adminUserId: input.adminUserId,
-    action: 'create',
-    entityType: 'homepage_banner',
-    entityId: id,
-    metadata: { mediaAssetId: input.mediaAssetId },
   });
 
   return { id };
@@ -392,7 +405,11 @@ export async function updateHomepageBanner(
   assertAdminInput(adminUserId);
 
   const [existing] = await db
-    .select({ id: homepageBanners.id })
+    .select({
+      id: homepageBanners.id,
+      startsAt: homepageBanners.startsAt,
+      endsAt: homepageBanners.endsAt,
+    })
     .from(homepageBanners)
     .where(eq(homepageBanners.id, bannerId))
     .limit(1);
@@ -411,22 +428,24 @@ export async function updateHomepageBanner(
   if (input.endsAt !== undefined) patch.endsAt = input.endsAt;
 
   // Window sanity: startsAt must not sit after endsAt when both are set.
-  const startsAt = patch.startsAt ?? (existing as unknown as { startsAt?: Date | null }).startsAt ?? null;
-  const endsAt = patch.endsAt ?? (existing as unknown as { endsAt?: Date | null }).endsAt ?? null;
+  const startsAt = patch.startsAt ?? existing.startsAt ?? null;
+  const endsAt = patch.endsAt ?? existing.endsAt ?? null;
   if (startsAt && endsAt && startsAt > endsAt) {
     throw new HomepageServiceError('تاريخ البداية يجب أن يسبق تاريخ النهاية.', 422);
   }
 
   await db.transaction(async (tx) => {
     await tx.update(homepageBanners).set(patch).where(eq(homepageBanners.id, bannerId));
-  });
-
-  await recordAdminActivity({
-    adminUserId,
-    action: 'update',
-    entityType: 'homepage_banner',
-    entityId: bannerId,
-    metadata: { fields: Object.keys(patch) },
+    await recordAdminActivity(
+      {
+        adminUserId,
+        action: 'update',
+        entityType: 'homepage_banner',
+        entityId: bannerId,
+        metadata: { fields: Object.keys(patch) },
+      },
+      tx,
+    );
   });
 }
 
@@ -436,21 +455,26 @@ export async function deleteHomepageBanner(
 ): Promise<void> {
   assertAdminInput(adminUserId);
 
-  const deleted = await db
-    .delete(homepageBanners)
-    .where(eq(homepageBanners.id, bannerId))
-    .returning({ id: homepageBanners.id });
+  await db.transaction(async (tx) => {
+    const deleted = await tx
+      .delete(homepageBanners)
+      .where(eq(homepageBanners.id, bannerId))
+      .returning({ id: homepageBanners.id });
 
-  if (deleted.length === 0) {
-    throw new HomepageServiceError('البانر غير موجود.', 404);
-  }
+    if (deleted.length === 0) {
+      throw new HomepageServiceError('البانر غير موجود.', 404);
+    }
 
-  await recordAdminActivity({
-    adminUserId,
-    action: 'delete',
-    entityType: 'homepage_banner',
-    entityId: bannerId,
-    metadata: null,
+    await recordAdminActivity(
+      {
+        adminUserId,
+        action: 'delete',
+        entityType: 'homepage_banner',
+        entityId: bannerId,
+        metadata: null,
+      },
+      tx,
+    );
   });
 }
 
