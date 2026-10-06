@@ -31,7 +31,7 @@ export function proxy(request: NextRequest): NextResponse {
     "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com",
     "font-src 'self'",
     `style-src 'self' 'nonce-${nonce}'`,
-    "style-src-attr 'unsafe-inline'",
+    "style-src-attr 'unsafe-hashes' 'sha256-1OjyRYLAOH1vhXLUN4bBHal0rWxuwBDBP220NNc0CNU='",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "connect-src 'self'",
     "media-src 'self' blob:",

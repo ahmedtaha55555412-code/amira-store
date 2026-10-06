@@ -169,7 +169,6 @@ export function CategoryManager({ initialTree }: { initialTree: ManagerCategory[
               <TreeNode
                 key={node.id}
                 node={node}
-                depth={0}
                 collapsed={collapsed}
                 toggle={toggle}
                 busy={busy}
@@ -336,7 +335,6 @@ function CategoryFormFields({ category }: { category?: ManagerCategory }) {
 
 function TreeNode({
   node,
-  depth,
   collapsed,
   toggle,
   busy,
@@ -346,7 +344,6 @@ function TreeNode({
   onMove,
 }: {
   node: ManagerCategory;
-  depth: number;
   collapsed: Set<string>;
   toggle: (id: string) => void;
   busy: boolean;
@@ -360,10 +357,7 @@ function TreeNode({
 
   return (
     <li>
-      <div
-        className="flex flex-wrap items-center gap-2 rounded-xl border bg-background px-3 py-2"
-        style={{ marginInlineStart: `${depth * 20}px` }}
-      >
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-background px-3 py-2">
         <button
           type="button"
           onClick={() => hasChildren && toggle(node.id)}
@@ -452,12 +446,11 @@ function TreeNode({
       </div>
 
       {hasChildren && !isCollapsed ? (
-        <ul className="mt-1 space-y-1">
+        <ul className="mt-1 ms-5 space-y-1">
           {node.children.map((child) => (
             <TreeNode
               key={child.id}
               node={child}
-              depth={depth + 1}
               collapsed={collapsed}
               toggle={toggle}
               busy={busy}
