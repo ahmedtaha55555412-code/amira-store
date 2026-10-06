@@ -1,5 +1,31 @@
 # Issue Log
 
+### ISSUE-2026-10-06-004
+- Phase: Forensic audit remediation (CI verification)
+- Severity: P3 (required CI build failed)
+- Status: RESOLVED
+- Symptom: GitHub Actions typecheck and lint passed, but the production build failed while collecting page data because APP_URL and VERCEL_URL were not configured.
+- Reproduction: Run the CI Build step with NODE_ENV=production and neither public-origin variable set.
+- Root cause: F-27 correctly makes production builds fail closed when no canonical public origin is configured; the CI workflow did not provide a validation-only origin.
+- Impact: The required verify status check blocked the pull request; no deployment or database change occurred.
+- Exact fix: Set APP_URL=https://build-validation.example only for the CI Build step.
+- Verification: Local typecheck/lint/build PASS; the workflow now provides the validation URL. CI rerun pending.
+- Related files: `.github/workflows/ci.yml`, `src/lib/site-url.ts`.
+- Notes: This value is a non-secret test origin and does not change Vercel environment configuration.
+
+### ISSUE-2026-10-06-005
+- Phase: Forensic audit remediation (local build verification)
+- Severity: P4 (local build directory lock)
+- Status: RESOLVED
+- Symptom: A final local build rerun failed with `EBUSY` while removing `.next/standalone`.
+- Reproduction: Run `bun run build` while the local standalone smoke-test server is still using the output directory.
+- Root cause: The running local server held files in the build output directory open on Windows.
+- Impact: The first rerun stopped before compiling; no application, GitHub, Vercel, or database state was changed by this failure.
+- Exact fix: Stop the local smoke-test server and rerun the build.
+- Verification: `APP_URL=https://build-validation.example bun run build` PASS after stopping the local smoke-test server.
+- Related files: none (local process lifecycle only).
+- Notes: No generated build output is committed.
+
 ### ISSUE-2026-10-06-003
 - Phase: Production admin password rotation
 - Severity: P4 (local command quoting)
