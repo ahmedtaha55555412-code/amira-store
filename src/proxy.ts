@@ -48,7 +48,10 @@ export function proxy(request: NextRequest): NextResponse {
     return response;
   }
 
-  if (!request.cookies.has(ADMIN_SESSION_COOKIE)) {
+  if (
+    (pathname === '/admin' || pathname.startsWith('/admin/')) &&
+    !request.cookies.has(ADMIN_SESSION_COOKIE)
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = '/admin/login';
     url.search = '';

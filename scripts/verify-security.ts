@@ -310,7 +310,11 @@ try {
     );
 
     section('§6 security headers contract');
-    const home = await fetch(BASE_URL, { signal: AbortSignal.timeout(8000) });
+    const home = await fetch(BASE_URL, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(8000),
+    });
+    assert('unauthenticated storefront homepage returns 200 without redirect', home.status === 200);
     const headers = home.headers;
     assert('X-Content-Type-Options: nosniff', headers.get('x-content-type-options') === 'nosniff');
     assert('X-Frame-Options: DENY', headers.get('x-frame-options') === 'DENY');
