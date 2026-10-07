@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ArrowLeft, Banknote, MessageCircle } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
-import { getBrandSettings } from "@/lib/branding";
 import { isExternalCtaHref, sanitizeCtaHref } from "@/lib/cta";
 import { Container } from "./container";
 
@@ -35,8 +34,7 @@ type HeroProps = {
  * Hero campaign section. Copy, CTA, and imagery stay connected to the
  * existing PHASE-10 homepage configuration and public-media banner flow.
  */
-export async function Hero({ copy, banners = [] }: HeroProps) {
-  const branding = await getBrandSettings();
+export function Hero({ copy, banners = [] }: HeroProps) {
   const eyebrow =
     copy?.eyebrow || "نسائية · رجالية · أطفال · مواليد · مستحضرات تجميل";
   const title = copy?.title || "أناقةٌ لكل العائلة من أميرة استور";
@@ -177,7 +175,7 @@ export async function Hero({ copy, banners = [] }: HeroProps) {
           ) : (
             <div
               role="img"
-              aria-label={`هوية ${branding.storeName}`}
+              aria-label="هوية أميرة استور"
               className="relative flex aspect-[1.5] flex-col items-center justify-center overflow-hidden rounded-[1.75rem] border border-gold/40 bg-gradient-to-br from-surface via-blush/65 to-gold/20 p-5 text-center shadow-[0_24px_60px_-34px_rgba(77,36,46,0.5)] sm:rounded-[2.25rem] sm:p-7 md:aspect-[1.12] lg:aspect-[1.3]"
             >
               <div
@@ -205,15 +203,10 @@ export async function Hero({ copy, banners = [] }: HeroProps) {
               <div className="relative z-10 rounded-[1.75rem] border border-gold/45 bg-background/85 px-6 py-5 shadow-[0_18px_45px_-25px_rgba(77,36,46,0.42)] backdrop-blur-sm sm:px-8 sm:py-6">
                 <BrandLogo
                   className="flex-col gap-2.5"
-                  logoClassName="h-20 max-w-48 sm:h-28 sm:max-w-64"
-                  markClassName="size-20 sm:size-28"
-                  wordmarkClassName="text-xl sm:text-2xl"
+                  logoClassName="h-14 max-w-36 sm:h-[4.5rem] sm:max-w-48"
+                  markClassName="size-14 sm:size-[4.5rem]"
+                  wordmarkClassName="text-lg sm:text-xl"
                 />
-                {branding.logoUrl ? (
-                  <span className="mt-3 block text-lg font-bold tracking-wide text-primary sm:text-xl">
-                    {branding.storeName}
-                  </span>
-                ) : null}
               </div>
             </div>
           )}
