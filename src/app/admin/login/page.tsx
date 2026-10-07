@@ -25,12 +25,7 @@ export default function AdminLoginPage() {
     >
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <BrandLogo
-            showArabicWordmark
-            showEnglishWordmark
-            wordmarkClassName="text-2xl"
-            englishWordmarkClassName="text-[0.66rem]"
-          />
+          <BrandLogo variant="lockup" logoClassName="h-auto w-[12rem] sm:w-[14rem]" />
           <p className="text-sm text-muted-foreground">{BRAND.tagline}</p>
         </div>
 

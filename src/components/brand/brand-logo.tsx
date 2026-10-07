@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { LogoMark } from "./logo-mark";
 
 type BrandLogoProps = {
-  /** Explicitly supplied custom asset. Used only when the caller opts into it. */
+  /** Custom logo URL (Admin-uploaded). Falls back to brand settings, then the default mark. */
   logoUrl?: string | null;
   storeName?: string;
   className?: string;
@@ -14,42 +14,66 @@ type BrandLogoProps = {
   showArabicWordmark?: boolean;
   showEnglishWordmark?: boolean;
   englishWordmarkClassName?: string;
-  useCustomAsset?: boolean;
+  /** `auto` respects the saved asset; `lockup` is the approved crown wordmark; `compact` is the small mark + text treatment. */
+  variant?: "auto" | "lockup" | "compact";
 };
 
-function Crown({ className }: { className?: string }) {
+function LockupSvg({ name, className }: { name: string; className?: string }) {
   return (
     <svg
-      aria-hidden="true"
-      viewBox="0 0 72 40"
-      className={cn("shrink-0 text-gold", className)}
-      fill="none"
+      viewBox="0 0 620 180"
+      role="img"
+      aria-label={`${name} — ${BRAND.storeNameLatin.toUpperCase()}`}
+      className={cn("block h-auto w-full", className)}
     >
-      <path
-        d="M10 11 22 21 36 6l14 15 12-10-7 22H17L10 11Z"
+      <title>{name} — {BRAND.storeNameLatin.toUpperCase()}</title>
+      <g transform="translate(238 6)">
+        <path
+          d="M72 42 54 20 91 31 124 5l33 26 37-11-18 22H72Z"
+          fill="currentColor"
+          className="text-gold"
+          stroke="currentColor"
+          strokeWidth="4"
+          strokeLinejoin="round"
+        />
+        <path d="M70 46h126" fill="none" stroke="currentColor" className="text-gold" strokeWidth="9" strokeLinecap="round" />
+        <circle cx="54" cy="20" r="4.5" fill="currentColor" className="text-gold-deep" />
+        <circle cx="91" cy="31" r="4.5" fill="currentColor" className="text-gold-deep" />
+        <circle cx="124" cy="5" r="5" fill="currentColor" className="text-gold-deep" />
+        <circle cx="157" cy="31" r="4.5" fill="currentColor" className="text-gold-deep" />
+        <circle cx="194" cy="20" r="4.5" fill="currentColor" className="text-gold-deep" />
+      </g>
+      <text
+        x="310"
+        y="105"
+        textAnchor="middle"
+        fontFamily="Cairo, 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif"
+        fontSize="62"
+        fontWeight="800"
         fill="currentColor"
-      />
-      <path
-        d="M18 32h37"
-        stroke="currentColor"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-      />
-      <circle cx="10" cy="9" r="3" fill="currentColor" />
-      <circle cx="36" cy="5" r="3" fill="currentColor" />
-      <circle cx="62" cy="9" r="3" fill="currentColor" />
+        className="text-foreground"
+      >
+        {name}
+      </text>
+      <path d="M187 125h246" stroke="currentColor" className="text-gold-deep" strokeWidth="3" strokeLinecap="round" />
+      <text
+        x="310"
+        y="158"
+        textAnchor="middle"
+        fontFamily="Arial, 'Segoe UI', sans-serif"
+        fontSize="19"
+        fontWeight="700"
+        letterSpacing="4.5"
+        fill="currentColor"
+        className="text-primary"
+      >
+        {BRAND.storeNameLatin.toUpperCase()}
+      </text>
     </svg>
   );
 }
 
-/**
- * Single storefront brand renderer.
- *
- * The default storefront identity is a designed Arabic/English lockup with a
- * visible crown, so an arbitrary admin-uploaded image cannot collapse the
- * header into an unreadable thumbnail. Settings pages still show and manage
- * the currently uploaded asset independently.
- */
+/** Shared brand renderer used by storefront/admin chrome. */
 export async function BrandLogo({
   logoUrl,
   storeName,
@@ -60,72 +84,51 @@ export async function BrandLogo({
   showArabicWordmark = false,
   showEnglishWordmark = false,
   englishWordmarkClassName,
-  useCustomAsset = false,
+  variant = "auto",
 }: BrandLogoProps) {
   const settings = await getBrandSettings();
   const name = storeName ?? settings.storeName;
-  const src = logoUrl ?? settings.logoUrl;
 
-  if (useCustomAsset && src && !(showArabicWordmark || showEnglishWordmark)) {
+  if (variant === "lockup") {
     return (
-      <span className={cn("inline-flex min-w-0 items-center", className)}>
-        <img
-          src={src}
-          alt={name}
-          className={cn("h-11 w-auto max-w-40 shrink-0 object-contain", logoClassName)}
-        />
+      <span className={cn("inline-flex shrink-0", className)}>
+        <LockupSvg name={name} className={logoClassName} />
       </span>
     );
   }
 
-  const showArabic = showArabicWordmark || !showEnglishWordmark;
-  const showEnglish = showEnglishWordmark;
+  const src = logoUrl ?? settings.logoUrl;
 
   return (
-    <span
-      className={cn(
-        "inline-flex min-w-0 items-center gap-2.5",
-        className,
+    <span className={cn("inline-flex min-w-0 items-center gap-2.5", className)}>
+      {variant === "compact" ? (
+        <LogoMark className={cn("size-10 shrink-0", markClassName)} title={name} />
+      ) : src ? (
+        <img
+          src={src}
+          alt={name}
+          className={cn("h-11 w-auto max-w-28 shrink-0 object-contain", logoClassName)}
+        />
+      ) : (
+        <LogoMark className={cn("h-11 w-11 shrink-0", markClassName)} title={name} />
       )}
-    >
-      {!showArabic && !showEnglish ? (
-        <LogoMark className={cn("h-10 w-10", markClassName)} title={name} />
-      ) : null}
-      {showArabic || showEnglish ? (
-        <span className="relative flex min-w-0 flex-col items-center pt-2">
-          {showArabic ? (
-            <>
-              <Crown className="absolute -top-1 h-4 w-7 sm:h-[1.1rem] sm:w-8" />
-              <span
-                className={cn(
-                  "whitespace-nowrap text-[1.05rem] font-extrabold leading-none tracking-tight text-foreground",
-                  wordmarkClassName,
-                )}
-              >
-                {name}
-              </span>
-            </>
-          ) : null}
-          {showEnglish ? (
-            <span
-              dir="ltr"
-              lang="en"
-              className={cn(
-                "mt-1 whitespace-nowrap text-[0.58rem] font-semibold uppercase leading-none tracking-[0.24em] text-gold-deep",
-                englishWordmarkClassName,
-              )}
-            >
-              {BRAND.storeNameLatin}
-            </span>
-          ) : null}
-          {showArabic && showEnglish ? (
-            <span
-              aria-hidden="true"
-              className="mt-1 h-px w-8 rounded-full bg-gold/80 sm:w-10"
-            />
-          ) : null}
-        </span>
-      ) : null}
+
+      <span className="flex min-w-0 flex-col gap-1">
+        {!src || showArabicWordmark || variant === "compact" ? (
+          <span className={cn("whitespace-nowrap text-xl font-extrabold leading-none tracking-tight", wordmarkClassName)}>
+            {name}
+          </span>
+        ) : null}
+        {showEnglishWordmark || variant === "compact" ? (
+          <span
+            dir="ltr"
+            lang="en"
+            className={cn("whitespace-nowrap text-[0.625rem] font-semibold leading-none tracking-[0.14em] text-gold-deep", englishWordmarkClassName)}
+          >
+            {BRAND.storeNameLatin.toUpperCase()}
+          </span>
+        ) : null}
+      </span>
     </span>
   );
 }

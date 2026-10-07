@@ -1,7 +1,8 @@
 import Link from "next/link";
 import {
+  ArrowLeft,
   Baby,
-  Briefcase,
+  BriefcaseBusiness,
   Shirt,
   ShoppingBag,
   Smile,
@@ -12,22 +13,15 @@ import { Section, SectionHeading } from "./section";
 import { getStorefrontCategoryTree } from "@/lib/storefront/catalog";
 import { itemCountPhrase } from "@/lib/storefront/format";
 
-/** Department icon mapping by slug prefix — decorative fallback for new departments. */
 function departmentIcon(slug: string): LucideIcon {
   if (slug.startsWith("women")) return Shirt;
-  if (slug.startsWith("men")) return Briefcase;
+  if (slug.startsWith("men")) return BriefcaseBusiness;
   if (slug.startsWith("kids")) return Smile;
   if (slug.startsWith("baby")) return Baby;
   if (slug.startsWith("cosmetics")) return Sparkles;
   return ShoppingBag;
 }
 
-/**
- * Category showcase (PHASE-05 task 2/3 → PHASE-10 framing props): the five
- * real departments from the database, linked to their listing pages with
- * live product counts. Title/subtitle are admin-framing only — the CATEGORY
- * list itself always stays database-driven.
- */
 export async function CategoryShowcase({
   framing,
 }: {
@@ -36,19 +30,20 @@ export async function CategoryShowcase({
   const tree = await getStorefrontCategoryTree();
 
   return (
-    <Section id="categories" aria-labelledby="categories-title" className="bg-surface-subtle/50">
+    <Section id="categories" aria-labelledby="categories-title" className="bg-surface-subtle/45">
       <SectionHeading
         id="categories-title"
-        eyebrow="تسوّق حسب القسم"
-        title={framing?.title || "أقسام أميرة استور"}
+        align="start"
+        eyebrow="تسوّقي حسب الفئة"
+        title={framing?.title || "اختاري ما يناسبك"}
         description={
           framing?.subtitle ||
-          "خمسة أقسام رئيسية تغطي احتياجات كل أفراد العائلة — اختاري قسمك وابدئي التسوق."
+          "فئات واضحة ومباشرة تساعدك على الوصول إلى ما تبحثين عنه بسرعة، من الأزياء إلى مستحضرات التجميل."
         }
       />
 
       {tree.length === 0 ? (
-        <p className="rounded-2xl border border-dashed bg-surface px-6 py-10 text-center text-sm text-muted-foreground">
+        <p className="rounded-3xl border border-dashed border-gold/40 bg-surface px-6 py-12 text-center text-sm text-muted-foreground">
           الأقسام تُجهَّز حاليًا — تفضّلي بزيارتنا قريبًا.
         </p>
       ) : (
@@ -59,20 +54,24 @@ export async function CategoryShowcase({
               <li key={department.id}>
                 <Link
                   href={`/category/${encodeURIComponent(department.slug)}`}
-                  className="group flex h-full flex-col items-center gap-3 rounded-2xl border bg-surface p-5 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="group flex h-full min-h-[12.5rem] flex-col rounded-3xl border border-border/80 bg-surface p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-gold/45 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <span className="flex size-14 items-center justify-center rounded-full bg-blush text-primary transition-colors group-hover:bg-blush-deep/70">
-                    <Icon aria-hidden className="size-7" />
-                  </span>
-                  <h3 className="text-sm font-bold sm:text-base">{department.name}</h3>
-                  {/* PACK-10: one truthful narrative for an empty category — the
-                      compact form of the PLP empty-state wording (no inventory
-                      claim, no "coming soon" promise). */}
-                  <span className="mt-auto rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground">
-                    {department.productCount > 0
-                      ? itemCountPhrase(department.productCount)
-                      : "لا توجد منتجات بعد"}
-                  </span>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex size-12 items-center justify-center rounded-2xl bg-blush text-primary transition-colors group-hover:bg-blush-deep/60 sm:size-14">
+                      <Icon aria-hidden className="size-6 sm:size-7" />
+                    </span>
+                    <span className="flex size-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground">
+                      <ArrowLeft aria-hidden className="size-4" />
+                    </span>
+                  </div>
+                  <div className="mt-auto pt-8">
+                    <h3 className="text-sm font-extrabold sm:text-base">{department.name}</h3>
+                    <span className="mt-2 inline-flex rounded-full border border-border bg-background px-2.5 py-1 text-[10px] font-semibold text-muted-foreground sm:text-[11px]">
+                      {department.productCount > 0
+                        ? itemCountPhrase(department.productCount)
+                        : "لا توجد منتجات بعد"}
+                    </span>
+                  </div>
                 </Link>
               </li>
             );
