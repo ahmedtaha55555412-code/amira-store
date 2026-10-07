@@ -194,14 +194,14 @@ export function HeaderSearch({ className }: { className?: string }) {
           aria-expanded={active}
           aria-controls={active ? listboxId : undefined}
           aria-activedescendant={active && activeIndex >= 0 ? optionId(activeIndex) : undefined}
-          className="h-10 rounded-full border-border/80 bg-surface pe-10 ps-4 text-sm"
+          className="h-11 rounded-full border-border/80 bg-surface pe-12 ps-4 text-sm"
         />
         <Button
           type="submit"
           size="icon"
           variant="ghost"
           aria-label="ابدأ البحث"
-          className="absolute end-1 top-1/2 size-9 -translate-y-1/2 rounded-full text-muted-foreground hover:text-foreground"
+          className="absolute end-1 top-1/2 size-10 -translate-y-1/2 rounded-full text-muted-foreground hover:text-foreground"
         >
           <Search aria-hidden className="size-4" />
         </Button>

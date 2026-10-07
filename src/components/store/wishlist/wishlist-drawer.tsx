@@ -34,7 +34,7 @@ export function WishlistDrawer() {
           variant="ghost"
           size="icon"
           aria-label={`المفضلة${state.items.length > 0 ? ` — ${itemCountPhrase(state.items.length)}` : ''}`}
-          className="relative max-lg:size-10 text-muted-foreground hover:bg-blush/60 hover:text-destructive"
+          className="relative max-xl:size-11 rounded-full text-muted-foreground hover:bg-blush/60 hover:text-destructive"
         >
           <Heart aria-hidden className="size-5" />
           {state.items.length > 0 ? (

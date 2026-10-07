@@ -3,6 +3,7 @@
   <rect x="34" y="34" width="444" height="444" rx="130" fill="none" stroke="#C9A25E" stroke-opacity="0.72" stroke-width="4"/>
   <circle cx="256" cy="256" r="166" fill="#803049"/>
   <path d="M256 192v166" fill="none" stroke="#FFF9F4" stroke-width="34" stroke-linecap="round"/>
-  <path d="M201 159c21-29 48-35 77-18 19 11 36 11 54 1" fill="none" stroke="#D7B675" stroke-width="19" stroke-linecap="round"/>
+  <path d="M178 166 163 128l41 21 52-43 52 43 41-21-15 38H178Z" fill="#D7B675" stroke="#803049" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M184 171h144" fill="none" stroke="#D7B675" stroke-width="10" stroke-linecap="round"/>
   <path d="M222 390h68" fill="none" stroke="#D7B675" stroke-width="10" stroke-linecap="round"/>
 </svg>

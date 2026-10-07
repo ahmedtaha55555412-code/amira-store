@@ -38,6 +38,7 @@ export default async function ProtectedAdminLayout({
             className="inline-flex max-w-full shrink-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <BrandLogo
+              showEnglishWordmark
               markClassName="h-12 w-12"
               logoClassName="h-12 w-auto max-w-40"
               wordmarkClassName="text-lg"

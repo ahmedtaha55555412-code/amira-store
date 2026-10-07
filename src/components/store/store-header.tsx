@@ -30,15 +30,15 @@ export async function StoreHeader() {
   const tree = await getStorefrontCategoryTree();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-      <Container className="flex h-16 items-center justify-between gap-2 lg:gap-4">
-        <div className="flex items-center gap-1">
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-background">
+      <Container className="flex h-[3.75rem] items-center justify-between gap-2 xl:h-[4.5rem] xl:gap-4">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Sheet>
             <SheetTrigger
               data-slot="button"
               className={cn(
                 buttonVariants({ variant: "ghost", size: "icon" }),
-                "size-10 lg:hidden"
+                "size-11 shrink-0 rounded-full xl:hidden"
               )}
               aria-label="فتح قائمة الأقسام"
             >
@@ -96,19 +96,26 @@ export async function StoreHeader() {
           <Link
             href="/"
             aria-label="أميرة استور — الصفحة الرئيسية"
-            className="rounded-lg transition-opacity hover:opacity-80"
+            className="min-w-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
           >
-            <BrandLogo />
+            <BrandLogo
+              showEnglishWordmark
+              className="gap-1.5 sm:gap-2"
+              markClassName="size-9 sm:size-10 xl:size-12"
+              logoClassName="h-9 max-w-9 sm:h-10 sm:max-w-10 xl:h-12 xl:max-w-12"
+              wordmarkClassName="text-base sm:text-lg xl:text-xl"
+              englishWordmarkClassName="text-[0.6rem] sm:text-[0.625rem]"
+            />
           </Link>
         </div>
 
-        <nav aria-label="أقسام المتجر" className="hidden lg:block">
-          <ul className="flex items-center gap-0.5">
+        <nav aria-label="أقسام المتجر" className="hidden shrink-0 xl:block">
+          <ul className="flex items-center gap-0">
             {tree.map((department) => (
               <li key={department.id}>
                 <Link
                   href={`/category/${encodeURIComponent(department.slug)}`}
-                  className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-blush/60 hover:text-foreground"
+                  className="flex items-center gap-1 rounded-full px-2 py-2 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-blush/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring 2xl:px-2.5 2xl:text-sm"
                 >
                   {department.name}
                   {department.children.length > 0 ? (
@@ -120,17 +127,16 @@ export async function StoreHeader() {
           </ul>
         </nav>
 
-        <div className="flex items-center gap-0.5 sm:gap-1">
-          <HeaderSearch className="hidden w-48 lg:block xl:w-64" />
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 xl:gap-1.5">
+          <HeaderSearch className="hidden w-44 xl:block 2xl:w-52" />
           <WishlistDrawer />
           <CartDrawer />
         </div>
       </Container>
 
-      {/* Phone/tablet search row — always visible, no extra tap needed */}
-      <div className="border-t border-border/70 bg-background/95 lg:hidden">
-        <Container className="py-2">
-          <HeaderSearch />
+      <div className="border-t border-border/70 bg-surface-subtle/35 xl:hidden">
+        <Container className="py-2 sm:py-2.5">
+          <HeaderSearch className="w-full" />
         </Container>
       </div>
     </header>

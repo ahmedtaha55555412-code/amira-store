@@ -41,10 +41,17 @@ export function LogoMark({ className, title = "شعار أميرة استور" }
         strokeLinecap="round"
       />
       <path
-        d="M201 159c21-29 48-35 77-18 19 11 36 11 54 1"
+        d="M178 166 163 128l41 21 52-43 52 43 41-21-15 38H178Z"
+        fill="#D7B675"
+        stroke="#803049"
+        strokeWidth="5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M184 171h144"
         fill="none"
         stroke="#D7B675"
-        strokeWidth="19"
+        strokeWidth="10"
         strokeLinecap="round"
       />
       <path

@@ -572,8 +572,8 @@ function DefaultLogoPreview({
         <span className="truncate text-base font-extrabold tracking-tight text-foreground sm:text-lg">
           {storeName}
         </span>
-        <span className="text-[10px] font-medium text-muted-foreground">
-          تشكيلة عائلية مختارة بعناية
+        <span dir="ltr" lang="en" className="text-[10px] font-semibold tracking-[0.14em] text-gold-deep">
+          AMIRA STORE
         </span>
       </span>
     </div>
