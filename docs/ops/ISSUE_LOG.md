@@ -1,5 +1,31 @@
 # Issue Log
 
+### ISSUE-2026-10-07-008
+- Phase: Owner-authorized PHASE-10 Hero-only reopen (Production visual QA observation)
+- Severity: P3 (unattributed homepage CSP console violation)
+- Status: OPEN
+- Symptom: Production homepage load emitted two CSP console errors stating that inline styles were blocked by `style-src-attr`.
+- Reproduction: Load `https://amira-store-opal.vercel.app/` in a browser with console capture enabled.
+- Root cause: Not identified during the Hero-only task; the Hero implementation uses utility classes and does not emit inline style attributes.
+- Impact: No page errors or HTTP error responses were observed; the Hero rendered and its CTA navigated correctly. Source-specific impact remains to be investigated.
+- Exact fix: Identify the component emitting the blocked inline styles, then remove the inline style or permit only the required exact style under the existing CSP; do not broaden the policy with `unsafe-inline`. This is outside the authorized Hero-only scope unless evidence links it to the Hero.
+- Verification: Seen twice on the Production homepage; not changed or hidden during this task.
+- Related files: none identified.
+- Notes: Several route-prefetch requests were cancelled with `net::ERR_ABORTED` during viewport changes/reload; no HTTP error responses or JavaScript page errors occurred.
+
+### ISSUE-2026-10-07-007
+- Phase: Owner-authorized PHASE-10 Hero-only reopen
+- Severity: P2 (protected-main policy blocks the required deployment path)
+- Status: RESOLVED
+- Symptom: A normal fast-forward push of Hero commit `39cb962902e00958138b358e5770221c8d2a9ce3` to `main` was rejected by GitHub.
+- Reproduction: `git push origin HEAD:main` from the task worktree based directly on the current `main` commit.
+- Root cause: GitHub requires changes through a pull request and requires the `verify` status check; the owner-authorized task prohibits creating a branch or pull request.
+- Impact: The first attempt did not update the remote. After explicit owner authorization, the fast-forward was pushed; no branch/PR or force push was used. No Neon infrastructure or database data changed.
+- Exact fix: Following explicit owner authorization, temporarily disabled only admin enforcement for the exact fast-forward push, then immediately re-enabled it and read back the full protection JSON. All other protection settings remained unchanged.
+- Verification: GitHub main is `39cb962902e00958138b358e5770221c8d2a9ce3`; CI `verify` passed; Vercel Production deployment `dpl_BZduTYLmYQRgrGiqPucs8uCvMTNM` is READY from `main` at that SHA; protection was read back exactly as recorded, including required `verify`, PR rule, admin enforcement enabled, force pushes disabled, and deletion disabled.
+- Related files: `src/components/store/hero.tsx`, `EXECUTION_STATUS.md`, `docs/qa/TRACEABILITY.md`.
+- Notes: No branch or PR was created; no force push or history rewrite occurred.
+
 ### ISSUE-2026-10-06-006
 - Phase: Forensic audit remediation (strict CSP browser validation)
 - Severity: P3 (toast viewport style blocked by CSP)

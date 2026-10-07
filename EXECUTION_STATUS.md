@@ -5,9 +5,9 @@ OWNER_AUTHORIZATION=Controlled PHASE-10 Hero-only reopen; recorded before applic
 EXCEPTION_SCOPE=Existing homepage Hero / above-the-fold experience only, including directly required Hero layout, responsive styling, media rendering, CTA wiring, and tests.
 PHASE_00_STATUS=IN_PROGRESS — no PHASE-00 completion is claimed; its Definition of Done has not been bypassed or fabricated.
 CURRENT_PHASE=PHASE_00 — unchanged; this exception does not advance the project phase.
-PHASE_10_EXCEPTION=HERO_ONLY_OPEN — all other PHASE-10 work and all later phases remain locked.
-PHASE_10_HERO_EXCEPTION_STATUS=IMPLEMENTED_LOCALLY — typecheck, lint, build, and diff-check pass; production deployment and real Vercel QA remain pending.
-REVERSAL=Remove this exception record and close the Hero-only scope after this authorized task; this does not alter historical phase records.
+PHASE_10_EXCEPTION=HERO_ONLY_VERIFIED_AND_CLOSED — all other PHASE-10 work and all later phases remain locked.
+PHASE_10_HERO_EXCEPTION_STATUS=VERIFIED_AND_CLOSED — commit `39cb962902e00958138b358e5770221c8d2a9ce3` is on GitHub main; CI verify passed; Production deployment `dpl_BZduTYLmYQRgrGiqPucs8uCvMTNM` is READY from main at the same SHA. Real Vercel QA passed at 1440x900, 1280x900, 1024x900, 768x1024, 430x932, and 390x844 with no horizontal overflow or page/HTTP errors; Hero CTA navigated to the real #categories target. No active public Hero banner was configured, so the brand fallback was verified and configured lifestyle-image rendering was not exercised. Two unattributed style-src-attr CSP console violations are logged as ISSUE-2026-10-07-008. No Neon or Production database changes.
+REVERSAL=To fully revert this exception, history-preservingly revert Hero commit `39cb962902e00958138b358e5770221c8d2a9ce3` and remove this exception record; current phase records remain unchanged.
 
 ## State machine
 Allowed project states:
