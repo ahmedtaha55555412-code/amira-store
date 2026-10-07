@@ -1,5 +1,18 @@
 # Issue Log
 
+### ISSUE-2026-10-06-006
+- Phase: Forensic audit remediation (strict CSP browser validation)
+- Severity: P3 (toast viewport style blocked by CSP)
+- Status: RESOLVED
+- Symptom: The nonce-only style policy blocked Radix ToastViewport's inline `pointer-events:none` style.
+- Reproduction: Load `/admin/login` with `style-src` restricted to self and the nonce, without a style-attribute allowance.
+- Root cause: Radix emits this fixed style attribute on its toast viewport; nonces do not authorize style attributes.
+- Impact: Browser reported a CSP violation for the notification viewport.
+- Exact fix: Allow only the exact `pointer-events:none` attribute using its SHA-256 hash with `style-src-attr 'unsafe-hashes'`; no broad `unsafe-inline` allowance is used.
+- Verification: Local production build and browser smoke test PASS; `/admin/login` hydrated and the password-visibility control worked without CSP violations.
+- Related files: `src/proxy.ts`, `src/components/ui/toast.tsx`.
+- Notes: No application styling or server state was changed by the blocked attribute.
+
 ### ISSUE-2026-10-06-004
 - Phase: Forensic audit remediation (CI verification)
 - Severity: P3 (required CI build failed)
