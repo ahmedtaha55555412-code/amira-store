@@ -20,7 +20,7 @@ export default function NotFound() {
             aria-label="أميرة استور — الصفحة الرئيسية"
             className="rounded-lg transition-opacity hover:opacity-80"
           >
-            <BrandLogo showArabicWordmark showEnglishWordmark />
+            <BrandLogo variant="lockup" logoClassName="h-auto w-[11rem] sm:w-[13rem]" />
           </Link>
         </Container>
       </header>

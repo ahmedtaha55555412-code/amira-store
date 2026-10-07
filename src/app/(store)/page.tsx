@@ -108,11 +108,13 @@ export default async function Home() {
             <SectionHeading
               id="new-arrivals-title"
               eyebrow="أحدث ما وصل المتجر"
+              align="start"
               title={framing(key).title ?? "وصل حديثًا"}
               description={
                 framing(key).subtitle ??
-                "آخر الإضافات إلى تشكيلة أميرة استور — مرتبة تلقائيًا حسب تاريخ الإضافة الفعلي."
+                "اختيارات جديدة وصلت المتجر مؤخرًا — مرتبة تلقائيًا حسب تاريخ الإضافة."
               }
+
             />
             {newArrivals.length === 0 ? (
               <EmptyState
@@ -121,7 +123,7 @@ export default async function Home() {
                 description="تُعرض هنا أحدث المنتجات تلقائيًا فور نشرها من لوحة الإدارة."
               />
             ) : (
-              <ProductGrid>
+              <ProductGrid className="2xl:grid-cols-5">
                 {newArrivals.map((product, index) => (
                   <ProductCard key={product.id} product={product} priority={index < 4} />
                 ))}
@@ -141,11 +143,13 @@ export default async function Home() {
             <SectionHeading
               id="offers-title"
               eyebrow="خصومات حقيقية فقط"
+              align="start"
               title={framing(key).title ?? "العروض"}
               description={
                 framing(key).subtitle ??
-                "منتجات بسعر مخفّض فعلي — يظهر هنا ما هو أقل من سعره الأصلي فقط."
+                "اختيارات عليها خصم فعلي على السعر الحالي — دون مبالغة أو وعود غير حقيقية."
               }
+
             />
             {offers.length === 0 ? (
               <EmptyState
@@ -154,7 +158,7 @@ export default async function Home() {
                 description="تُعرض هنا المنتجات المخفّضة تلقائيًا عند توفر خصم فعلي على أي متغير."
               />
             ) : (
-              <ProductGrid>
+              <ProductGrid className="2xl:grid-cols-5">
                 {offers.map((product, index) => (
                   <ProductCard key={product.id} product={product} priority={index < 2} />
                 ))}

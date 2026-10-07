@@ -13,42 +13,32 @@ type Benefit = {
   description: string;
 };
 
-/** Trust/benefits section — factual claims only (supported by the store specification). */
 const BENEFITS: Benefit[] = [
   {
     icon: Banknote,
     title: "الدفع عند الاستلام",
-    description:
-      "ادفع نقدًا عند استلام طلبك — بدون أي دفع إلكتروني أو بطاقات.",
+    description: "ادفعي نقدًا عند استلام طلبك — بدون دفع إلكتروني.",
   },
   {
     icon: MessageCircle,
     title: "تأكيد الشحن عبر واتساب",
-    description:
-      "نتفق معك على تكلفة الشحن عبر واتساب حسب عنوانك قبل التأكيد النهائي للطلب.",
+    description: "نتفق معك على تكلفة الشحن حسب عنوانك قبل التأكيد النهائي.",
   },
   {
     icon: HeartHandshake,
     title: "تشكيلة لكل العائلة",
-    description:
-      "منتجات مختارة بعناية للنساء والرجال والأطفال والمواليد ومستحضرات التجميل.",
+    description: "اختيارات للنساء والرجال والأطفال والمواليد ومستحضرات التجميل.",
   },
   {
     icon: ShieldCheck,
-    title: "متابعة لطلبك",
-    description:
-      "تابع حالة طلبك في أي وقت برقم الطلب ورقم الهاتف المستخدم عند الشراء.",
+    title: "متابعة واضحة للطلب",
+    description: "تابعي حالة طلبك برقم الطلب ورقم الهاتف المستخدم عند الشراء.",
   },
 ];
 
 export function Benefits({
   framing,
 }: {
-  /**
-   * PHASE-10 admin framing: section title/subtitle + optional item copy.
-   * Configured items reuse the curated icon set by position (icons are
-   * code-chosen; no arbitrary media enters this section).
-   */
   framing?: {
     title?: string | null;
     subtitle?: string | null;
@@ -61,36 +51,33 @@ export function Benefits({
     const mapped = configured
       .map((item, index) => ({
         icon: BENEFITS[index % BENEFITS.length]!.icon,
-        title: typeof item.title === 'string' && item.title.trim() ? item.title.trim() : '',
+        title: typeof item.title === "string" && item.title.trim() ? item.title.trim() : "",
         description:
-          typeof item.description === 'string' && item.description.trim()
-            ? item.description.trim()
-            : '',
+          typeof item.description === "string" && item.description.trim() ? item.description.trim() : "",
       }))
       .filter((item) => item.title.length > 0) as Benefit[];
     return mapped.length > 0 ? mapped : BENEFITS;
   })();
 
   return (
-    <Section aria-labelledby="benefits-title">
+    <Section aria-labelledby="benefits-title" className="bg-background">
       <SectionHeading
         id="benefits-title"
+        align="start"
         eyebrow="لماذا أميرة استور؟"
-        title={framing?.title || "تجربة تسوق مطمئنة"}
-        description={framing?.subtitle || "كل ما تحتاجه العائلة مع وضوح كامل في الدفع والشحن."}
+        title={framing?.title || "تجربة تسوق مريحة وواضحة"}
+        description={framing?.subtitle || "كل ما يهمك من لحظة الاختيار حتى متابعة الطلب، بدون تعقيد."}
       />
 
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {items.map(({ icon: Icon, title, description }) => (
           <li key={title}>
-            <article className="flex h-full flex-col items-start gap-3 rounded-2xl border bg-surface p-6 shadow-sm">
-              <span className="flex size-12 items-center justify-center rounded-full bg-blush text-primary">
+            <article className="flex h-full flex-col gap-3 rounded-3xl border border-border/80 bg-surface p-4 shadow-sm sm:p-5">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-blush text-primary sm:size-13">
                 <Icon aria-hidden className="size-6" />
               </span>
-              <h3 className="font-bold">{title}</h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {description}
-              </p>
+              <h3 className="text-sm font-extrabold sm:text-base">{title}</h3>
+              <p className="text-[11px] leading-loose text-muted-foreground sm:text-sm">{description}</p>
             </article>
           </li>
         ))}
