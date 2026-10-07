@@ -1,14 +1,5 @@
 # Amira Store — Execution Status
 
-## Owner-authorized controlled exception — 2026-10-07
-OWNER_AUTHORIZATION=Controlled PHASE-10 Hero-only reopen; recorded before application-code changes.
-EXCEPTION_SCOPE=Existing homepage Hero / above-the-fold experience only, including directly required Hero layout, responsive styling, media rendering, CTA wiring, and tests.
-PHASE_00_STATUS=IN_PROGRESS — no PHASE-00 completion is claimed; its Definition of Done has not been bypassed or fabricated.
-CURRENT_PHASE=PHASE_00 — unchanged; this exception does not advance the project phase.
-PHASE_10_EXCEPTION=HERO_ONLY_OPEN — all other PHASE-10 work and all later phases remain locked.
-PHASE_10_HERO_EXCEPTION_STATUS=IMPLEMENTED_LOCALLY — typecheck, lint, build, and diff-check pass; production deployment and real Vercel QA remain pending.
-REVERSAL=Remove this exception record and close the Hero-only scope after this authorized task; this does not alter historical phase records.
-
 ## State machine
 Allowed project states:
 - `NOT_STARTED`
