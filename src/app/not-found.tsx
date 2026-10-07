@@ -3,24 +3,26 @@ import { Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/store/container";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { getBrandSettings } from "@/lib/branding";
 
 /**
  * Arabic 404 (PHASE-05 UX states): unknown category/product slugs land here.
- * Deliberately DB-FREE (no StoreHeader/StoreFooter — those fetch the live
- * category tree) so `/_not-found` prerenders deterministically in CI builds
- * without a database connection.
+ * Avoids loading the category tree; the shared brand resolver supplies the
+ * same store identity used by the storefront.
  */
-export default function NotFound() {
+export default async function NotFound() {
+  const { storeName } = await getBrandSettings();
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-border/70">
         <Container className="flex h-16 items-center">
           <Link
             href="/"
-            aria-label="أميرة استور — الصفحة الرئيسية"
+            aria-label={`${storeName} — الصفحة الرئيسية`}
             className="rounded-lg transition-opacity hover:opacity-80"
           >
-            <BrandLogo />
+            <BrandLogo storeName={storeName} showArabicWordmark showEnglishWordmark />
           </Link>
         </Container>
       </header>
@@ -44,7 +46,7 @@ export default function NotFound() {
       </main>
 
       <footer className="border-t border-border/70 py-6 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} أميرة استور — جميع الحقوق محفوظة.</p>
+        <p>© {new Date().getFullYear()} {storeName} — جميع الحقوق محفوظة.</p>
       </footer>
     </div>
   );

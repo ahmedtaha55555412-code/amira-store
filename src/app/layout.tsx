@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { BRAND } from "@/config/brand";
+import { getBrandSettings } from "@/lib/branding";
 import { siteOrigin } from "@/lib/site-url";
 
 /**
@@ -29,44 +30,48 @@ const cairo = localFont({
 
 const siteUrl = siteOrigin();
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: {
-    default: `${BRAND.storeName} | أزياء العائلة ومستحضرات التجميل`,
-    template: `%s | ${BRAND.storeName}`,
-  },
-  description: BRAND.description,
-  applicationName: BRAND.storeName,
-  keywords: [
-    "أميرة استور",
-    "متجر عائلي",
-    "أزياء نسائية",
-    "أزياء رجالية",
-    "أزياء أطفال",
-    "مستحضرات تجميل",
-    "مصر",
-    "الدفع عند الاستلام",
-  ],
-  openGraph: {
-    type: "website",
-    locale: "ar_EG",
-    siteName: BRAND.storeName,
-    title: `${BRAND.storeName} | أزياء العائلة ومستحضرات التجميل`,
-    description: BRAND.description,
-    images: [
-      {
-        url: BRAND.assets.ogImage,
-        width: 1200,
-        height: 630,
-        alt: BRAND.storeName,
-      },
+export async function generateMetadata(): Promise<Metadata> {
+  const { storeName } = await getBrandSettings();
+  const description = BRAND.description.replace(BRAND.storeName, storeName);
+  const title = `${storeName} | أزياء العائلة ومستحضرات التجميل`;
+
+  return {
+    metadataBase: new URL(siteUrl),
+    title: {
+      default: title,
+      template: `%s | ${storeName}`,
+    },
+    description,
+    applicationName: storeName,
+    keywords: [
+      storeName,
+      "متجر عائلي",
+      "أزياء نسائية",
+      "أزياء رجالية",
+      "أزياء أطفال",
+      "مستحضرات تجميل",
+      "مصر",
+      "الدفع عند الاستلام",
     ],
-  },
-  robots: { index: true, follow: true },
-  // Twitter falls back to the Open Graph tags for title/description/image;
-  // declaring the card type once here covers every indexable route.
-  twitter: { card: "summary_large_image" },
-};
+    openGraph: {
+      type: "website",
+      locale: "ar_EG",
+      siteName: storeName,
+      title,
+      description,
+      images: [
+        {
+          url: BRAND.assets.ogImage,
+          width: 1200,
+          height: 630,
+          alt: storeName,
+        },
+      ],
+    },
+    robots: { index: true, follow: true },
+    twitter: { card: "summary_large_image" },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",

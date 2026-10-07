@@ -14,6 +14,7 @@ import { StoreBreadcrumb } from "@/components/store/breadcrumb";
 import { EmptyState } from "@/components/store/states";
 import { Container } from "@/components/store/container";
 import { BRAND } from "@/config/brand";
+import { getBrandSettings } from "@/lib/branding";
 import { itemCountPhrase } from "@/lib/storefront/format";
 import {
   getStorefrontCategoryPage,
@@ -48,10 +49,11 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   const { slug } = await params;
   const page = await getStorefrontCategoryPage(safeDecode(slug));
   if (!page) return { title: "القسم غير موجود", robots: { index: false, follow: false } };
+  const { storeName } = await getBrandSettings();
   const title = page.category.name;
   const description =
     page.category.description ??
-    `تسوّقي أحدث منتجات قسم «${page.category.name}» من أميرة استور — الدفع عند الاستلام والتوصيل لكل مصر.`;
+    `تسوّقي أحدث منتجات قسم «${page.category.name}» من ${storeName} — الدفع عند الاستلام والتوصيل لكل مصر.`;
   return {
     title,
     description,
@@ -59,6 +61,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     openGraph: {
       title,
       description,
+      siteName: storeName,
       type: "website",
       locale: "ar_EG",
       url: `/category/${page.category.slug}`,

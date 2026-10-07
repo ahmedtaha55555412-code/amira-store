@@ -25,6 +25,7 @@ export const BRAND = {
   assets: {
     logoMarkSvg: "/brand/logo-mark.svg",
     logoLockupSvg: "/brand/logo-lockup.svg",
+    logoLockupCompactSvg: "/brand/logo-lockup-compact.svg",
     logoMarkPng: "/brand/logo-mark-512.png",
     logoMarkWebp: "/brand/logo-mark-512.webp",
     ogImage: "/brand/og-default.png",

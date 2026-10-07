@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 118" role="img" aria-label="أميرة استور، AMIRA STORE">
+  <g transform="translate(-10 0)">
+    <path d="m135 19 8 6 6-10 7 9 7-9 6 10 8-6-4 20h-34l-4-20Z" fill="#D7B675" stroke="#9B743C" stroke-linejoin="round" stroke-width="1.8"/>
+    <path d="M144 34h32" fill="none" stroke="#FFF9F4" stroke-linecap="round" stroke-width="1.6"/>
+  </g>
+  <text x="150" y="72" text-anchor="middle" font-family="Cairo, 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif" font-size="36" font-weight="800" fill="#3B2A2E">أميرة استور</text>
+  <text x="150" y="101" text-anchor="middle" font-family="Arial, 'Segoe UI', sans-serif" font-size="14" font-weight="600" letter-spacing="1.6" fill="#803049">AMIRA STORE</text>
+</svg>

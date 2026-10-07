@@ -10,6 +10,7 @@ import { SizeGuideView } from "@/components/store/size-guide-view";
 import { StoreBreadcrumb } from "@/components/store/breadcrumb";
 import { Container } from "@/components/store/container";
 import { BRAND } from "@/config/brand";
+import { getBrandSettings } from "@/lib/branding";
 import {
   getStorefrontProductDetail,
 } from "@/lib/storefront/catalog";
@@ -33,10 +34,11 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   const { slug } = await params;
   const detail = await getStorefrontProductDetail(safeDecode(slug));
   if (!detail) return { title: "المنتج غير موجود", robots: { index: false, follow: false } };
+  const { storeName } = await getBrandSettings();
   const description =
     detail.product.metaDescription ??
     detail.product.shortDescription ??
-    `اطلبي «${detail.product.name}» من أميرة استور — الدفع عند الاستلام.`;
+    `اطلبي «${detail.product.name}» من ${storeName} — الدفع عند الاستلام.`;
   const canonicalSlug = detail.product.canonicalSlug ?? detail.product.slug;
   return {
     title: detail.product.metaTitle ?? detail.product.name,
@@ -45,6 +47,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
       canonical: `/product/${encodeURIComponent(canonicalSlug)}`,
     },
     openGraph: {
+      siteName: storeName,
       title: detail.product.metaTitle ?? detail.product.name,
       description,
       type: "website",

@@ -9,6 +9,8 @@ import { SortSelect, type SortOption } from "@/components/store/sort-select";
 import { StoreBreadcrumb } from "@/components/store/breadcrumb";
 import { EmptyState, ErrorState } from "@/components/store/states";
 import { Container } from "@/components/store/container";
+import { BRAND } from "@/config/brand";
+import { getBrandSettings } from "@/lib/branding";
 import { getStorefrontCategoryTree, searchStorefrontProducts } from "@/lib/storefront/catalog";
 import { normalizeArabic } from "@/lib/storefront/arabic";
 
@@ -21,10 +23,16 @@ type SearchPageProps = {
 const SORT_OPTIONS: SortOption[] = ["newest", "price-asc", "price-desc", "name", "discount"];
 
 export async function generateMetadata(): Promise<Metadata> {
+  const { storeName } = await getBrandSettings();
+
   return {
     title: "البحث",
-    description: "ابحثي في منتجات أميرة استور — أزياء العائلة ومستحضرات التجميل.",
+    description: `ابحثي في منتجات ${storeName} — أزياء العائلة ومستحضرات التجميل.`,
     robots: { index: false, follow: true },
+    openGraph: {
+      siteName: storeName,
+      images: [{ url: BRAND.assets.ogImage, width: 1200, height: 630, alt: storeName }],
+    },
   };
 }
 

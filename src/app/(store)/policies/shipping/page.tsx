@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
 
 import { PolicyShell } from "@/components/store/policy-shell";
+import { getBrandSettings } from "@/lib/branding";
 import { staticPageMetadata } from "@/lib/storefront/metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = staticPageMetadata({
-  path: "/policies/shipping",
-  title: "سياسة الشحن",
-  description:
-    "سياسة شحن أميرة استور: تُحدد تكلفة الشحن حسب عنوانك عبر واتساب قبل تأكيد الطلب، والدفع نقدًا عند الاستلام.",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const { storeName } = await getBrandSettings();
+
+  return staticPageMetadata({
+    path: "/policies/shipping",
+    title: "سياسة الشحن",
+    storeName,
+    description:
+      "سياسة شحن أميرة استور: تُحدد تكلفة الشحن حسب عنوانك عبر واتساب قبل تأكيد الطلب، والدفع نقدًا عند الاستلام.",
+  });
+}
 
 /**
  * Shipping policy (PHASE-10, decision D-6): factual neutral draft matching

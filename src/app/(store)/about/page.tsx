@@ -3,16 +3,22 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/store/container";
 import { LogoMark } from "@/components/brand/logo-mark";
+import { getBrandSettings } from "@/lib/branding";
 import { staticPageMetadata } from "@/lib/storefront/metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = staticPageMetadata({
-  path: "/about",
-  title: "من نحن",
-  description:
-    "أميرة استور — متجر عائلي عربي للأزياء ومستحضرات التجميل: تشكيلات مختارة بعناية لكل أفراد العائلة، دفع عند الاستلام، وتأكيد تكلفة الشحن عبر واتساب.",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const { storeName } = await getBrandSettings();
+
+  return staticPageMetadata({
+    path: "/about",
+    title: "من نحن",
+    storeName,
+    description:
+      "أميرة استور — متجر عائلي عربي للأزياء ومستحضرات التجميل: تشكيلات مختارة بعناية لكل أفراد العائلة، دفع عند الاستلام، وتأكيد تكلفة الشحن عبر واتساب.",
+  });
+}
 
 const VALUES = ["الجودة أولًا", "أسعار عادلة", "خدمة قريبة"] as const;
 

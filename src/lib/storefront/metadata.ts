@@ -108,25 +108,30 @@ export function staticPageMetadata(input: {
   path: string;
   title: string;
   description: string;
+  storeName: string;
   robots?: { index: boolean; follow: boolean };
 }): Metadata {
+  const { storeName } = input;
+  const description = input.description.replaceAll(BRAND.storeName, storeName);
+
   return {
     title: input.title,
-    description: input.description,
+    description,
     ...(input.robots ? { robots: input.robots } : {}),
     alternates: { canonical: input.path },
     openGraph: {
       title: input.title,
-      description: input.description,
+      description,
       type: "website",
       locale: "ar_EG",
+      siteName: storeName,
       url: input.path,
       images: [
         {
           url: BRAND.assets.ogImage,
           width: 1200,
           height: 630,
-          alt: BRAND.storeName,
+          alt: storeName,
         },
       ],
     },

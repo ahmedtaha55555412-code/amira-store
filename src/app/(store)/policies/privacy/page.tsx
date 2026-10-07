@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
 
 import { PolicyShell } from "@/components/store/policy-shell";
+import { getBrandSettings } from "@/lib/branding";
 import { staticPageMetadata } from "@/lib/storefront/metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = staticPageMetadata({
-  path: "/policies/privacy",
-  title: "سياسة الخصوصية",
-  description:
-    "سياسة خصوصية أميرة استور: البيانات التي نجمعها عند الطلب (الاسم، رقم الهاتف، العنوان)، غرضها الوحيد، وعدم وجود حسابات أو دفع إلكتروني.",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const { storeName } = await getBrandSettings();
+
+  return staticPageMetadata({
+    path: "/policies/privacy",
+    title: "سياسة الخصوصية",
+    storeName,
+    description:
+      "سياسة خصوصية أميرة استور: البيانات التي نجمعها عند الطلب (الاسم، رقم الهاتف، العنوان)، غرضها الوحيد، وعدم وجود حسابات أو دفع إلكتروني.",
+  });
+}
 
 /**
  * Privacy policy (PHASE-10, decision D-6): factual neutral draft describing

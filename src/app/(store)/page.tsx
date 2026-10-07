@@ -24,6 +24,7 @@ import {
   getEnabledHomepageSections,
   getActiveHomepageBanners,
 } from "@/lib/storefront/homepage";
+import { getBrandSettings } from "@/lib/branding";
 
 /**
  * Amira Store homepage — PHASE-10 final integration.
@@ -38,19 +39,24 @@ import {
  */
 export const dynamic = "force-dynamic";
 
-/** PHASE-11: the homepage self-canonicalizes and carries its own OG identity. */
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    locale: "ar_EG",
-    siteName: BRAND.storeName,
-    title: `${BRAND.storeName} | أزياء العائلة ومستحضرات التجميل`,
-    description: BRAND.description,
-    url: "/",
-    images: [{ url: BRAND.assets.ogImage, width: 1200, height: 630, alt: BRAND.storeName }],
-  },
-};
+/** PHASE-11: the homepage self-canonicalizes and carries its live brand name. */
+export async function generateMetadata(): Promise<Metadata> {
+  const { storeName } = await getBrandSettings();
+  const description = BRAND.description.replace(BRAND.storeName, storeName);
+
+  return {
+    alternates: { canonical: "/" },
+    openGraph: {
+      type: "website",
+      locale: "ar_EG",
+      siteName: storeName,
+      title: `${storeName} | أزياء العائلة ومستحضرات التجميل`,
+      description,
+      url: "/",
+      images: [{ url: BRAND.assets.ogImage, width: 1200, height: 630, alt: storeName }],
+    },
+  };
+}
 
 type SectionConfig = Record<string, unknown>;
 
@@ -60,13 +66,14 @@ function str(config: SectionConfig, key: string): string | null {
 }
 
 export default async function Home() {
-  const [sections, banners, { newArrivals, offers }, reviews, testimonials] =
+  const [sections, banners, { newArrivals, offers }, reviews, testimonials, brand] =
     await Promise.all([
       getEnabledHomepageSections(),
       getActiveHomepageBanners(),
       getStorefrontHomepageData(),
       getHomepageReviews(6),
       getPublishedTestimonials(6),
+      getBrandSettings(),
     ]);
 
   const byKey = new Map<string, (typeof sections)[number]>(
@@ -111,7 +118,7 @@ export default async function Home() {
               title={framing(key).title ?? "وصل حديثًا"}
               description={
                 framing(key).subtitle ??
-                "آخر الإضافات إلى تشكيلة أميرة استور — مرتبة تلقائيًا حسب تاريخ الإضافة الفعلي."
+                `آخر الإضافات إلى تشكيلة ${brand.storeName} — مرتبة تلقائيًا حسب تاريخ الإضافة الفعلي.`
               }
             />
             {newArrivals.length === 0 ? (

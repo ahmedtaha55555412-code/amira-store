@@ -15,6 +15,7 @@ import { WishlistDrawer } from "@/components/store/wishlist/wishlist-drawer";
 import { cn } from "@/lib/utils";
 import { getStorefrontCategoryTree } from "@/lib/storefront/catalog";
 import { itemCountPhrase } from "@/lib/storefront/format";
+import { getBrandSettings } from "@/lib/branding";
 import { HeaderSearch } from "./header-search";
 import { Container } from "./container";
 
@@ -27,7 +28,10 @@ import { Container } from "./container";
  * header actions with persistent count badges.
  */
 export async function StoreHeader() {
-  const tree = await getStorefrontCategoryTree();
+  const [tree, brand] = await Promise.all([
+    getStorefrontCategoryTree(),
+    getBrandSettings(),
+  ]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/80 bg-background">
@@ -47,7 +51,7 @@ export async function StoreHeader() {
             <SheetContent side="right" className="flex w-80 flex-col">
               <SheetHeader className="text-start">
                 <SheetTitle>أقسام المتجر</SheetTitle>
-                <SheetDescription>تصفّحي كل أقسام أميرة استور</SheetDescription>
+                <SheetDescription>تصفّحي كل أقسام {brand.storeName}</SheetDescription>
               </SheetHeader>
               <nav aria-label="تنقل الجوال" className="flex-1 overflow-y-auto px-4 pb-8">
                 <ul className="flex flex-col gap-1">
@@ -95,17 +99,19 @@ export async function StoreHeader() {
 
           <Link
             href="/"
-            aria-label="أميرة استور — الصفحة الرئيسية"
+            aria-label={`${brand.storeName} — الصفحة الرئيسية`}
             className="min-w-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
           >
             <BrandLogo
+              variant="lockup"
+              useCustomLogo={false}
+              storeName={brand.storeName}
               showArabicWordmark
               showEnglishWordmark
-              className="gap-1.5 sm:gap-2"
-              markClassName="size-9 sm:size-10 xl:size-12"
-              logoClassName="h-9 w-auto max-w-14 sm:h-10 sm:max-w-16 xl:h-12 xl:max-w-20"
+              className="gap-0"
+              markClassName="h-3.5 w-6 sm:h-4 sm:w-7 xl:h-[1.125rem] xl:w-8"
               wordmarkClassName="text-base sm:text-lg xl:text-xl"
-              englishWordmarkClassName="text-[0.6rem] sm:text-[0.625rem]"
+              englishWordmarkClassName="text-[0.625rem] sm:text-[0.6875rem]"
             />
           </Link>
         </div>

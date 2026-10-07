@@ -64,6 +64,9 @@ export async function StoreFooter() {
           {/* Brand */}
           <div className="flex flex-col items-start gap-4">
             <BrandLogo
+              storeName={settings.storeName}
+              showArabicWordmark
+              showEnglishWordmark
               className="text-footer-foreground"
               markClassName="h-11 w-11"
             />
@@ -187,7 +190,7 @@ export async function StoreFooter() {
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-footer-foreground/15 pt-6 text-center text-xs text-footer-foreground/60 sm:flex-row sm:text-start">
-          <p>© {year} أميرة استور — جميع الحقوق محفوظة.</p>
+          <p>© {year} {settings.storeName} — جميع الحقوق محفوظة.</p>
           <p>الدفع عند الاستلام · تأكيد تكلفة الشحن عبر واتساب</p>
         </div>
         {/* PACK-02: the fixed WhatsApp FAB (size-12/sm:size-14 + 1rem offset)

@@ -7,12 +7,17 @@ import { Container } from "@/components/store/container";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = staticPageMetadata({
-  path: "/contact",
-  title: "تواصل معنا",
-  description:
-    "تواصل مع فريق أميرة استور عبر واتساب للاستفسار عن المنتجات أو متابعة طلبك — الدفع عند الاستلام وتأكيد تكلفة الشحن عبر واتساب.",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const { storeName } = await getBrandSettings();
+
+  return staticPageMetadata({
+    path: "/contact",
+    title: "تواصل معنا",
+    storeName,
+    description:
+      "تواصل مع فريق أميرة استور عبر واتساب للاستفسار عن المنتجات أو متابعة طلبك — الدفع عند الاستلام وتأكيد تكلفة الشحن عبر واتساب.",
+  });
+}
 
 /**
  * Contact page (PHASE-10, decision D-3): WhatsApp deep link + the optional

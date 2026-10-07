@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
 
 import { PolicyShell } from "@/components/store/policy-shell";
+import { getBrandSettings } from "@/lib/branding";
 import { staticPageMetadata } from "@/lib/storefront/metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = staticPageMetadata({
-  path: "/policies/terms",
-  title: "الشروط والأحكام",
-  description:
-    "شروط استخدام متجر أميرة استور: الطلب والتأكيد عبر واتساب، الأسعار بالجنيه المصري، الدفع عند الاستلام، وتوافر المنتجات.",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const { storeName } = await getBrandSettings();
+
+  return staticPageMetadata({
+    path: "/policies/terms",
+    title: "الشروط والأحكام",
+    storeName,
+    description:
+      "شروط استخدام متجر أميرة استور: الطلب والتأكيد عبر واتساب، الأسعار بالجنيه المصري، الدفع عند الاستلام، وتوافر المنتجات.",
+  });
+}
 
 /**
  * Terms (PHASE-10, decision D-6): factual neutral draft reflecting exactly

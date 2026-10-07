@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { LogoMark } from '@/components/brand/logo-mark';
+import { BRAND } from '@/config/brand';
 
 type SettingsDraft = {
   storeName: string;
@@ -257,14 +258,14 @@ export function SettingsForm({
         </div>
 
         <p className="mt-1 text-sm text-muted-foreground">
-          معاينة الهوية الحالية وإدارتها — تظهر التغييرات في المتجر بعد الحفظ.
+          تُحفَظ الصورة الحالية ضمن أصول الهوية وتبقى ظاهرة هنا؛ أما ترويسة المتجر فتعرض اسم المتجر من هذا الإعداد مع التاج.
         </p>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(16rem,0.8fr)]">
           <BrandAssetCard
             kind="logo"
             title="شعار المتجر"
-            description="يظهر بجوار اسم المتجر في الواجهة. الحد الأقصى ٤ ميغابايت."
+            description="تُحفَظ الصورة المرفوعة كأصل للهوية وتظل معاينة الشعار الحالي هنا؛ لا تستبدل اسم المتجر الظاهر في الترويسة. الحد الأقصى ٤ ميغابايت."
             asset={brandAssets.logo}
             storeName={draft.storeName}
             onChoose={chooseBrandImage}
@@ -573,7 +574,7 @@ function DefaultLogoPreview({
           {storeName}
         </span>
         <span dir="ltr" lang="en" className="text-[10px] font-semibold tracking-[0.14em] text-gold-deep">
-          AMIRA STORE
+          {BRAND.storeNameLatin.toUpperCase()}
         </span>
       </span>
     </div>
