@@ -1,15 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 180" role="img" aria-label="أميرة استور — AMIRA STORE">
-  <title>أميرة استور — AMIRA STORE</title>
-  <g transform="translate(238 6)">
-    <path d="M72 42 54 20 91 31 124 5l33 26 37-11-18 22H72Z" fill="#D7B675" stroke="#803049" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M70 46h126" fill="none" stroke="#D7B675" stroke-width="9" stroke-linecap="round"/>
-    <circle cx="54" cy="20" r="4.5" fill="#C9A25E"/>
-    <circle cx="91" cy="31" r="4.5" fill="#C9A25E"/>
-    <circle cx="124" cy="5" r="5" fill="#C9A25E"/>
-    <circle cx="157" cy="31" r="4.5" fill="#C9A25E"/>
-    <circle cx="194" cy="20" r="4.5" fill="#C9A25E"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 210" role="img" aria-label="أميرة استور">
+  <g transform="translate(316,12)">
+    <svg width="88" height="50" viewBox="0 0 72 40">
+      <path d="M10 11 22 21 36 6l14 15 12-10-7 22H17L10 11Z" fill="#D7B675"/>
+      <path d="M18 32h37" stroke="#D7B675" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="10" cy="9" r="3" fill="#D7B675"/>
+      <circle cx="36" cy="5" r="3" fill="#D7B675"/>
+      <circle cx="62" cy="9" r="3" fill="#D7B675"/>
+    </svg>
   </g>
-  <text x="310" y="105" text-anchor="middle" font-family="Cairo, 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif" font-size="62" font-weight="800" fill="#3B2A2E">أميرة استور</text>
-  <path d="M187 125h246" stroke="#C9A25E" stroke-width="3" stroke-linecap="round"/>
-  <text x="310" y="158" text-anchor="middle" font-family="Arial, 'Segoe UI', sans-serif" font-size="19" font-weight="700" letter-spacing="4.5" fill="#803049">AMIRA STORE</text>
+  <text x="360" y="108" text-anchor="middle" font-family="Cairo, 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif" font-size="66" font-weight="800" fill="#3B2A2E">أميرة استور</text>
+  <path d="M295 135h130" stroke="#C9A25E" stroke-width="4" stroke-linecap="round"/>
+  <text x="360" y="175" text-anchor="middle" font-family="Cairo, 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif" font-size="25" font-weight="700" letter-spacing="3.5" fill="#803049">AMIRA STORE</text>
 </svg>
