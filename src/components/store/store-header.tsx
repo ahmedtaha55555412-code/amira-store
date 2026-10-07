@@ -30,8 +30,8 @@ export async function StoreHeader() {
   const tree = await getStorefrontCategoryTree();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
-      <Container className="flex h-[4.1rem] items-center justify-between gap-2 xl:h-[4.75rem] xl:gap-4">
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-background">
+      <Container className="flex h-[3.75rem] items-center justify-between gap-2 xl:h-[4.5rem] xl:gap-4">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Sheet>
             <SheetTrigger
@@ -101,9 +101,11 @@ export async function StoreHeader() {
             <BrandLogo
               showArabicWordmark
               showEnglishWordmark
-              className="shrink-0"
-              wordmarkClassName="text-[1rem] sm:text-[1.05rem] xl:text-xl"
-              englishWordmarkClassName="text-[0.52rem] sm:text-[0.56rem] xl:text-[0.6rem]"
+              className="gap-1.5 sm:gap-2"
+              markClassName="size-9 sm:size-10 xl:size-12"
+              logoClassName="h-9 w-auto max-w-14 sm:h-10 sm:max-w-16 xl:h-12 xl:max-w-20"
+              wordmarkClassName="text-base sm:text-lg xl:text-xl"
+              englishWordmarkClassName="text-[0.6rem] sm:text-[0.625rem]"
             />
           </Link>
         </div>

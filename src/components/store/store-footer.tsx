@@ -64,11 +64,8 @@ export async function StoreFooter() {
           {/* Brand */}
           <div className="flex flex-col items-start gap-4">
             <BrandLogo
-              showArabicWordmark
-              showEnglishWordmark
               className="text-footer-foreground"
-              wordmarkClassName="text-xl text-footer-foreground"
-              englishWordmarkClassName="text-[0.58rem] text-gold"
+              markClassName="h-11 w-11"
             />
             <p className="max-w-xs text-sm leading-loose text-footer-foreground/70">
               {settings.footerText}

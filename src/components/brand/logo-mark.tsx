@@ -5,7 +5,13 @@ type LogoMarkProps = {
   title?: string;
 };
 
-/** Compact Amira Store crown + alef mark for favicon/compact placements. */
+/**
+ * The original default Amira Store mark (PHASE-01): a clear Arabic alef
+ * monogram with a restrained champagne hamza, framed in the store palette.
+ *
+ * This component renders the DEFAULT mark only. `BrandLogo` switches to an
+ * Admin-uploaded logo when one is configured.
+ */
 export function LogoMark({ className, title = "شعار أميرة استور" }: LogoMarkProps) {
   return (
     <svg
@@ -26,31 +32,35 @@ export function LogoMark({ className, title = "شعار أميرة استور" }
         strokeOpacity="0.72"
         strokeWidth="4"
       />
-      <circle cx="256" cy="278" r="136" fill="#803049" />
+      <circle cx="256" cy="256" r="166" fill="#803049" />
       <path
-        d="M256 216v152"
+        d="M256 192v166"
         fill="none"
         stroke="#FFF9F4"
         strokeWidth="34"
         strokeLinecap="round"
       />
       <path
-        d="M150 166 126 103l78 41 52-72 52 72 78-41-24 63H150Z"
+        d="M178 166 163 128l41 21 52-43 52 43 41-21-15 38H178Z"
         fill="#D7B675"
         stroke="#803049"
-        strokeWidth="6"
+        strokeWidth="5"
         strokeLinejoin="round"
       />
       <path
-        d="M150 168h212"
+        d="M184 171h144"
         fill="none"
         stroke="#D7B675"
-        strokeWidth="13"
+        strokeWidth="10"
         strokeLinecap="round"
       />
-      <circle cx="126" cy="101" r="10" fill="#D7B675" />
-      <circle cx="256" cy="70" r="10" fill="#D7B675" />
-      <circle cx="386" cy="101" r="10" fill="#D7B675" />
+      <path
+        d="M222 390h68"
+        fill="none"
+        stroke="#D7B675"
+        strokeWidth="10"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
