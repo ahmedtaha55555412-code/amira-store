@@ -8,9 +8,16 @@
  * are priced from LIVE database values.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 
-import { errorResponse, guardJsonMutation, jsonOk, readJson } from '@/lib/api/admin';
+import { errorResponse,
+  guardJsonMutation,
+  jsonOk,
+  readJson,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { orderEditSchema, updateOrderItems } from '@/lib/admin/orders';
 import { requireAdminMutation } from '@/lib/auth/guard';
 
@@ -28,7 +35,7 @@ export async function POST(
     const session = await requireAdminMutation();
     const { id } = await context.params;
     if (!/^[0-9a-f-]{36}$/i.test(id)) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
     const parsed = orderEditSchema.parse(await readJson(request));
     const result = await updateOrderItems(id, parsed, session.admin.id);

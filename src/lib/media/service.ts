@@ -15,7 +15,7 @@ import { randomUUID } from 'node:crypto';
 import { eq, sql, type SQL } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
-import { db } from '@/db/client';
+import { db, type AmiraDatabase } from '@/db/client';
 import { mediaAssets, type MediaAsset } from '@/db/schema';
 
 import {
@@ -123,7 +123,14 @@ export async function uploadImage(input: {
       })
       .returning();
   } catch (error) {
-    await provider.delete(pathname).catch(() => undefined);
+    try {
+      await provider.delete(stored.pathname);
+    } catch (cleanupError) {
+      console.error(
+        '[media/upload] provider compensation failed',
+        cleanupError instanceof Error ? cleanupError.name : 'UnknownError',
+      );
+    }
     throw error;
   }
 
@@ -142,10 +149,15 @@ export async function uploadImage(input: {
  * app's controlled delivery route (/api/media/[id]) for the owning entity.
  * Idempotent; no provider operation is needed.
  */
-export async function materializeMediaPublic(asset: MediaAsset): Promise<MediaAsset> {
+type MediaWriter = Pick<AmiraDatabase, 'update'>;
+
+export async function materializeMediaPublic(
+  asset: MediaAsset,
+  writer: MediaWriter = db,
+): Promise<MediaAsset> {
   if (asset.accessMode === 'public') return asset;
 
-  const [updated] = await db
+  const [updated] = await writer
     .update(mediaAssets)
     .set({ accessMode: 'public' })
     .where(eq(mediaAssets.id, asset.id))

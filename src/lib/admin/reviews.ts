@@ -5,9 +5,8 @@
  * approved verified reviews display «مشتري موثّق» on public surfaces.
  *
  * Media contract (PHASE-09): a review's optional customer image is stored
- * PRIVATE until approval; approving materializes a PUBLIC copy (one provider
- * `copy()` hop) BEFORE the status flip commits, so an approved review never
- * renders a broken/private image. Rejection leaves the media private and
+ * PRIVATE until approval; approval atomically changes the review status and
+ * the media registry's delivery state. Rejection leaves the media private and
  * unrendered. Every moderation writes ONE sanitized audit row ATOMIC with the
  * status change (PHASE-03 activity pattern).
  */
@@ -96,12 +95,14 @@ export async function listAdminReviews(input: {
     .limit(limit)
     .offset(offset);
 
-  const [counts] = await db
-    .select({
-      total: sql<number>`count(*)::int`,
-      pending: sql<number>`count(*) filter (where ${reviews.status} = 'pending')::int`,
-    })
-    .from(reviews);
+  const [totalCount] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(reviews)
+    .where(where);
+  const [pendingCount] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(reviews)
+    .where(eq(reviews.status, 'pending'));
 
   return {
     items: rows.map((row) => ({
@@ -120,16 +121,15 @@ export async function listAdminReviews(input: {
           ? { mediaAssetId: row.imageMediaAssetId, accessMode: row.imageAccessMode }
           : null,
     })),
-    total: counts?.total ?? 0,
-    pendingCount: counts?.pending ?? 0,
+    total: totalCount?.total ?? 0,
+    pendingCount: pendingCount?.total ?? 0,
   };
 }
 
 /**
  * Approve or reject one review.
- * - approve: materialize the review image PUBLIC first (idempotent), then
- *   flip status + audit atomically. A materialization failure leaves the
- *   review pending and is retryable.
+ * - approve: atomically flip status, media delivery state, and audit. A
+ *   database failure leaves the review pending and the image private.
  * - reject: status + audit atomically; media stays private forever-unrendered
  *   (the guarded media delete still protects the referenced asset).
  */
@@ -155,54 +155,52 @@ export async function moderateReview(input: {
     return { status: review.status };
   }
 
-  if (input.action === 'approved') {
-    const images = await db
-      .select({ mediaAssetId: reviewImages.mediaAssetId })
-      .from(reviewImages)
-      .where(eq(reviewImages.reviewId, review.id));
-
-    for (const image of images) {
-      const [asset] = await db
-        .select()
-        .from(mediaAssets)
-        .where(eq(mediaAssets.id, image.mediaAssetId))
-        .limit(1);
-      if (asset) await materializeMediaPublic(asset);
-    }
-  }
-
-  try {
-    return await db.transaction(async (tx) => {
-      const [updated] = await tx
-        .update(reviews)
-        .set({ status: input.action, updatedAt: new Date() })
-        .where(eq(reviews.id, review.id))
-        .returning({ status: reviews.status });
-
-      await recordAdminActivity(
-        {
-          adminUserId: input.adminUserId,
-          action: input.action === 'approved' ? 'reviews.approve' : 'reviews.reject',
-          entityType: 'review',
-          entityId: review.id,
-          metadata: {
-            action: input.action,
-            previousStatus: review.status,
-            productName: review.productName,
-          },
-        },
-        tx,
+  return db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(reviews)
+      .set({ status: input.action, updatedAt: new Date() })
+      .where(and(eq(reviews.id, review.id), eq(reviews.status, review.status)))
+      .returning({ status: reviews.status });
+    if (!updated) {
+      throw new ReviewModerationError(
+        'تم تحديث المراجعة بواسطة مسؤول آخر. أعد تحميل الصفحة وحاول مجددًا.',
+        409,
       );
+    }
 
-      return { status: updated.status };
-    });
-  } catch (error) {
-    // If the status flip failed after materialization, the image may now be
-    // public while the review is still pending — a HARMLESS residual (the
-    // image belongs to a real verified purchase and renders nowhere until
-    // approval); the next successful moderation re-runs the idempotent path.
-    throw error;
-  }
+    if (input.action === 'approved') {
+      const images = await tx
+        .select({ mediaAssetId: reviewImages.mediaAssetId })
+        .from(reviewImages)
+        .where(eq(reviewImages.reviewId, review.id));
+
+      for (const image of images) {
+        const [asset] = await tx
+          .select()
+          .from(mediaAssets)
+          .where(eq(mediaAssets.id, image.mediaAssetId))
+          .limit(1);
+        if (asset) await materializeMediaPublic(asset, tx);
+      }
+    }
+
+    await recordAdminActivity(
+      {
+        adminUserId: input.adminUserId,
+        action: input.action === 'approved' ? 'reviews.approve' : 'reviews.reject',
+        entityType: 'review',
+        entityId: review.id,
+        metadata: {
+          action: input.action,
+          previousStatus: review.status,
+          productName: review.productName,
+        },
+      },
+      tx,
+    );
+
+    return { status: updated.status };
+  });
 }
 
 /** Full admin detail for one review (order-item snapshot context included). */

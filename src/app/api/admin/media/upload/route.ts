@@ -3,7 +3,7 @@
  *
  * POST /api/admin/media/upload (multipart/form-data, field "file"):
  * - same-origin gate → session authorization → file validation
- *   (magic-byte mime sniffing, 8 MB ceiling, sharp dimensions) →
+ *   (magic-byte mime sniffing, 4 MB ceiling, sharp dimensions) →
  *   provider put (Vercel Blob) → media_assets registration.
  * - When no Blob credentials are present (BLOB_READ_WRITE_TOKEN, or the
  *   OIDC pair BLOB_STORE_ID + VERCEL_OIDC_TOKEN inside the Vercel runtime)
@@ -12,9 +12,14 @@
  *   Blob IS the media store).
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 
-import { errorResponse, guardMutation } from '@/lib/api/admin';
+import { errorResponse,
+  guardMutation,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { recordAdminActivity } from '@/lib/auth/activity';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import {
@@ -22,6 +27,7 @@ import {
   MediaStorageUnavailableError,
   uploadImage,
 } from '@/lib/media/service';
+import { MAX_UPLOAD_BYTES, ImageValidationError } from '@/lib/media/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,7 +46,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const form = await request.formData().catch(() => null);
     const file = form?.get('file');
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'لم يتم إرفاق ملف.' }, { status: 400 });
+      return jsonNoStore({ error: 'لم يتم إرفاق ملف.' }, { status: 400 });
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      throw new ImageValidationError(
+        `حجم الصورة يتجاوز الحد الأقصى (${Math.floor(MAX_UPLOAD_BYTES / (1024 * 1024))} ميغابايت).`,
+      );
     }
 
     const altRaw = form?.get('altText');
@@ -68,7 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
     });
 
-    return NextResponse.json({
+    return jsonNoStore({
       ok: true,
       asset: {
         id: asset.id,

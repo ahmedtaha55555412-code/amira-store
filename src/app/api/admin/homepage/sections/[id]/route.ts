@@ -7,9 +7,15 @@
  * is edited here — no product-selection logic exists (hard exclusion).
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 
-import { errorResponse, guardJsonMutation, jsonOk } from '@/lib/api/admin';
+import { errorResponse,
+  guardJsonMutation,
+  jsonOk,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { sectionUpdateSchema, updateHomepageSection } from '@/lib/admin/homepage';
 
@@ -28,7 +34,7 @@ export async function PATCH(
     const { id } = await params;
 
     if (!/^[0-9a-f-]{36}$/i.test(id)) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
 
     const body = await request.json().catch(() => null);

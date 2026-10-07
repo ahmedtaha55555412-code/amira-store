@@ -21,6 +21,7 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -220,6 +221,7 @@ export const orderItems = pgTable(
   (t) => [
     // One line per variant per order — repeated adds merge into quantity.
     uniqueIndex('order_items_order_variant_key').on(t.orderId, t.variantId),
+    uniqueIndex('order_items_id_product_key').on(t.id, t.productId),
     index('idx_order_items_order').on(t.orderId),
     index('idx_order_items_product').on(t.productId),
     index('idx_order_items_variant').on(t.variantId),
@@ -235,6 +237,11 @@ export const orderItems = pgTable(
     ),
     check('order_items_unit_price_positive', sql`unit_price > 0`),
     check('order_items_subtotal_nonnegative', sql`subtotal >= 0`),
+    foreignKey({
+      name: 'order_items_variant_product_fk',
+      columns: [t.variantId, t.productId],
+      foreignColumns: [productVariants.id, productVariants.productId],
+    }).onDelete('restrict'),
     // Exact money identity: scale-2 value × integer never loses precision.
     check('order_items_subtotal_identity', sql`subtotal = unit_price * quantity`),
   ],

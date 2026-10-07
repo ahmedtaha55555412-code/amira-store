@@ -47,6 +47,10 @@ export function jsonOk(data: Record<string, unknown> = { ok: true }): NextRespon
   return withNoStore(NextResponse.json(data));
 }
 
+export function jsonNoStore<T>(data: T, init?: ResponseInit): NextResponse {
+  return withNoStore(NextResponse.json(data, init));
+}
+
 /** Map service/domain errors to honest Arabic error responses. */
 export function errorResponse(error: unknown): NextResponse {
   if (error instanceof AdminAuthError) {

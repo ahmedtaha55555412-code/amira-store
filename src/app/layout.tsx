@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { BRAND } from "@/config/brand";
+import { siteOrigin } from "@/lib/site-url";
 
 /**
  * Single Arabic production font family (PHASE-01 decision — docs/DESIGN_SYSTEM.md).
@@ -26,7 +27,7 @@ const cairo = localFont({
   display: "swap",
 });
 
-const siteUrl = process.env.APP_URL?.trim() || "http://localhost:3000";
+const siteUrl = siteOrigin();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

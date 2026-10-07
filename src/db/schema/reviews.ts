@@ -16,6 +16,7 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   pgTable,
@@ -61,6 +62,11 @@ export const reviews = pgTable(
     index('idx_reviews_product_status').on(t.productId, t.status, t.createdAt.desc()),
     index('idx_reviews_order_item').on(t.orderItemId),
     index('idx_reviews_status').on(t.status),
+    foreignKey({
+      name: 'reviews_order_item_product_fk',
+      columns: [t.orderItemId, t.productId],
+      foreignColumns: [orderItems.id, orderItems.productId],
+    }).onDelete('restrict'),
 
     // Dictionary rule: one review per order_item for VERIFIED reviews only.
     // Unlinked (unverified) reviews stay unrestricted.

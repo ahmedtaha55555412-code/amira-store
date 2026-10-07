@@ -21,6 +21,7 @@
 import type { Metadata } from "next";
 
 import { BRAND } from "@/config/brand";
+import { siteOrigin } from "@/lib/site-url";
 
 export type CartEntryDraft = {
   productId: string;
@@ -90,11 +91,6 @@ export type JsonLdProductInput = {
 };
 
 const OFFERS_MAX = 100;
-
-/** Site origin for absolute structured-data URLs (PHASE-11; contract = APP_URL). */
-export function siteOrigin(): string {
-  return (process.env.APP_URL?.trim() || "http://localhost:3000").replace(/\/+$/, "");
-}
 
 /** Absolute URL for structured data — schema.org requires absolute identifiers. */
 export function absoluteUrl(pathOrUrl: string): string {

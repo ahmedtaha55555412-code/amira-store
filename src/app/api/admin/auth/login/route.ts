@@ -132,30 +132,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // 3) Success: clear the transient admission + failure state, then create the session.
-    await completeLoginAttemptSuccess(loginAttemptId, username);
+    await completeLoginAttemptSuccess(loginAttemptId, username, ipHash);
     try {
       await purgeExpiredSessions();
     } catch {
       // Opportunistic housekeeping must never block a login.
     }
 
-    const session = await createAdminSession({
-      adminUserId: user.id,
-      userAgent,
-      ipHash,
-    });
+    const session = await db.transaction(async (tx) => {
+      const createdSession = await createAdminSession(
+        { adminUserId: user.id, userAgent, ipHash },
+        tx,
+      );
 
-    await db
-      .update(adminUsers)
-      .set({ lastLoginAt: new Date(), updatedAt: new Date() })
-      .where(eq(adminUsers.id, user.id));
+      await tx
+        .update(adminUsers)
+        .set({ lastLoginAt: new Date(), updatedAt: new Date() })
+        .where(eq(adminUsers.id, user.id));
 
-    await recordAdminActivity({
-      adminUserId: user.id,
-      action: 'auth.login.success',
-      entityType: 'admin_user',
-      entityId: user.id,
-      metadata: { ipHash },
+      await recordAdminActivity(
+        {
+          adminUserId: user.id,
+          action: 'auth.login.success',
+          entityType: 'admin_user',
+          entityId: user.id,
+          metadata: { ipHash },
+        },
+        tx,
+      );
+
+      return createdSession;
     });
 
     const response = withNoStore(NextResponse.json({ ok: true }));

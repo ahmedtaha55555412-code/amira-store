@@ -41,7 +41,7 @@ import {
 import { recordAdminActivity } from '@/lib/auth/activity';
 import { CategoryServiceError } from './categories';
 import { parseVariantPricing, PricingValidationError } from './pricing';
-import { ensureUniqueSlug, isSlugValid, slugify } from './slug';
+import { isSlugValid, slugify } from './slug';
 
 export class ProductServiceError extends Error {
   readonly status: number;
@@ -352,9 +352,20 @@ export async function createProduct(
   if (!isSlugValid(base)) {
     throw new ProductServiceError('الرابط (slug) يجب أن يحتوي حروفًا أو أرقامًا فقط.');
   }
-  const slug = await ensureUniqueSlug('products', base);
-
   return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('amira:products:slug-namespace'))`);
+    const existingRoutes = await tx
+      .select({ slug: products.slug, canonicalSlug: products.canonicalSlug })
+      .from(products);
+    const occupiedSlugs = new Set(
+      existingRoutes.flatMap((row) => [row.slug, row.canonicalSlug].filter((value): value is string => value !== null)),
+    );
+    let slug = base;
+    for (let suffix = 2; occupiedSlugs.has(slug); suffix += 1) {
+      const suffixText = `-${suffix}`;
+      slug = `${base.slice(0, 120 - suffixText.length)}${suffixText}`;
+    }
+
     const [row] = await tx
       .insert(products)
       .values({ name, slug, categoryId: input.categoryId, status: 'draft' })
@@ -637,6 +648,7 @@ export async function saveProductAggregate(
 
   /* ---------------- transactional apply ---------------- */
   const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('amira:products:slug-namespace'))`);
     const [lockedProduct] = await tx
       .select({ status: products.status, slug: products.slug, canonicalSlug: products.canonicalSlug })
       .from(products)
@@ -651,16 +663,20 @@ export async function saveProductAggregate(
     /* product basics + slug */
     const base = input.slug?.trim() ? slugify(input.slug) : slugify(name);
     let slug = lockedProduct.slug;
+    const existingRoutes = await tx
+      .select({ id: products.id, slug: products.slug, canonicalSlug: products.canonicalSlug })
+      .from(products)
+      .where(ne(products.id, productId));
+    const occupiedSlugs = new Set(
+      existingRoutes.flatMap((row) => [row.slug, row.canonicalSlug].filter((value): value is string => value !== null)),
+    );
     if (base !== lockedProduct.slug) {
       if (!isSlugValid(base)) {
         throw new ProductServiceError('الرابط (slug) يجب أن يحتوي حروفًا أو أرقامًا فقط.');
       }
-      const [conflict] = await tx
-        .select({ id: products.id })
-        .from(products)
-        .where(and(eq(products.slug, base), ne(products.id, productId)))
-        .limit(1);
-      if (conflict) throw new ProductServiceError('الرابط (slug) مستخدم بالفعل لمنتج آخر.');
+      if (occupiedSlugs.has(base)) {
+        throw new ProductServiceError('الرابط (slug) مستخدم بالفعل لمنتج آخر.');
+      }
       slug = base;
     }
 
@@ -676,20 +692,8 @@ export async function saveProductAggregate(
           'الرابط الأساسي (canonical) يجب أن يحتوي حروفًا أو أرقامًا وشرطات فقط.',
         );
       }
-      if (canonicalInput !== (lockedProduct.canonicalSlug ?? null)) {
-        const [canonicalConflict] = await tx
-          .select({ id: products.id })
-          .from(products)
-          .where(
-            and(
-              ne(products.id, productId),
-              or(eq(products.slug, canonicalInput), eq(products.canonicalSlug, canonicalInput)),
-            ),
-          )
-          .limit(1);
-        if (canonicalConflict) {
-          throw new ProductServiceError('الرابط الأساسي (canonical) مستخدم بالفعل لمنتج آخر.');
-        }
+      if (occupiedSlugs.has(canonicalInput)) {
+        throw new ProductServiceError('الرابط الأساسي (canonical) مستخدم بالفعل لمنتج آخر.');
       }
     }
 
@@ -866,14 +870,20 @@ export async function saveProductAggregate(
       }
     }
 
+    const unresolvedVariantImage = keyedImages.find(
+      (image) => image.variantRef !== null && !finalIdByKey.has(image.variantRef),
+    );
+    if (unresolvedVariantImage) {
+      throw new ProductServiceError('إحدى صور المتغيرات تشير إلى متغير غير موجود.');
+    }
+
     /* images: replace wholesale (task 11 — one transaction, no orphans) */
     await tx.delete(productImages).where(eq(productImages.productId, productId));
     if (keyedImages.length > 0) {
       await tx.insert(productImages).values(
         keyedImages.map((image) => ({
           productId,
-          variantId:
-            image.variantRef === null ? null : finalIdByKey.get(image.variantRef) ?? null,
+          variantId: image.variantRef === null ? null : finalIdByKey.get(image.variantRef)!,
           mediaAssetId: image.mediaAssetId,
           isPrimary: image.isPrimary,
           sortOrder: image.sortOrder,

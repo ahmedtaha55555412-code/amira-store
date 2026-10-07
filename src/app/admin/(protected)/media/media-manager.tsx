@@ -102,6 +102,15 @@ export function MediaManager({
     let uploaded = 0;
     let failed = 0;
     for (const file of Array.from(files).slice(0, 10)) {
+      if (file.size > 4 * 1024 * 1024) {
+        failed += 1;
+        toast({
+          title: `تعذر رفع: ${file.name}`,
+          description: 'حجم الصورة يتجاوز الحد الأقصى (٤ ميغابايت).',
+          variant: 'destructive',
+        });
+        continue;
+      }
       const form = new FormData();
       form.append('file', file);
       const response = await fetch('/api/admin/media/upload', {
@@ -203,8 +212,8 @@ export function MediaManager({
             type="file"
             accept="image/jpeg,image/png,image/webp,image/avif"
             multiple
-            className="hidden"
             onChange={(event) => onUpload(event.target.files)}
+            className="hidden"
           />
           <Button onClick={() => fileInput.current?.click()} disabled={busy} className="gap-2">
             {busy ? (
@@ -215,7 +224,7 @@ export function MediaManager({
             رفع صور
           </Button>
           <p className="text-xs text-muted-foreground">
-            JPG / PNG / WebP / AVIF · حتى ٨ ميغابايت · ١٠ ملفات دفعة واحدة
+            JPG / PNG / WebP / AVIF · حتى ٤ ميغابايت · ١٠ ملفات دفعة واحدة
           </p>
         </div>
       )}

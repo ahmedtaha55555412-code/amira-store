@@ -124,6 +124,14 @@ export function ProductEditor({
     if (!files || files.length === 0) return;
     const uploaded: EditorMediaAsset[] = [];
     for (const file of Array.from(files).slice(0, 10)) {
+      if (file.size > 4 * 1024 * 1024) {
+        toast({
+          title: `تعذر رفع: ${file.name}`,
+          description: 'حجم الصورة يتجاوز الحد الأقصى (٤ ميغابايت).',
+          variant: 'destructive',
+        });
+        continue;
+      }
       const form = new FormData();
       form.append('file', file);
       const response = await fetch('/api/admin/media/upload', { method: 'POST', body: form });

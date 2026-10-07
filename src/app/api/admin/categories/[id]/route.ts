@@ -4,10 +4,17 @@
  * DELETE /api/admin/categories/[id] → guarded delete (no children/products).
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import { errorResponse, guardJsonMutation, jsonOk, readJson } from '@/lib/api/admin';
+import { errorResponse,
+  guardJsonMutation,
+  jsonOk,
+  readJson,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { deleteCategory, updateCategory } from '@/lib/catalog/categories';
 
@@ -34,7 +41,7 @@ export async function PUT(
     const session = await requireAdminMutation();
     const { id } = await context.params;
     if (!/^[0-9a-f-]{36}$/i.test(id)) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
     const body = putSchema.parse(await readJson(request));
     const category = await updateCategory(id, body, session.admin.id);
@@ -55,7 +62,7 @@ export async function DELETE(
     const session = await requireAdminMutation();
     const { id } = await context.params;
     if (!/^[0-9a-f-]{36}$/i.test(id)) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
     await deleteCategory(id, session.admin.id);
     return jsonOk();

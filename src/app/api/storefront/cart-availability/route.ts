@@ -15,9 +15,11 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { getVariantsAvailability } from '@/lib/storefront/availability';
+import { consumeDurableRateLimit } from '@/lib/storefront/durable-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +30,14 @@ const bodySchema = z.object({
     .max(50)
     .transform((ids) => Array.from(new Set(ids))),
 });
+
+function clientIpHash(request: NextRequest): string {
+  const candidates = [
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+    request.headers.get('x-real-ip')?.trim(),
+  ].filter((value): value is string => Boolean(value));
+  return createHash('sha256').update(candidates[0] ?? 'unknown').digest('hex');
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   let body: unknown;
@@ -49,6 +59,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
+    const rate = await consumeDurableRateLimit({
+      scope: 'storefront:cart-availability',
+      keyHash: clientIpHash(request),
+      windowMs: 60_000,
+      maxAttempts: 60,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: 'محاولات كثيرة جدًا — برجاء المحاولة بعد قليل.' },
+        {
+          status: 429,
+          headers: {
+            'Cache-Control': 'no-store',
+            'Retry-After': String(rate.retryAfterSeconds),
+          },
+        },
+      );
+    }
+
     const availability = await getVariantsAvailability(parsed.data.variantIds);
     return NextResponse.json(
       { availability },

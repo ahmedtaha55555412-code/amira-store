@@ -106,6 +106,9 @@ export const products = pgTable(
   },
   (t) => [
     uniqueIndex('products_slug_key').on(t.slug),
+    uniqueIndex('products_canonical_slug_key')
+      .on(t.canonicalSlug)
+      .where(sql`canonical_slug IS NOT NULL`),
     // Storefront category listings + admin filters.
     index('idx_products_category_status').on(t.categoryId, t.status),
     // New Arrivals: newest-first by real creation time (MASTER_PLAN §4) — no flags.
@@ -187,6 +190,7 @@ export const productVariants = pgTable(
   },
   (t) => [
     uniqueIndex('product_variants_sku_key').on(t.sku),
+    uniqueIndex('product_variants_id_product_key').on(t.id, t.productId),
     // Variant lists per product + active filtering.
     index('idx_product_variants_product').on(t.productId, t.isActive),
     // Low-stock / out-of-stock admin views.
@@ -292,6 +296,11 @@ export const productImages = pgTable(
     uniqueIndex('product_images_variant_media_key')
       .on(t.variantId, t.mediaAssetId)
       .where(sql`variant_id IS NOT NULL`),
+    foreignKey({
+      name: 'product_images_variant_product_fk',
+      columns: [t.variantId, t.productId],
+      foreignColumns: [productVariants.id, productVariants.productId],
+    }).onDelete('cascade'),
   ],
 );
 

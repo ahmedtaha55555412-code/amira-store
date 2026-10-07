@@ -15,7 +15,7 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { and, eq, gt, lt } from 'drizzle-orm';
 
-import { db } from '@/db/client';
+import { db, type AmiraDatabase } from '@/db/client';
 import { adminSessions, adminUsers, type AdminUser } from '@/db/schema';
 
 export const ADMIN_SESSION_COOKIE = 'amira_admin_session';
@@ -69,16 +69,17 @@ function toSafeAdmin(row: AdminUser): SafeAdmin {
 }
 
 export type CreatedAdminSession = { token: string; expiresAt: Date };
+type SessionWriter = Pick<AmiraDatabase, 'insert'>;
 
 /** Create a session row and return the one-time raw token (goes to the cookie). */
 export async function createAdminSession(input: {
   adminUserId: string;
   userAgent?: string | null;
   ipHash?: string | null;
-}): Promise<CreatedAdminSession> {
+}, writer: SessionWriter = db): Promise<CreatedAdminSession> {
   const token = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  await db.insert(adminSessions).values({
+  await writer.insert(adminSessions).values({
     adminUserId: input.adminUserId,
     sessionTokenHash: hashSessionToken(token),
     expiresAt,

@@ -45,6 +45,8 @@ jobs:
         run: bun run lint
 
       - name: Build
+        env:
+          APP_URL: https://build-validation.example
         run: bun run build
 
       # Deterministic type/lint/build gates are mandatory in CI. The repository's

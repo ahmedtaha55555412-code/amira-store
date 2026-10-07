@@ -75,6 +75,13 @@ export function SettingsForm({ initial }: { initial: SettingsDraft }) {
   }
 
   async function uploadBrandImage(kind: 'logo' | 'favicon', file: File) {
+    if (file.size > 4 * 1024 * 1024) {
+      toast({
+        title: 'حجم الصورة يتجاوز الحد الأقصى (٤ ميغابايت).',
+        variant: 'destructive',
+      });
+      return;
+    }
     const busy = kind === 'logo' ? setLogoBusy : setFaviconBusy;
     busy(true);
     try {
@@ -144,7 +151,7 @@ export function SettingsForm({ initial }: { initial: SettingsDraft }) {
           <div className="flex flex-col gap-2 rounded-xl border p-4">
             <Label htmlFor="logo-file">شعار المتجر (صورة عامة)</Label>
             <p className="text-xs text-muted-foreground">
-              عند عدم الرفع يظهر الشعار الافتراضي.
+              عند عدم الرفع يظهر الشعار الافتراضي. الحد الأقصى للصورة ٤ ميغابايت.
             </p>
             <Input
               id="logo-file"
@@ -176,7 +183,7 @@ export function SettingsForm({ initial }: { initial: SettingsDraft }) {
           <div className="flex flex-col gap-2 rounded-xl border p-4">
             <Label htmlFor="favicon-file">أيقونة المتجر (favicon)</Label>
             <p className="text-xs text-muted-foreground">
-              مربّعة 512×512 على الأفضل — تظهر في تبويب المتصفح.
+              مربّعة 512×512 على الأفضل — تظهر في تبويب المتصفح. الحد الأقصى ٤ ميغابايت.
             </p>
             <Input
               id="favicon-file"

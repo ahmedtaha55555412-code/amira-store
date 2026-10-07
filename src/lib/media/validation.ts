@@ -6,7 +6,7 @@
  * - MIME type: browser-supplied content type is NEVER trusted alone — the
  *   magic bytes of the actual payload must decode to an allowlisted image
  *   format (JPEG / PNG / WebP / AVIF);
- * - size: hard byte ceiling (8 MB) enforced before any decode;
+ * - size: hard byte ceiling below Vercel's 4.5 MB Function body limit;
  * - dimensions: decoded via sharp (already a project dependency) — min/max
  *   pixel bounds keep absurd uploads out of the catalog.
  *
@@ -15,7 +15,7 @@
 
 import sharp from 'sharp';
 
-export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // Leaves room for multipart overhead under Vercel's 4.5 MB limit.
 export const MIN_DIMENSION_PX = 100;
 export const MAX_DIMENSION_PX = 6000;
 

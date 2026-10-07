@@ -10,10 +10,8 @@
  * IP — so brute force against one account and one-source spraying are both
  * counted. No raw IPs, no passwords, ever.
  *
- * On successful login the transient failure rows for that username are
- * deleted (`clearLoginFailures`): they are security-state, while the
- * success row remains as the permanent audit marker. Documented in
- * DATA_DICTIONARY (PHASE-03 note).
+ * On successful login only that username+IP failure bucket is cleared; other
+ * IP buckets remain available to detect distributed password spraying.
  */
 
 import { and, eq, gte, inArray, sql } from 'drizzle-orm';
@@ -129,6 +127,7 @@ export async function releaseLoginAttempt(attemptId: string): Promise<void> {
 export async function completeLoginAttemptSuccess(
   attemptId: string,
   username: string,
+  ipHash?: string | null,
 ): Promise<void> {
   await db.transaction(async (tx) => {
     await tx
@@ -140,6 +139,9 @@ export async function completeLoginAttemptSuccess(
         and(
           eq(adminActivityLogs.action, 'auth.login.failed'),
           sql`(${adminActivityLogs.metadata} ->> 'usernameAttempted') = ${username}`,
+          ipHash
+            ? sql`(${adminActivityLogs.metadata} ->> 'ipHash') = ${ipHash}`
+            : sql`(${adminActivityLogs.metadata} ->> 'ipHash') is null`,
         ),
       );
   });
@@ -150,7 +152,6 @@ export async function getLoginThrottleState(
   ipHash?: string | null,
 ): Promise<LoginThrottleState> {
   const since = new Date(Date.now() - WINDOW_MS);
-
   const identityCondition = ipHash
     ? // NOTE: the OR pair is fully parenthesized on purpose — drizzle's and()
       // inlines raw sql fragments verbatim, and an unparenthesized OR would
@@ -250,7 +251,6 @@ export async function getPasswordChangeThrottleState(
   ipHash?: string | null,
 ): Promise<PasswordChangeThrottleState> {
   const since = new Date(Date.now() - WINDOW_MS);
-
   const identityCondition = ipHash
     ? sql`((${adminActivityLogs.adminUserId} = ${adminUserId})
           or (${adminActivityLogs.metadata} ->> 'ipHash') = ${ipHash})`

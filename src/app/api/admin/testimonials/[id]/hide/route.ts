@@ -8,10 +8,15 @@
  * with a sanitized audit row.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import { errorResponse, guardJsonMutation } from '@/lib/api/admin';
+import { errorResponse,
+  guardJsonMutation,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { hideTestimonial } from '@/lib/admin/testimonials';
 
@@ -29,14 +34,14 @@ export async function POST(
     const { id } = await params;
 
     if (!z.string().uuid().safeParse(id).success) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
 
     const result = await hideTestimonial({
       testimonialId: id,
       adminUserId: session.admin.id,
     });
-    return NextResponse.json({ ok: true as const, status: result.status });
+    return jsonNoStore({ ok: true as const, status: result.status });
   } catch (error) {
     return errorResponse(error);
   }

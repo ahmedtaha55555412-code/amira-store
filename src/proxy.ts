@@ -21,10 +21,30 @@ const ADMIN_SESSION_COOKIE = 'amira_admin_session';
 
 export function proxy(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
+  const nonce = btoa(crypto.randomUUID());
+  const csp = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com",
+    "font-src 'self'",
+    `style-src 'self' 'nonce-${nonce}'`,
+    "style-src-attr 'unsafe-inline'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    "connect-src 'self'",
+    "media-src 'self' blob:",
+  ].join('; ');
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('Content-Security-Policy', csp);
+  requestHeaders.set('x-nonce', nonce);
 
   if (pathname === '/admin/login') {
-    const response = NextResponse.next();
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
     response.headers.set('Cache-Control', 'no-store');
+    response.headers.set('Content-Security-Policy', csp);
     return response;
   }
 
@@ -39,14 +59,20 @@ export function proxy(request: NextRequest): NextResponse {
     }
     const response = NextResponse.redirect(url);
     response.headers.set('Cache-Control', 'no-store');
+    response.headers.set('Content-Security-Policy', csp);
     return response;
   }
 
-  const response = NextResponse.next();
-  response.headers.set('Cache-Control', 'no-store');
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set('Content-Security-Policy', csp);
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    response.headers.set('Cache-Control', 'no-store');
+  }
   return response;
 }
 
 export const config = {
-  matcher: ['/admin', '/admin/:path*'],
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|robots.txt|sitemap.xml).*)',
+  ],
 };

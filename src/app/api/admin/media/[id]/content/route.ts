@@ -20,12 +20,16 @@
  * body parsing, and changes no state.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import { mediaAssets } from '@/db/schema';
-import { errorResponse } from '@/lib/api/admin';
+import { errorResponse,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { readPrivateMedia } from '@/lib/media/service';
 import { MediaStorageUnavailableError } from '@/lib/media/types';
@@ -43,7 +47,7 @@ export async function GET(
     const { id } = await params;
 
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
 
     const [asset] = await db
@@ -52,7 +56,7 @@ export async function GET(
       .where(eq(mediaAssets.id, id))
       .limit(1);
     if (!asset) {
-      return NextResponse.json({ error: 'الوسائط غير موجودة.' }, { status: 404 });
+      return jsonNoStore({ error: 'الوسائط غير موجودة.' }, { status: 404 });
     }
 
     // Private-STORE objects stream through here at ANY registry access_mode
@@ -70,7 +74,7 @@ export async function GET(
 
     const content = await readPrivateMedia(asset);
     if (!content) {
-      return NextResponse.json({ error: 'الوسائط غير موجودة.' }, { status: 404 });
+      return jsonNoStore({ error: 'الوسائط غير موجودة.' }, { status: 404 });
     }
 
     return new NextResponse(content.stream, {

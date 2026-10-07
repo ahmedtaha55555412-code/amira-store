@@ -238,6 +238,7 @@ class CartStore {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ variantIds }),
+        signal: AbortSignal.timeout(8_000),
       });
       if (!response.ok) return; // stale cache stays; honest fallback, no crash
       const payload = (await response.json()) as AvailabilityResponse;

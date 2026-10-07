@@ -11,9 +11,8 @@
  *   unauthenticated callers can never reach the bytes — not via URL, not via
  *   any API surface (admin preview streams through an authenticated route);
  * - publish → requires the admin's EXPLICIT privacy confirmation (visible
- *   phone numbers / addresses / unrelated private content reviewed); the
- *   asset materializes PUBLIC (one provider copy hop) before the status
- *   flip commits;
+ *   phone numbers / addresses / unrelated private content reviewed); media
+ *   disclosure and status transition commit in one database transaction;
  * - hidden  → the (already privacy-reviewed) asset stays public but is
  *   rendered by NO public surface; re-publishing requires confirmation
  *   again. Documented residual: a hidden item's underlying object remains
@@ -23,7 +22,7 @@
  * Every mutation writes ONE sanitized audit row ATOMIC with the DB change.
  */
 
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db } from '@/db/client';
@@ -141,8 +140,8 @@ export async function createTestimonial(input: {
  * Publish a draft (or re-publish a hidden) testimonial.
  * `privacyConfirmed` MUST be true — the admin confirms they reviewed the
  * screenshot for visible phone numbers, addresses, and unrelated private
- * content (PHASE-09 privacy check). The media materializes PUBLIC before the
- * status commits; a failed materialization leaves the item unpublished.
+ * content (PHASE-09 privacy check). The status and media registry disclosure
+ * commit atomically; a failed transaction leaves the item unpublished.
  */
 export async function publishTestimonial(input: {
   testimonialId: string;
@@ -161,13 +160,24 @@ export async function publishTestimonial(input: {
     return { status: 'published' }; // idempotent re-publish
   }
 
-  await materializeMediaPublic(asset);
-
   await db.transaction(async (tx) => {
-    await tx
+    const [updated] = await tx
       .update(whatsappTestimonials)
       .set({ status: 'published', updatedAt: new Date() })
-      .where(eq(whatsappTestimonials.id, testimonial.id));
+      .where(
+        and(
+          eq(whatsappTestimonials.id, testimonial.id),
+          eq(whatsappTestimonials.status, testimonial.status),
+        ),
+      )
+      .returning({ id: whatsappTestimonials.id });
+    if (!updated) {
+      throw new TestimonialServiceError(
+        'تم تحديث الشهادة بواسطة مسؤول آخر. أعد تحميل الصفحة وحاول مجددًا.',
+        409,
+      );
+    }
+    await materializeMediaPublic(asset, tx);
 
     await recordAdminActivity(
       {
@@ -202,10 +212,22 @@ export async function hideTestimonial(input: {
   }
 
   await db.transaction(async (tx) => {
-    await tx
+    const [updated] = await tx
       .update(whatsappTestimonials)
       .set({ status: 'hidden', updatedAt: new Date() })
-      .where(eq(whatsappTestimonials.id, testimonial.id));
+      .where(
+        and(
+          eq(whatsappTestimonials.id, testimonial.id),
+          eq(whatsappTestimonials.status, 'published'),
+        ),
+      )
+      .returning({ id: whatsappTestimonials.id });
+    if (!updated) {
+      throw new TestimonialServiceError(
+        'تم تحديث الشهادة بواسطة مسؤول آخر. أعد تحميل الصفحة وحاول مجددًا.',
+        409,
+      );
+    }
 
     await recordAdminActivity(
       {
@@ -249,35 +271,21 @@ export async function updateTestimonial(input: {
     }
   }
 
+  const patch: Partial<typeof whatsappTestimonials.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+  if (input.patch.displayName !== undefined) {
+    patch.displayName = input.patch.displayName || null;
+  }
+  if (input.patch.city !== undefined) patch.city = input.patch.city || null;
+  if (input.patch.caption !== undefined) patch.caption = input.patch.caption || null;
+  if (input.patch.productId !== undefined) patch.productId = productId;
+  if (input.patch.sortOrder !== undefined) patch.sortOrder = input.patch.sortOrder;
+
   await db.transaction(async (tx) => {
     await tx
       .update(whatsappTestimonials)
-      .set({
-        displayName:
-          input.patch.displayName !== undefined
-            ? input.patch.displayName.length > 0
-              ? input.patch.displayName
-              : null
-            : testimonial.displayName,
-        city:
-          input.patch.city !== undefined
-            ? input.patch.city.length > 0
-              ? input.patch.city
-              : null
-            : testimonial.city,
-        caption:
-          input.patch.caption !== undefined
-            ? input.patch.caption.length > 0
-              ? input.patch.caption
-              : null
-            : testimonial.caption,
-        productId,
-        sortOrder:
-          input.patch.sortOrder !== undefined
-            ? input.patch.sortOrder
-            : testimonial.sortOrder,
-        updatedAt: new Date(),
-      })
+      .set(patch)
       .where(eq(whatsappTestimonials.id, testimonial.id));
 
     await recordAdminActivity(
@@ -349,7 +357,8 @@ export async function listAdminTestimonials(input: {
 
   const [count] = await db
     .select({ total: sql<number>`count(*)::int` })
-    .from(whatsappTestimonials);
+    .from(whatsappTestimonials)
+    .where(where);
 
   return {
     items: rows.map((row) => ({
@@ -391,7 +400,18 @@ export async function listTestimonialProductOptions(limit = 200): Promise<
 
 async function loadTestimonialWithAsset(
   testimonialId: string,
-): Promise<{ testimonial: { id: string; status: string; productId: string | null; displayName: string | null; city: string | null; caption: string | null; sortOrder: number }; asset: MediaAsset } | { testimonial: null; asset: null }> {
+): Promise<{
+  testimonial: {
+    id: string;
+    status: 'draft' | 'published' | 'hidden';
+    productId: string | null;
+    displayName: string | null;
+    city: string | null;
+    caption: string | null;
+    sortOrder: number;
+  };
+  asset: MediaAsset;
+} | { testimonial: null; asset: null }> {
   const [row] = await db
     .select({
       id: whatsappTestimonials.id,

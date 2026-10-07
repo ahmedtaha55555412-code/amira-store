@@ -7,10 +7,18 @@
  *          reported and cleared by SET NULL — never orphaning rows.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import { errorResponse, guardJsonMutation, guardMutation, jsonOk, readJson } from '@/lib/api/admin';
+import { errorResponse,
+  guardJsonMutation,
+  guardMutation,
+  jsonOk,
+  readJson,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { recordAdminActivity } from '@/lib/auth/activity';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { db } from '@/db/client';
@@ -41,12 +49,12 @@ export async function PUT(
     const session = await requireAdminMutation();
     const { id } = await context.params;
     if (!isUuid(id)) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
     const body = putSchema.parse(await readJson(request));
     const updated = await updateMediaAltText(id, body.altText?.trim() || null);
     if (!updated) {
-      return NextResponse.json({ error: 'الوسيط غير موجود.' }, { status: 404 });
+      return jsonNoStore({ error: 'الوسيط غير موجود.' }, { status: 404 });
     }
     // PHASE-12: media operations are audited like every other admin mutation.
     await recordAdminActivity({
@@ -73,7 +81,7 @@ export async function DELETE(
     const session = await requireAdminMutation();
     const { id } = await context.params;
     if (!isUuid(id)) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
     // Capture the deleted row's identity BEFORE the delete (the registry row
     // is gone afterwards) for honest audit metadata.
@@ -84,7 +92,7 @@ export async function DELETE(
       .limit(1);
     const report = await deleteMediaAsset(id);
     if (!report.deletable) {
-      return NextResponse.json(
+      return jsonNoStore(
         {
           error: `لا يمكن حذف هذا الوسيط — مستخدم حاليًا في: ${report.blockers.join('، ')}.`,
         },
@@ -118,10 +126,10 @@ export async function GET(
     await requireAdminMutation();
     const { id } = await context.params;
     if (!isUuid(id)) {
-      return NextResponse.json({ error: 'معرّف غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف غير صالح.' }, { status: 400 });
     }
     const report = await getMediaReferenceReport(id);
-    return NextResponse.json(report);
+    return jsonNoStore(report);
   } catch (error) {
     return errorResponse(error);
   }

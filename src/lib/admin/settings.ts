@@ -19,7 +19,7 @@
  * - Every mutation writes ONE sanitized audit row ATOMIC with the change.
  */
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db } from '@/db/client';
@@ -147,9 +147,10 @@ export async function getStoreSettings(): Promise<StoreSettingsRow | null> {
 
 /** Resolve a media reference to a URL — PUBLIC assets only, enforced here. */
 function publicMediaUrl(
-  asset: Pick<typeof mediaAssets.$inferSelect, 'id' | 'pathname' | 'url'> | null,
+  asset: Pick<typeof mediaAssets.$inferSelect, 'id' | 'pathname' | 'url' | 'accessMode'> | null,
 ): string | null {
   if (!asset) return null;
+  if (asset.accessMode !== 'public') return null;
   // Defense in depth: private-store pathnames are never exposed by this
   // resolver even if a bad reference slipped in (D-4; PHASE-09 model intact).
   if (
@@ -174,26 +175,39 @@ export async function getResolvedBrandSettings() {
         id: mediaAssets.id,
         pathname: mediaAssets.pathname,
         url: mediaAssets.url,
+        accessMode: mediaAssets.accessMode,
       },
     })
     .from(storeSettings)
-    .leftJoin(mediaAssets, eq(storeSettings.logoMediaId, mediaAssets.id))
+    .leftJoin(
+      mediaAssets,
+      and(
+        eq(storeSettings.logoMediaId, mediaAssets.id),
+        eq(mediaAssets.accessMode, 'public'),
+      ),
+    )
     .limit(1);
 
   if (!row) return null;
 
   // The favicon reference is fetched explicitly when set (a second distinct
   // media read — the logo join above must not shadow it).
-  let favicon: { id: string; pathname: string; url: string } | null = null;
+  let favicon: { id: string; pathname: string; url: string; accessMode: 'public' | 'private' } | null = null;
   if (row.settings.faviconMediaId) {
     const [asset] = await db
       .select({
         id: mediaAssets.id,
         pathname: mediaAssets.pathname,
         url: mediaAssets.url,
+        accessMode: mediaAssets.accessMode,
       })
       .from(mediaAssets)
-      .where(eq(mediaAssets.id, row.settings.faviconMediaId))
+      .where(
+        and(
+          eq(mediaAssets.id, row.settings.faviconMediaId),
+          eq(mediaAssets.accessMode, 'public'),
+        ),
+      )
       .limit(1);
     favicon = asset ?? null;
   }

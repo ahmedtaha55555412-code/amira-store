@@ -2,16 +2,22 @@
  * Amira Store — review moderation endpoint (PHASE-09).
  *
  * POST /api/admin/reviews/[id]/moderate { action: 'approved' | 'rejected' }
- * Approving materializes the review's image PUBLIC before the status flip
- * commits; rejecting leaves the private image unrendered. One sanitized audit
- * row is atomic with each status change. Same discipline as every admin
+ * Approval status and media-registry disclosure commit atomically; rejecting
+ * leaves the private image unrendered. One sanitized audit row is atomic with
+ * each status change. Same discipline as every admin
  * mutation: same-origin → JSON → session → zod → service → shared mapper.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import {
+  NextResponse,
+  type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import { errorResponse, guardJsonMutation, readJson } from '@/lib/api/admin';
+import { errorResponse,
+  guardJsonMutation,
+  readJson,
+  jsonNoStore
+} from '@/lib/api/admin';
 import { requireAdminMutation } from '@/lib/auth/guard';
 import { moderateReview } from '@/lib/admin/reviews';
 
@@ -33,13 +39,13 @@ export async function POST(
     const { id } = await params;
 
     if (!z.string().uuid().safeParse(id).success) {
-      return NextResponse.json({ error: 'معرّف المراجعة غير صالح.' }, { status: 400 });
+      return jsonNoStore({ error: 'معرّف المراجعة غير صالح.' }, { status: 400 });
     }
 
     const body = await readJson(_request);
     const parsed = moderateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: 'إجراء المراجعة غير صالح.' },
         { status: 400 },
       );
@@ -50,7 +56,7 @@ export async function POST(
       action: parsed.data.action,
       adminUserId: session.admin.id,
     });
-    return NextResponse.json({ ok: true as const, status: result.status });
+    return jsonNoStore({ ok: true as const, status: result.status });
   } catch (error) {
     return errorResponse(error);
   }

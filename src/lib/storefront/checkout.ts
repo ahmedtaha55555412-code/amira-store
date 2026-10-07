@@ -41,6 +41,7 @@
  * + customer fields (MASTER_PLAN §24).
  */
 
+import { randomInt } from 'node:crypto';
 import { eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -297,7 +298,7 @@ const ORDER_NUMBER_ATTEMPTS = 5;
 function generateOrderNumber(): string {
   let suffix = '';
   for (let i = 0; i < 6; i += 1) {
-    suffix += ORDER_NUMBER_ALPHABET[Math.floor(Math.random() * ORDER_NUMBER_ALPHABET.length)];
+    suffix += ORDER_NUMBER_ALPHABET[randomInt(ORDER_NUMBER_ALPHABET.length)];
   }
   return `AMR-${suffix}`;
 }

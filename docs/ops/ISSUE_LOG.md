@@ -1,5 +1,67 @@
 # Issue Log
 
+### ISSUE-2026-10-06-004
+- Phase: Forensic audit remediation (CI verification)
+- Severity: P3 (required CI build failed)
+- Status: RESOLVED
+- Symptom: GitHub Actions typecheck and lint passed, but the production build failed while collecting page data because APP_URL and VERCEL_URL were not configured.
+- Reproduction: Run the CI Build step with NODE_ENV=production and neither public-origin variable set.
+- Root cause: F-27 correctly makes production builds fail closed when no canonical public origin is configured; the CI workflow did not provide a validation-only origin.
+- Impact: The required verify status check blocked the pull request; no deployment or database change occurred.
+- Exact fix: Set APP_URL=https://build-validation.example only for the CI Build step.
+- Verification: Local typecheck/lint/build PASS; the workflow now provides the validation URL. CI rerun pending.
+- Related files: `.github/workflows/ci.yml`, `src/lib/site-url.ts`.
+- Notes: This value is a non-secret test origin and does not change Vercel environment configuration.
+
+### ISSUE-2026-10-06-005
+- Phase: Forensic audit remediation (local build verification)
+- Severity: P4 (local build directory lock)
+- Status: RESOLVED
+- Symptom: A final local build rerun failed with `EBUSY` while removing `.next/standalone`.
+- Reproduction: Run `bun run build` while the local standalone smoke-test server is still using the output directory.
+- Root cause: The running local server held files in the build output directory open on Windows.
+- Impact: The first rerun stopped before compiling; no application, GitHub, Vercel, or database state was changed by this failure.
+- Exact fix: Stop the local smoke-test server and rerun the build.
+- Verification: `APP_URL=https://build-validation.example bun run build` PASS after stopping the local smoke-test server.
+- Related files: none (local process lifecycle only).
+- Notes: No generated build output is committed.
+
+### ISSUE-2026-10-06-003
+- Phase: Production admin password rotation
+- Severity: P4 (local command quoting)
+- Status: RESOLVED
+- Symptom: The first attempt to create a bcrypt hash via `bun -e` failed to parse the inline JavaScript because PowerShell argument handling removed its quote characters; the file-based retry initially could not read the credential file due to a missing file-level ACL.
+- Reproduction: Invoke the Bun PowerShell shim with a single-quoted `-e` JavaScript expression containing double-quoted strings.
+- Root cause: The PowerShell shim's argument forwarding did not preserve inline script quoting, and the restrictive directory ACL was not inherited by the already-created credential file.
+- Minimal fix: Run the hash operation from a local script under the git-ignored `.auth/` directory and explicitly grant the current Windows user access to the credential file.
+- Verification: Production `admin_users` hash matched the newly generated bcrypt hash; one active admin remained; all 2 prior sessions were revoked; exactly 1 redacted audit entry was written. Temporary hash/script files were removed.
+- Related files: `.auth/admin-production-credentials.txt`
+- Notes: No database call or password update occurred during either failed local command.
+
+### ISSUE-2026-10-06-001
+- Phase: Forensic audit remediation (local verification)
+- Severity: P4 (typecheck regression caught before publication)
+- Status: RESOLVED
+- Symptom: TypeScript rejected the favicon media value passed to `publicMediaUrl`, the testimonial status compare-and-swap condition, and `onDelete` supplied in composite-FK config objects.
+- Root cause: The favicon local type omitted selected `accessMode`; the testimonial loader widened the database enum status to `string` and an initial union lost the non-null asset correlation; Drizzle configures composite-FK delete behavior through the builder method rather than the config object.
+- Impact: Local typecheck failed during remediation; no commit, push, deployment, or database operation occurred.
+- Exact fix: Include `accessMode` in the favicon type; preserve the testimonial loader's discriminated result shape while constraining status to `'draft' | 'published' | 'hidden'`; call `.onDelete(...)` on each composite-FK builder.
+- Verification: `bun run typecheck` PASS; targeted ESLint for the affected admin and schema/service files PASS.
+- Related files: `src/lib/admin/settings.ts`, `src/lib/admin/testimonials.ts`, `src/db/schema/catalog.ts`, `src/db/schema/customers-orders.ts`, `src/db/schema/reviews.ts`.
+
+### ISSUE-2026-10-06-002
+- Phase: Forensic audit remediation (local build verification)
+- Severity: P4 (verification environment configuration)
+- Status: FIXED
+- Symptom: `bun run build` compiled successfully but failed while collecting page data because `APP_URL` and `VERCEL_URL` were absent.
+- Reproduction: Run `bun run build` with neither public-origin variable configured.
+- Root cause: F-27 remediation intentionally fails closed instead of silently emitting localhost canonical and metadata URLs; the local build invocation did not provide a production-like origin.
+- Impact: The unconfigured build could not complete page-data collection; no application or database state was changed.
+- Exact fix: Re-run the build with a non-secret validation-only `APP_URL` configured for that process; do not weaken the production origin guard.
+- Verification: `APP_URL=https://build-validation.example bun run build` PASS.
+- Related files: `src/lib/site-url.ts`, `src/app/layout.tsx`
+- Notes: No Neon/Vercel configuration, database writes, or deployment actions were involved.
+
 ## Required format
 ### ISSUE-YYYY-MM-DD-NNN
 - Phase:
