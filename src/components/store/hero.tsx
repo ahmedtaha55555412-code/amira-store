@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Banknote, MessageCircle } from "lucide-react";
-import { LogoMark } from "@/components/brand/logo-mark";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { isExternalCtaHref, sanitizeCtaHref } from "@/lib/cta";
 import { Container } from "./container";
@@ -59,7 +59,7 @@ export function Hero({ copy, banners = [] }: HeroProps) {
         className="pointer-events-none absolute -bottom-36 -end-16 size-80 rounded-full bg-blush-deep/20 blur-3xl"
       />
 
-      <Container className="grid items-center gap-7 py-8 sm:gap-9 sm:py-10 lg:grid-cols-2 lg:gap-12 lg:py-12 xl:gap-16 xl:py-14">
+      <Container className="grid items-center gap-6 py-7 sm:gap-8 sm:py-9 md:grid-cols-[1fr_0.95fr] md:gap-7 md:py-10 lg:grid-cols-2 lg:gap-12 lg:py-12 xl:gap-16 xl:py-14">
         <div className="relative z-10 flex flex-col items-start gap-4 sm:gap-5 lg:gap-6">
           <span className="max-w-full rounded-full border border-gold/45 bg-surface/85 px-3.5 py-1.5 text-xs font-semibold leading-5 text-primary shadow-sm sm:px-4">
             {eyebrow}
@@ -67,7 +67,7 @@ export function Hero({ copy, banners = [] }: HeroProps) {
 
           <h1
             id="hero-title"
-            className="max-w-[15ch] text-balance text-[clamp(1.9rem,7vw,2.8rem)] font-extrabold leading-[1.3] text-foreground sm:text-5xl sm:leading-[1.25] lg:text-[3.25rem] xl:text-[3.6rem]"
+            className="max-w-[15ch] text-balance text-[clamp(1.9rem,4.5vw,3.5rem)] font-extrabold leading-[1.25] text-foreground"
           >
             {title}
           </h1>
@@ -92,12 +92,6 @@ export function Hero({ copy, banners = [] }: HeroProps) {
                 </Link>
               </Button>
             )}
-            <Link
-              href="#story"
-              className="inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-semibold text-primary transition-colors hover:bg-surface/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:justify-start"
-            >
-              تعرف على قصتنا
-            </Link>
           </div>
 
           <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/70 pt-4 text-xs text-muted-foreground sm:gap-x-6 sm:text-sm">
@@ -134,7 +128,7 @@ export function Hero({ copy, banners = [] }: HeroProps) {
                 return (
                   <figure
                     key={banner.id}
-                    className="group relative aspect-[5/4] w-full shrink-0 snap-center overflow-hidden rounded-[1.75rem] border border-gold/30 bg-surface shadow-[0_18px_50px_-30px_rgba(77,36,46,0.42)] sm:aspect-[16/10] sm:rounded-[2.25rem] lg:aspect-[1.08]"
+                    className="group relative aspect-[1.5] w-full shrink-0 snap-center overflow-hidden rounded-[1.75rem] border border-gold/30 bg-surface shadow-[0_18px_50px_-30px_rgba(77,36,46,0.42)] sm:rounded-[2.25rem] md:aspect-[1.12] lg:aspect-[1.3]"
                   >
                     <Image
                       src={banner.imageUrl}
@@ -182,26 +176,38 @@ export function Hero({ copy, banners = [] }: HeroProps) {
             <div
               role="img"
               aria-label="هوية أميرة استور"
-              className="relative flex aspect-[5/4] flex-col items-center justify-center overflow-hidden rounded-[1.75rem] border border-gold/30 bg-gradient-to-br from-surface via-blush/45 to-gold/15 p-6 text-center shadow-[0_18px_50px_-30px_rgba(77,36,46,0.42)] sm:aspect-[16/10] sm:rounded-[2.25rem] sm:p-8 lg:aspect-[1.08]"
+              className="relative flex aspect-[1.5] flex-col items-center justify-center overflow-hidden rounded-[1.75rem] border border-gold/40 bg-gradient-to-br from-surface via-blush/65 to-gold/20 p-5 text-center shadow-[0_24px_60px_-34px_rgba(77,36,46,0.5)] sm:rounded-[2.25rem] sm:p-7 md:aspect-[1.12] lg:aspect-[1.3]"
             >
               <div
                 aria-hidden
-                className="absolute inset-4 rounded-[1.25rem] border border-gold/30 sm:inset-6 sm:rounded-[1.75rem]"
+                className="absolute inset-3 rounded-[1.25rem] border border-gold/35 sm:inset-5 sm:rounded-[1.75rem]"
               />
               <div
                 aria-hidden
-                className="absolute -end-14 -top-16 size-44 rounded-full border border-gold/25 sm:size-56"
+                className="absolute -end-[22%] -top-[44%] size-[90%] rounded-full border border-gold/30 bg-surface/15"
               />
               <div
                 aria-hidden
-                className="absolute -bottom-24 -start-16 size-52 rounded-full border border-blush-deep/35 sm:size-64"
+                className="absolute -bottom-[50%] -start-[12%] size-[82%] rounded-full border border-blush-deep/30 bg-blush/20"
               />
-              <LogoMark
-                className="relative size-24 drop-shadow-sm sm:size-32 lg:size-36"
+              <div
+                aria-hidden
+                className="absolute inset-x-[10%] bottom-[12%] h-px bg-gradient-to-l from-transparent via-gold/55 to-transparent"
               />
-              <span className="relative mt-4 text-sm font-bold tracking-wide text-primary sm:mt-5 sm:text-base">
-                أميرة استور
+              <span
+                aria-hidden
+                className="absolute bottom-0 start-1/2 -translate-x-1/2 whitespace-nowrap text-[clamp(4rem,11vw,8rem)] font-black leading-none tracking-tight text-primary/[0.045]"
+              >
+                أميرة
               </span>
+              <div className="relative z-10 rounded-[1.75rem] border border-gold/45 bg-background/85 px-6 py-5 shadow-[0_18px_45px_-25px_rgba(77,36,46,0.42)] backdrop-blur-sm sm:px-8 sm:py-6">
+                <BrandLogo
+                  className="flex-col gap-2.5"
+                  logoClassName="h-14 max-w-36 sm:h-[4.5rem] sm:max-w-48"
+                  markClassName="size-14 sm:size-[4.5rem]"
+                  wordmarkClassName="text-lg sm:text-xl"
+                />
+              </div>
             </div>
           )}
         </div>
