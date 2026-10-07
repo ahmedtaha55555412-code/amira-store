@@ -6,13 +6,11 @@ type LogoMarkProps = {
 };
 
 /**
- * The original default Amira Store mark (PHASE-01): a delicate crown with a
- * gold gem above a stylized Arabic alef (أميرة) on a soft blush tile with a
- * muted-gold inner frame.
+ * The original default Amira Store mark (PHASE-01): a clear Arabic alef
+ * monogram with a restrained champagne hamza, framed in the store palette.
  *
- * This component renders the DEFAULT mark only. When the Admin uploads a
- * custom logo (later phase), `BrandLogo` swaps it out — never hard-code this
- * component into feature UIs; use `BrandLogo` instead.
+ * This component renders the DEFAULT mark only. `BrandLogo` switches to an
+ * Admin-uploaded logo when one is configured.
  */
 export function LogoMark({ className, title = "شعار أميرة استور" }: LogoMarkProps) {
   return (
@@ -22,28 +20,40 @@ export function LogoMark({ className, title = "شعار أميرة استور" }
       aria-label={title}
       className={cn("shrink-0", className)}
     >
-      <rect x="24" y="24" width="464" height="464" rx="116" fill="#F8ECEA" />
+      <rect x="20" y="20" width="472" height="472" rx="142" fill="#F8ECEA" />
       <rect
-        x="38"
-        y="38"
-        width="436"
-        height="436"
-        rx="104"
+        x="34"
+        y="34"
+        width="444"
+        height="444"
+        rx="130"
         fill="none"
         stroke="#C9A25E"
-        strokeOpacity="0.55"
-        strokeWidth="5"
+        strokeOpacity="0.72"
+        strokeWidth="4"
+      />
+      <circle cx="256" cy="256" r="166" fill="#803049" />
+      <path
+        d="M256 192v166"
+        fill="none"
+        stroke="#FFF9F4"
+        strokeWidth="34"
+        strokeLinecap="round"
       />
       <path
-        d="M158 222 C158 170 186 154 210 180 C230 138 246 130 256 126 C266 130 282 138 302 180 C326 154 354 170 354 222"
+        d="M201 159c21-29 48-35 77-18 19 11 36 11 54 1"
         fill="none"
-        stroke="#803049"
-        strokeWidth="26"
+        stroke="#D7B675"
+        strokeWidth="19"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
-      <circle cx="256" cy="86" r="16" fill="#C9A25E" />
-      <rect x="238" y="234" width="36" height="206" rx="18" fill="#803049" />
+      <path
+        d="M222 390h68"
+        fill="none"
+        stroke="#D7B675"
+        strokeWidth="10"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

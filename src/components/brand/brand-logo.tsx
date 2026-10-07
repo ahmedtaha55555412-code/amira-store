@@ -8,6 +8,7 @@ type BrandLogoProps = {
   storeName?: string;
   className?: string;
   markClassName?: string;
+  logoClassName?: string;
   wordmarkClassName?: string;
 };
 
@@ -25,6 +26,7 @@ export async function BrandLogo({
   storeName,
   className,
   markClassName,
+  logoClassName,
   wordmarkClassName,
 }: BrandLogoProps) {
   const settings = await getBrandSettings();
@@ -37,12 +39,10 @@ export async function BrandLogo({
         <img
           src={src}
           alt={name}
-          width={40}
-          height={40}
-          className={cn("h-10 w-10 object-contain", markClassName)}
+          className={cn("h-11 w-auto max-w-28 shrink-0 object-contain", logoClassName)}
         />
       ) : (
-        <LogoMark className={cn("h-10 w-10", markClassName)} title={name} />
+        <LogoMark className={cn("h-11 w-11", markClassName)} title={name} />
       )}
       <span className={cn("text-xl font-bold leading-none", wordmarkClassName)}>
         {name}

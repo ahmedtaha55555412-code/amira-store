@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { requireAdminPage } from '@/lib/auth/guard';
 import { getStoreSettings } from '@/lib/admin/settings';
+import { getBrandSettings } from '@/lib/branding';
 
 import { SettingsForm } from './settings-form';
 
@@ -22,7 +23,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminSettingsPage() {
   await requireAdminPage();
 
-  const row = await getStoreSettings();
+  const [row, brand] = await Promise.all([getStoreSettings(), getBrandSettings()]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,6 +37,7 @@ export default async function AdminSettingsPage() {
       {row ? (
         <>
           <SettingsForm
+            branding={{ logoUrl: brand.logoUrl, faviconUrl: brand.faviconUrl }}
             initial={{
               storeName: row.storeName,
               whatsappPhone: row.whatsappPhone,
