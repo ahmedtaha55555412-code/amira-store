@@ -2,6 +2,7 @@
 
 | Requirement | Source of truth | Phase | Verification | Status |
 |---|---|---:|---|---|
+| Owner-authorized PHASE-10 Hero-only reopen | Owner authorization 2026-10-07 | Controlled exception; Hero only | Hero responsive/media/CTA implementation + typecheck/lint/build + real Vercel visual and functional QA | IN PROGRESS — Hero implementation and local typecheck/lint/build pass; production deployment and required real Vercel viewport/functional checks remain pending. PHASE_00 remains IN_PROGRESS; all other PHASE-10 work stays locked. |
 | Arabic-only RTL storefront | MASTER_PLAN §2 | 01,05+ | Visual/manual | DONE for the storefront surfaces built so far — 34 production screenshots inspected at 375/768/1440 (home/category/product/search/404): RTL direction, logical properties, Arabic-only copy, long-title wrapping all verified (PHASE_05) |
 | Egypt + EGP | MASTER_PLAN §2 | 01,02,15 | Unit/manual | DONE — schema defaults EGP/ar/Africa-Cairo in store_settings (PHASE_02); UI Arabic-only/RTL proven (PHASE-05+); PHASE-15 live production probes: `og:locale ar_EG`, `<html lang="ar" dir="rtl">`, EGP display, 19/19 route matrix |
 | 5 main categories | MASTER_PLAN §2,3 | 02,04 | Integration | DONE — schema + bootstrap/seed init the 5 departments (PHASE_02); admin tree CRUD verified (verify:catalog [1] + browser QA; PHASE_04) |
