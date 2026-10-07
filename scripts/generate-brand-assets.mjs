@@ -19,30 +19,37 @@ const BLUSH_TILE = "#F8ECEA";
 const IVORY = "#FBF7F1";
 
 const MARK_SHAPES = `
-  <rect x="24" y="24" width="464" height="464" rx="116" fill="${BLUSH_TILE}"/>
-  <rect x="38" y="38" width="436" height="436" rx="104" fill="none" stroke="${GOLD}" stroke-opacity="0.55" stroke-width="5"/>
-  <path d="M158 222 C158 170 186 154 210 180 C230 138 246 130 256 126 C266 130 282 138 302 180 C326 154 354 170 354 222" fill="none" stroke="${BURGUNDY}" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="256" cy="86" r="16" fill="${GOLD}"/>
-  <rect x="238" y="234" width="36" height="206" rx="18" fill="${BURGUNDY}"/>`;
+  <rect x="20" y="20" width="472" height="472" rx="142" fill="${BLUSH_TILE}"/>
+  <rect x="34" y="34" width="444" height="444" rx="130" fill="none" stroke="${GOLD}" stroke-opacity="0.72" stroke-width="4"/>
+  <circle cx="256" cy="278" r="136" fill="${BURGUNDY}"/>
+  <path d="M256 216v152" fill="none" stroke="${IVORY}" stroke-width="34" stroke-linecap="round"/>
+  <path d="M150 166 126 103l78 41 52-72 52 72 78-41-24 63H150Z" fill="#D7B675" stroke="${BURGUNDY}" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M150 168h212" fill="none" stroke="#D7B675" stroke-width="13" stroke-linecap="round"/>
+  <circle cx="126" cy="101" r="10" fill="#D7B675"/>
+  <circle cx="256" cy="70" r="10" fill="#D7B675"/>
+  <circle cx="386" cy="101" r="10" fill="#D7B675"/>`;
 
 const MARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="شعار أميرة استور">${MARK_SHAPES}
 </svg>
 `;
 
-const ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="أميرة استور">
-  <rect width="512" height="512" rx="128" fill="${BLUSH_TILE}"/>
-  <path d="M128 268 C128 196 166 176 198 210 C224 156 244 146 256 140 C268 146 288 156 314 210 C346 176 384 196 384 268" fill="none" stroke="${BURGUNDY}" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="256" cy="92" r="26" fill="${GOLD}"/>
-</svg>
-`;
+const ICON_SVG = MARK_SVG;
 
 const FONT_STACK = "Cairo, 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif";
 
-const LOCKUP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 160" role="img" aria-label="أميرة استور">
-  <g transform="translate(420,20) scale(0.2344)">${MARK_SHAPES}
+const LOCKUP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 210" role="img" aria-label="أميرة استور">
+  <g transform="translate(316,12)">
+    <svg width="88" height="50" viewBox="0 0 72 40">
+      <path d="M10 11 22 21 36 6l14 15 12-10-7 22H17L10 11Z" fill="#D7B675"/>
+      <path d="M18 32h37" stroke="#D7B675" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="10" cy="9" r="3" fill="#D7B675"/>
+      <circle cx="36" cy="5" r="3" fill="#D7B675"/>
+      <circle cx="62" cy="9" r="3" fill="#D7B675"/>
+    </svg>
   </g>
-  <text x="210" y="86" text-anchor="middle" font-family="${FONT_STACK}" font-size="52" font-weight="700" fill="#3B2A2E">أميرة استور</text>
-  <text x="210" y="126" text-anchor="middle" font-family="${FONT_STACK}" font-size="20" font-weight="500" fill="${BURGUNDY}">تشكيلة عائلية مختارة بعناية</text>
+  <text x="360" y="108" text-anchor="middle" font-family="Cairo, 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif" font-size="66" font-weight="800" fill="#3B2A2E">أميرة استور</text>
+  <path d="M295 135h130" stroke="#C9A25E" stroke-width="4" stroke-linecap="round"/>
+  <text x="360" y="175" text-anchor="middle" font-family="${FONT_STACK}" font-size="25" font-weight="700" letter-spacing="3.5" fill="#803049">AMIRA STORE</text>
 </svg>
 `;
 
