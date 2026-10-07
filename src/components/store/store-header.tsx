@@ -99,10 +99,11 @@ export async function StoreHeader() {
             className="min-w-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
           >
             <BrandLogo
+              showArabicWordmark
               showEnglishWordmark
               className="gap-1.5 sm:gap-2"
               markClassName="size-9 sm:size-10 xl:size-12"
-              logoClassName="h-9 max-w-9 sm:h-10 sm:max-w-10 xl:h-12 xl:max-w-12"
+              logoClassName="h-9 w-auto max-w-14 sm:h-10 sm:max-w-16 xl:h-12 xl:max-w-20"
               wordmarkClassName="text-base sm:text-lg xl:text-xl"
               englishWordmarkClassName="text-[0.6rem] sm:text-[0.625rem]"
             />

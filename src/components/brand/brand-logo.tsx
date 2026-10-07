@@ -11,6 +11,7 @@ type BrandLogoProps = {
   markClassName?: string;
   logoClassName?: string;
   wordmarkClassName?: string;
+  showArabicWordmark?: boolean;
   showEnglishWordmark?: boolean;
   englishWordmarkClassName?: string;
 };
@@ -31,6 +32,7 @@ export async function BrandLogo({
   markClassName,
   logoClassName,
   wordmarkClassName,
+  showArabicWordmark = false,
   showEnglishWordmark = false,
   englishWordmarkClassName,
 }: BrandLogoProps) {
@@ -50,7 +52,7 @@ export async function BrandLogo({
         <LogoMark className={cn("h-11 w-11", markClassName)} title={name} />
       )}
       <span className="flex min-w-0 flex-col gap-1">
-        {!src ? (
+        {!src || showArabicWordmark ? (
           <span className={cn("whitespace-nowrap text-xl font-extrabold leading-none tracking-tight", wordmarkClassName)}>
             {name}
           </span>
