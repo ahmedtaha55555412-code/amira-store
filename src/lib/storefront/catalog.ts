@@ -24,7 +24,7 @@
  * replace it later without touching UI contracts (MASTER_PLAN §19).
  */
 
-import { and, asc, desc, eq, inArray, like, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, like, or, sql, type SQL } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import { publicDeliveryUrlSql } from '@/lib/media/service';
@@ -412,7 +412,7 @@ type ListingRow = {
   createdAt: Date;
 };
 
-/** Attach the primary gallery image per product (one batched query). */
+/** Attach a primary product image, falling back to an active variant image. */
 async function withPrimaryImages(rows: ListingRow[]): Promise<StorefrontProductCard[]> {
   const ids = rows.map((row) => row.id);
   const primaryByProduct = new Map<string, { url: string; alt: string | null }>();
@@ -426,16 +426,23 @@ async function withPrimaryImages(rows: ListingRow[]): Promise<StorefrontProductC
       })
       .from(productImages)
       .innerJoin(mediaAssets, eq(productImages.mediaAssetId, mediaAssets.id))
+      .leftJoin(productVariants, eq(productImages.variantId, productVariants.id))
       .where(
         and(
           inArray(productImages.productId, ids),
           eq(productImages.isPrimary, true),
-          sql`${productImages.variantId} is null`,
+          or(isNull(productImages.variantId), eq(productVariants.isActive, true)),
           eq(mediaAssets.accessMode, 'public'),
           sql`${mediaAssets.pathname} not like 'reviews/%' and ${mediaAssets.pathname} not like 'testimonials/%'`,
         ),
       )
-      .orderBy(asc(productImages.sortOrder));
+      .orderBy(
+        asc(sql`case when ${productImages.variantId} is null then 0 else 1 end`),
+        asc(productVariants.createdAt),
+        asc(productVariants.id),
+        asc(productImages.sortOrder),
+        asc(productImages.id),
+      );
     for (const row of primaries) {
       if (!primaryByProduct.has(row.productId)) {
         primaryByProduct.set(row.productId, { url: row.url, alt: row.altText });

@@ -173,13 +173,22 @@ export function ProductDetailClient({
     : null;
 
   /* --------------------- variant-aware gallery imagery ---------------------- */
+  const fallbackVariantImages = useMemo(() => {
+    if (gallery.length > 0) return [];
+    for (const variant of activeVariants) {
+      const variantGallery = variantImages[variant.id];
+      if (variantGallery?.length) return variantGallery;
+    }
+    return [];
+  }, [activeVariants, gallery.length, variantImages]);
+
   const images = useMemo(() => {
-    const base = gallery;
+    const base = gallery.length > 0 ? gallery : fallbackVariantImages;
     const variantOwn = selectedVariant ? (variantImages[selectedVariant.id] ?? []) : [];
     if (variantOwn.length === 0) return base;
     const baseUrls = new Set(variantOwn.map((image) => image.url));
-    return [...variantOwn, ...base.filter((image) => !baseUrls.has(image.url))];
-  }, [gallery, selectedVariant, variantImages]);
+    return [...variantOwn, ...gallery.filter((image) => !baseUrls.has(image.url))];
+  }, [fallbackVariantImages, gallery, selectedVariant, variantImages]);
 
   const imagesKey = images.map((image) => image.id).join("|");
 
