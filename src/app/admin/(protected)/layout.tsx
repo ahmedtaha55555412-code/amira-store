@@ -38,10 +38,10 @@ export default async function ProtectedAdminLayout({
             className="inline-flex max-w-full shrink-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <BrandLogo
+              showArabicWordmark
               showEnglishWordmark
-              markClassName="h-12 w-12"
-              logoClassName="h-12 w-auto max-w-40"
               wordmarkClassName="text-lg"
+              englishWordmarkClassName="text-[0.56rem]"
             />
           </Link>
           <span className="hidden rounded-full bg-blush px-3 py-1 text-xs font-semibold text-secondary-foreground sm:inline">
